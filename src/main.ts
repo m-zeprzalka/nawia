@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audio } from './audio/audio.ts';
 import { GAME_H, GAME_W } from './config.ts';
 import { BootScene } from './scenes/BootScene.ts';
 import { EndScene } from './scenes/EndScene.ts';
@@ -39,3 +40,7 @@ const refit = (): void => {
 };
 window.addEventListener('resize', refit);
 document.addEventListener('fullscreenchange', () => setTimeout(refit, 50));
+
+// Browsers only let sound start from inside a real input event, so unlock it on the first one.
+for (const ev of ['keydown', 'pointerdown'] as const) window.addEventListener(ev, () => audio.unlock());
+document.addEventListener('visibilitychange', () => audio.setSuspended(document.hidden));

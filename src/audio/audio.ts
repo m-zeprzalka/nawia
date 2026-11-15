@@ -38,6 +38,13 @@ class AudioEngine {
     if (this.ctx.state === 'suspended') void this.ctx.resume();
   }
 
+  /** Tab hidden: stop the drone. Tab back: carry on. */
+  setSuspended(suspended: boolean): void {
+    if (!this.ctx) return;
+    if (suspended) void this.ctx.suspend();
+    else void this.ctx.resume();
+  }
+
   toggleMute(): boolean {
     this.muted = !this.muted;
     if (this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.9, this.ctx.currentTime, 0.03);

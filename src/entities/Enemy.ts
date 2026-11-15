@@ -24,7 +24,7 @@ const SPECS: Record<EnemyKind, Spec> = {
   // utopiec: a drowned one. Slow, stubborn, walks.
   utopiec: { home: 'jawia', frame: MOB.UTOPIEC, hp: 2, hw: 6, hh: 5, chase: 31, wander: 13, sight: 92, mask: BLOCK_WALK, hover: 0 },
   // zjawa: a wraith. Drifts over water, weaves as it comes.
-  zjawa: { home: 'nawia', frame: MOB.ZJAWA, hp: 2, hw: 5, hh: 5, chase: 39, wander: 15, sight: 110, mask: BLOCK_FLY, hover: 4 },
+  zjawa: { home: 'nawia', frame: MOB.ZJAWA, hp: 2, hw: 5, hh: 5, chase: 39, wander: 15, sight: 110, mask: BLOCK_FLY, hover: 2 },
 };
 
 export class Enemy {
