@@ -1,0 +1,6 @@
+node_modules
+dist
+art-template
+*.log
+.DS_Store
+.vite

@@ -1,0 +1,27 @@
+{
+  "name": "nawia",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NAWIA — a top-down action adventure about shifting between the world of the living and the world of spirits. GitHub Game Off 2026 (theme: SHIFT).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && node tools/check-rooms.ts && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "rooms:check": "node tools/check-rooms.ts",
+    "art:export": "node tools/export-art.ts",
+    "art:preview": "node tools/preview.ts art-template/preview 3"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

@@ -1,0 +1,22 @@
+// End of the demo: strike the small bell.
+// Two ways onto the island: planks guarded by a drowned one, the old bridge guarded by a wraith.
+room: bell
+at: 1,1
+name: Mały dzwon | The Lesser Bell
+
+map:
+####################
+#!#####!####!#####!#
+#..................#
+#...~~~~~~~~~~~~...#
+#...~~~......~~~...#
+#.u.===..B...:::.z.#
+#...~~~......~~~...#
+#...~~~~~~~~~~~~...#
+#...~~~~~~~~~~~~....
+#.4................#
+####################
+
+sign 4:
+  jawia: Mały dzwon. Jego wielki brat czeka głębiej, pod jeziorem. | The lesser bell. Its great brother waits deeper, beneath the lake.
+  nawia: Uderz. Niech nas wreszcie ktoś usłyszy. | Strike it. Let someone hear us at last.

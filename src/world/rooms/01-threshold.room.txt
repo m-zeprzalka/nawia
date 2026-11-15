@@ -1,0 +1,22 @@
+// The first room: teaches both directions of the shift.
+// Rubble (J) blocks the living. An old wall (N) still stands for the dead.
+room: threshold
+at: 0,0
+name: Przedsionek | The Threshold
+
+map:
+####################
+###!####!####!######
+##......####....####
+##......####....####
+##.1....####....####
+##......JJJ.....NN..
+##......####....####
+##..@...####....####
+##......####....####
+####################
+####################
+
+sign 1:
+  jawia: Tu kończy się droga żywych. Dalej tylko gruz i woda. | Here ends the road of the living. Beyond: only rubble and water.
+  nawia: ...pamiętamy ten korytarz. Zawsze był otwarty... | ...we remember this corridor. It was always open...

@@ -1,0 +1,18 @@
+// Three corridors folded into an S. Every obstacle wants the other side:
+// old bridge (Nawia), old wall (Jawia), rubble (Nawia), planks (Jawia), rubble, old wall.
+room: weave
+at: 2,1
+name: Sala Splotów | The Weave
+
+map:
+###!######!###.##!##
+#....N...~~........#
+#....N...::........#
+#.##################
+#...JJ..~~~~.JJ....#
+#...JJ..====.JJ....#
+#...JJ..~~~~.JJ....#
+##################N#
+......z......u.....#
+#....T.......T.....#
+####################
