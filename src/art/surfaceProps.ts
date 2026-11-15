@@ -14,6 +14,8 @@ export const SOBJ = {
   ROW_NAWIA: 8,
   SIGN: 0, FIRE: 1, POT: 5, IDOL: 6, OFFERING: 7,
   GATE: 16, GATE_OPEN: 17, GATE_N: 18, GATE_OPEN_N: 19,
+  /** the hearth of a house, 4 frames; its Nawia twin is 8 frames further on, like rows 0-1 */
+  HEARTH: 24,
 } as const;
 
 const cell = (): PixelBuffer => new PixelBuffer(16, 32);
@@ -158,6 +160,37 @@ function gate(p: SurfacePalette, open: boolean): PixelBuffer {
   return b;
 }
 
+/** A clay stove with an open hearth, built against the back wall of a house. A pot hangs over the fire. */
+function hearth(world: World, f: number): PixelBuffer {
+  const p = SURF[world];
+  const b = cell();
+  const c = CLAY[world];
+  const lime = world === 'jawia' ? [rgb(0xb9ad96), rgb(0xd9cfb8), rgb(0xf1eada)] : [p.stone[1], p.stone[2], p.stone[3]];
+  // the whitewashed body, narrowing into a hood
+  for (let y = 4; y < 32; y++) {
+    const inset = y < 12 ? Math.round((12 - y) * 0.45) : 0;
+    for (let x = inset; x < 16 - inset; x++) {
+      let col: Color = x < inset + 3 ? lime[2] : x >= 13 - inset ? lime[0] : lime[1];
+      if (y === 4) col = lime[2];
+      if (y === 12 || y === 13) col = x % 4 === 0 ? p.seam : c[2]; // a band of painted tiles
+      if (y >= 29) col = (x + (y & 1) * 2) % 5 === 0 ? p.stone[0] : p.stone[2];
+      b.set(x, y, col);
+    }
+  }
+  // the mouth of the hearth
+  for (let y = 17; y < 29; y++)
+    for (let x = 3; x < 13; x++) {
+      const arch = y === 17 && (x < 5 || x > 10);
+      if (!arch) b.set(x, y, y > 26 ? c[0] : p.outline);
+    }
+  const out = b.outlined(p.outline);
+  flame(out, PAL[world].fire, 8, 27, 8, 7, f);
+  // the pot on its hook
+  for (let x = 6; x < 10; x++) { out.set(x, 19, p.stone[1]); out.set(x, 20, p.stone[0]); }
+  out.set(7, 18, p.stone[2]); out.set(8, 18, p.stone[2]);
+  return out;
+}
+
 export function surfacePropSheet(): Sheet {
   const frames: (PixelBuffer | null)[] = [];
   for (const world of ['jawia', 'nawia'] as World[]) {
@@ -166,6 +199,10 @@ export function surfacePropSheet(): Sheet {
     for (let f = 0; f < 4; f++) frames.push(campfire(world, f));
     frames.push(pot(world), idol(world), offering(p));
   }
-  frames.push(gate(SURF.jawia, false), gate(SURF.jawia, true), gate(SURF.nawia, false), gate(SURF.nawia, true));
+  frames.push(gate(SURF.jawia, false), gate(SURF.jawia, true), gate(SURF.nawia, false), gate(SURF.nawia, true), null, null, null, null);
+  for (const world of ['jawia', 'nawia'] as World[]) {
+    for (let f = 0; f < 4; f++) frames.push(hearth(world, f));
+    frames.push(null, null, null, null);
+  }
   return grid('surface', SOBJ.fw, SOBJ.fh, SOBJ.cols, frames);
 }

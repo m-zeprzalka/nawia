@@ -2,12 +2,13 @@
 
 Jeden plik = jeden pokój = **oba światy naraz**. Pliki leżą w `src/world/rooms/` i mają rozszerzenie
 `.room.txt`. Gra wczytuje wszystkie automatycznie (kolejność i nazwa pliku nie mają znaczenia), a `npm run dev`
-odświeża grę po zapisaniu pliku. Pliki `s1`–`s5` to powierzchnia, `01`–`11` to gród.
+odświeża grę po zapisaniu pliku. Pliki `h1`–`h2` to izby, `s1`–`s5` powierzchnia, `01`–`11` gród.
 
 ```
 // komentarz (zaczyna się od //, bo # to ściana)
 room: shrine                          <- unikalne id
-biome: village                        <- village | forest | crypt (domyślnie crypt)
+biome: village                        <- village | forest | house | crypt (domyślnie crypt)
+blight: 0                             <- skaza 0–3 (tylko village i forest; domyślnie 0)
 at: 0,-3                              <- pozycja w siatce świata, w "ekranach" (x,y); mogą być ujemne
 name: Skraj wsi | The Edge of the Village   <- polski | angielski
 
@@ -21,6 +22,8 @@ map:
 sign 1:
   jawia: Tekst widoczny w Jawi. | English text.
   nawia: Tekst widoczny w Nawi. | English text.
+
+door 4: home                          <- cyfra 4 na mapie to drzwi do pokoju "home"
 ```
 
 - Mapa ma **20 × 11 kafli** (jeden ekran) albo wielokrotność. Większy pokój zajmuje kilka pól siatki,
@@ -28,8 +31,12 @@ sign 1:
 - Blok `map:` kończy się pustą linią.
 - **Przejście do sąsiedniego pokoju** to po prostu chodliwy kafel na krawędzi mapy. Sąsiad musi mieć chodliwy kafel
   w tym samym miejscu po swojej stronie.
-- **Biom** decyduje tylko o wyglądzie i o tym, kto maluje pokój (patrz [DEVELOPER.md](DEVELOPER.md), „Dwa malarze”).
+- **Biom** decyduje tylko o wyglądzie, muzyce i o tym, kto maluje pokój (patrz [DEVELOPER.md](DEVELOPER.md), „Trzej malarze”).
   Zasady gry są wszędzie te same.
+- **Skaza** (`blight`) to ile fioletu wpełzło do pokoju: 0 czysto, 1 pierwsze plamy, 2 gęsto i inna melodia, 3 serce skazy.
+  Przy krawędzi pokoju malarz uśrednia ją z sąsiadem z góry i z dołu, więc przejście jest płynne.
+- **Drzwi** to cyfra z blokiem `door N: <id pokoju>`. Pokój po drugiej stronie musi mieć drzwi prowadzące z powrotem.
+  Na dworze cyfrę wstawia się w dolny rząd prostokąta chaty (zamiast `H`); w izbie w dolną ścianę.
 
 ## Legenda: teren
 
@@ -62,8 +69,32 @@ Krajobraz. Blokuje w obu światach (poza kwiatami i schodami) i jest malowany, n
 | `R` | głaz |
 | `F` | palisada (ostrokół) |
 | `b` | krzak |
+| `S` | stóg siana |
+| `U` | ul z kłody |
+| `M` | malwy (dobrze wyglądają przy ścianie chaty) |
 | `"` | łąka: gęsto kwiaty (można stać) |
 | `^` | schody w dół (można stać); ciemnieją ku dołowi ekranu |
+
+## Legenda: wnętrze chaty (`biome: house`)
+
+Cała mapa poza izbą to `#`. Rząd ściany bezpośrednio nad podłogą pokazuje lico i tylko w nim mają sens `W`, `F`, `M`.
+Te same litery znaczą na dworze co innego (kolumna „na dworze” dla przypomnienia).
+
+| Znak | W izbie | Na dworze |
+|---|---|---|
+| `#` | ściana z bali | las |
+| `.` | podłoga z desek | trawa |
+| `,` | kilim | ścieżka |
+| `W` | okno w ścianie (rzuca światło na podłogę) | studnia |
+| `F` | półka ze słojami na ścianie | palisada |
+| `M` | zioła suszone na ścianie | malwy |
+| `b` | łóżko (dwa `b` jedno pod drugim) | krzak |
+| `t` | stół (dwa lub więcej `t` obok siebie) | drzewo |
+| `S` | stołek | stóg siana |
+| `R` | skrzynia | głaz |
+| `O` | beczka | wielkie drzewo |
+| `T` | piec z ogniem (obiekt: świeci) | ognisko |
+| `o` | gliniany garnek do rozbicia | to samo |
 
 ## Legenda: obiekty
 
@@ -72,7 +103,7 @@ Stoją na podłodze albo trawie i istnieją w obu światach.
 | Znak | Co to |
 |---|---|
 | `@` | start gry (dokładnie jeden w całym świecie) |
-| `1`–`9` | napis albo mieszkaniec; treść w bloku `sign N:` pod mapą (`jawia:`, `nawia:` albo `both:`). W lochu to kamień z napisem, na powierzchni drogowskaz. Z linią `look:` to mieszkaniec wsi |
+| `1`–`9` | napis, mieszkaniec albo drzwi. Napis i mieszkaniec: blok `sign N:` pod mapą (`jawia:`, `nawia:` albo `both:`); w lochu to kamień z napisem, na powierzchni drogowskaz, z linią `look:` mieszkaniec wsi. Tekst zaczynający się od `@` wskazuje rozmowę z `src/story/` (patrz [DIALOGS.md](DIALOGS.md)). Drzwi: blok `door N: <id pokoju>` |
 | `T` | ogień: w lochu kosz z ogniem, na powierzchni ognisko (blokuje, światło) |
 | `!` | ściana z pochodnią (tylko loch; tam, gdzie pod ścianą jest podłoga lub woda w obu światach) |
 | `G` | brama: w lochu krata, na powierzchni wrota w palisadzie. Otwiera się, gdy pokój jest „załatwiony”: w pokoju z małym dzwonem po uderzeniu w dzwon, w pozostałych gdy nie ma już wrogów w żadnym ze światów. Pokój bez wrogów ma bramę otwartą od razu |
@@ -91,6 +122,10 @@ Stoją na podłodze albo trawie i istnieją w obu światach.
 | `f` | ognik: wróg z Jawi; wisi w miejscu i pluje ogniem; podniesiona tarcza odsyła ogień do niego |
 | `w` | ognik nad wodą (kafel jest wodą w obu światach): miecz go nie dosięgnie, zostaje tarcza |
 | `x` | strzyga: ma dwie dusze; zabita w Jawi wstaje w Nawi |
+| `d` | dzik: wróg z Jawi; szarżuje daleko po prostej, po zderzeniu ze ścianą stoi ogłuszony |
+| `v` | wilk (skażony): wróg z Jawi; krąży, skacze, odskakuje |
+| `p` | morownik, kwiat skazy: wróg z Jawi; stoi w miejscu i pluje trzema cierniami |
+| `c` | kura: nikomu nie szkodzi i nie da się jej skrzywdzić; ucieka |
 | `K` | strażnik (boss): znak stoi na lewym górnym kaflu jego ciała 2×2 |
 
 ### Mieszkańcy
@@ -102,7 +137,15 @@ sign 3:
 ```
 
 `look:` przyjmuje `herbalist` (zielarka), `elder` (starzec), `woman` (kobieta), `child` (dziecko). Mieszkaniec stoi w miejscu i blokuje kafel.
-W Jawi mówi linią `jawia:`, w Nawi jest tylko echem (linię `nawia:` można pominąć).
+W Jawi mówi linią `jawia:`, w Nawi jest tylko echem (linię `nawia:` można pominąć). Rozmowę zaczyna klawisz ciosu.
+
+Rozmowa z wyborem odpowiedzi:
+
+```
+sign 1:
+  look: herbalist
+  jawia: @zielarka          <- węzeł "zielarka" z pliku src/story/*.dialog.txt
+```
 
 Stan słupów wraca do początkowego przy każdym wejściu do pokoju. Słup nie wstaje, dopóki ktoś na nim stoi.
 
@@ -132,6 +175,8 @@ Na powierzchni dochodzą dwie rzeczy:
 - **Korony drzew zasłaniają.** Wszystko, co wystaje wyżej niż 8 px nad podstawę drzewa, jest rysowane nad bohaterem i wrogami.
   Walki planuj na otwartej przestrzeni, a dolny rząd mapy (`#`) traktuj jak kurtynę: jego korony przykrywają rząd nad nim.
 - **Chata potrzebuje miejsca.** Zostaw kafel odstępu między chatą a lasem po bokach, inaczej korony nachodzą na dach.
+- **Wesoło przy wsi, groźnie w głębi.** Pokoje bez skazy nie mają wrogów nie z tego świata. Pierwszy przeciwnik to zwierzę (dzik);
+  wilki, morowniki i zjawy pojawiają się tam, gdzie `blight` jest większe od zera.
 
 ## Sprawdzanie
 
@@ -141,8 +186,8 @@ npm run rooms:check
 
 Skrypt przechodzi cały świat po kaflach w obu światach naraz i mówi, czy da się dojść do obu dzwonów
 i do kamienia słońca i księżyca, ile obrotów trzeba co najmniej i czy każde przejście między pokojami
-ma parę po drugiej stronie. Zna słupy (stan kamienia jest częścią przeszukiwania); bramy uznaje za otwarte,
-wrogów pomija.
+i każde drzwi mają parę po drugiej stronie. Zna słupy (stan kamienia jest częścią przeszukiwania); bramy uznaje za otwarte,
+wrogów pomija. Sprawdza też rozmowy: czy każdy skok i każde `@id` prowadzą do istniejącego węzła.
 Odpala się też przy `npm run build`, więc zepsuty świat nie trafi na itch.io.
 
 Podgląd pokoi jako PNG (Jawia nad Nawią): `npm run art:preview`, albo jeden pokój:

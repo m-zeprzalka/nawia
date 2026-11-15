@@ -71,6 +71,11 @@ export class Player {
     this.sync();
   }
 
+  /** Changes his clothes: `key` is the texture of one of the hero sheets (see HERO_LOOKS). */
+  setLook(key: string): void {
+    this.sprite.setTexture(key, this.sprite.frame.name);
+  }
+
   get attacking(): boolean {
     return this.attackT >= 0;
   }

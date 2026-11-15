@@ -1,21 +1,23 @@
-// The first fight (a drowned one by the brook), then a two-layer barrier:
-// thorns (J) block the road in Jawia, and the planks over the brook (=) only exist in Jawia.
-// So: Nawia to get past the thorns, back to Jawia to cross the brook. A wraith waits in between.
+// The first fight is with nothing unnatural: a boar (d) by the brook. Then a two-layer barrier:
+// the blight's thorns (J) block the road in Jawia, and the planks over the brook (=) only exist in Jawia.
+// So: Nawia to get past the thorns, back to Jawia to cross the brook. Past the thorns the blight begins:
+// a wraith (z) waits on the Nawia side, a blight bloom (p) on the Jawia side.
 // East leads to the hallowed pool (optional).
 room: forest-road
 biome: forest
+blight: 1
 at: 0,-2
 name: Stary gościniec | The Old Road
 
 map:
 #####~~~~###.#######
 ###~~~~~###.,.t.####
-##~~~~u...,,.1....##
+##~~~~d...,,.1....##
 #~~~~..."..,,,,,,,,,
 #~~~t......,.....t.#
 #~~JJJJJJJJJJJJJJJ##
 #~~~.."....,..t....#
-#~~~~~z....,....~~~~
+#~~~~~z....,..p.~~~~
 ##~~~~~~~~~=~~~~~~~~
 ####t......,..t#####
 ###########.########

@@ -5,6 +5,7 @@ A small top-down action adventure made for **GitHub Game Off 2026** (theme: **SH
 | Jawia: the world of the living | Nawia: the same place, as the dead remember it |
 |---|---|
 | ![The village in Jawia](docs/img/village-jawia.png) | ![The village in Nawia](docs/img/village-nawia.png) |
+| ![Home](docs/img/home.png) | ![The barrow, where the blight is thickest](docs/img/barrow-blight.png) |
 
 A village at the edge of the marshes. The bell of the drowned stronghold has been silent for years,
 and the border between **Jawia** (the world of the living) and **Nawia** (the world of spirits) is cracking.
@@ -18,17 +19,20 @@ The border forgives no mistakes: turn the stone where something stands on the ot
 to where you entered the room, half a heart lighter. Nothing on screen shows you the other side.
 Learn the room, then turn the stone.
 
-> Status: playable demo, start to finish. Sixteen rooms: a village and a forest on the surface (five rooms, painted per pixel,
-> with tree crowns you can walk behind), then the drowned stronghold below (eleven rooms, one of them two screens wide).
-> Both worlds everywhere, sword and shield, four kinds of enemies, villagers to talk to, a sun-and-moon switch puzzle,
+> Status: playable demo, start to finish. Eighteen rooms: you wake up in your own house, in a cheerful village with hens
+> in the yard and a dance tune playing; both houses can be entered. The forest beyond it darkens as the blight thickens
+> towards the barrow (five surface rooms, painted per pixel, with tree crowns you can walk behind), and under the barrow lies
+> the drowned stronghold (eleven rooms, one of them two screens wide).
+> Both worlds everywhere, sword and shield, seven kinds of enemies, conversations with choices, a sun-and-moon switch puzzle,
 > a memory room of invisible crossings, a boss that has to be fought in both worlds, and a bell at the end.
-> All art and sound are generated in code.
+> All art, sound and music are generated in code.
 
 ## Documentation (in Polish)
 
 - [docs/DEVELOPER.md](docs/DEVELOPER.md) – how the game is built and how to work on it: architecture, the two painters,
   the shift, entities, recipes for adding rooms, enemies, scenery and props.
 - [docs/DESIGN.md](docs/DESIGN.md) – the game itself: world, mechanics, enemies, the route room by room.
+- [docs/DIALOGS.md](docs/DIALOGS.md) – how to write conversations (plain text files, no code).
 - [docs/ROOMS.md](docs/ROOMS.md) – the room file format and the full legend.
 - [docs/ART.md](docs/ART.md) – art direction, sprite sheets, replacing generated art with PNGs.
 
@@ -40,6 +44,9 @@ Learn the room, then turn the stone.
 | Zjawa (wraith) | Nawia | circles, then swoops straight through you; flies over the abyss | face it with the shield up |
 | Ognik (wisp) | Jawia | hangs over water and spits fire | a raised shield sends its own fire back |
 | Strzyga | both | has two souls: killed in Jawia, she gets up in Nawia | follow her across |
+| Dzik (boar) | Jawia | paws the ground, then charges a long way | step aside; it stuns itself on walls and trees |
+| Wilk (blighted wolf) | Jawia | circles, lunges, backs off | shield towards it, strike after the lunge |
+| Morownik (blight bloom) | Jawia | rooted; opens and spits three thorns | close in between volleys; the shield stops thorns |
 | The Guardian | the border | stone in Jawia, a heart in Nawia | make the stone charge into a wall, then strike the heart on the other side |
 
 Every enemy warns before it strikes (it blinks white and shakes), then commits to a straight line.
@@ -52,8 +59,10 @@ Every enemy warns before it strikes (it blinks white and shakes), then commits t
 | Turn the stone (shift worlds) | **Shift** or Space | Y, left bumper, left trigger |
 | Strike | Z, J or Enter | A, X |
 | Hold the shield | X or K | B, right bumper, right trigger |
+| Talk (next to a villager), confirm an answer | Z, J or Enter | A |
 | Pause | Esc / P | Start |
 | Mute / Fullscreen / Language | M / F / L (title screen) | |
+| Try the next hero design (while the look is being chosen) | H | |
 
 Windows tip: pressing Shift five times in a row opens the Sticky Keys dialog. Space does the same thing in the game.
 
@@ -89,7 +98,9 @@ Jump straight into a room while developing: `http://localhost:5173/?room=barrow&
 - **The shift** is instant in logic and a ring in pictures: both worlds of a room are pre-rendered, and a per-pixel
   ring composites one into the other (`src/fx/DualCanvas.ts`).
 - **Light** is a CPU light map with dithered bands, multiplied over the scene (`src/fx/Lighting.ts`).
-- **Sound** is synthesized with WebAudio (`src/audio/audio.ts`): no audio files.
+- **Sound and music** are synthesized with WebAudio (`src/audio/audio.ts`): no audio files. The surface tunes are two lines
+  of notes each, played by a small step sequencer.
+- **Conversations** are plain text files (`src/story/*.dialog.txt`) with answers to pick, jumps and things remembered.
 - Feel tuning lives in one place: `TUNE` in `src/config.ts` (the hero, the shift and its penalty, the boss).
   Enemy behaviour numbers are the `SPECS` table at the top of `src/entities/Enemy.ts`.
 

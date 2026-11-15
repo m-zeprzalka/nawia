@@ -6,6 +6,7 @@ import { PixelBuffer } from '../core/PixelBuffer.ts';
 import { TILESET_COLS, TILE_INDEX, type TileName } from '../art/tiles.ts';
 import { RoomPainter } from './roomPainter.ts';
 import { TERRAIN, isSurface, isWalkable, type Dungeon, type RoomDef } from './roomFormat.ts';
+import { InteriorPainter } from './interiorPainter.ts';
 import { SurfacePainter } from './surfacePainter.ts';
 
 export interface RoomPicture {
@@ -43,5 +44,6 @@ export function paintEcho(room: RoomDef, tilesets: Record<World, PixelBuffer>): 
 
 export function paintRoom(room: RoomDef, dungeon: Dungeon, tilesets: Record<World, PixelBuffer>): RoomPicture {
   if (isSurface(room.biome)) return new SurfacePainter(room, dungeon, paintEcho(room, tilesets));
+  if (room.biome === 'house') return new InteriorPainter(room, paintEcho(room, tilesets));
   return new RoomPainter(room, dungeon, tilesets);
 }

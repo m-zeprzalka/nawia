@@ -19,11 +19,12 @@ export const isWalkable = (t: number): boolean => t === TERRAIN.FLOOR || t === T
 
 export type Bilingual = { pl: string; en: string };
 
-export type EnemyKind = 'utopiec' | 'zjawa' | 'ognik' | 'strzyga';
+export type EnemyKind = 'utopiec' | 'zjawa' | 'ognik' | 'strzyga' | 'dzik' | 'wilk' | 'morownik';
 
 /** What a room is made of: the surface (village, forest) is painted differently from the stronghold below. */
-export type Biome = 'village' | 'forest' | 'crypt';
-export const isSurface = (b: Biome): boolean => b !== 'crypt';
+export type Biome = 'village' | 'forest' | 'house' | 'crypt';
+/** Under the open sky. */
+export const isSurface = (b: Biome): boolean => b === 'village' || b === 'forest';
 
 /** Villagers you can talk to (a `sign` block with a `look:` line). */
 export type NpcLook = 'herbalist' | 'elder' | 'woman' | 'child';
@@ -32,8 +33,12 @@ const NPC_LOOKS: readonly string[] = ['herbalist', 'elder', 'woman', 'child'];
 export type ObjectDef =
   | { kind: 'brazier'; tx: number; ty: number }
   | { kind: 'torch'; tx: number; ty: number }
-  | { kind: 'sign'; tx: number; ty: number; text: Record<World, Bilingual | null> }
-  | { kind: 'npc'; tx: number; ty: number; look: NpcLook; text: Record<World, Bilingual | null> }
+  | { kind: 'sign'; tx: number; ty: number; text: Record<World, Bilingual | null>; talk: Record<World, string | null> }
+  | { kind: 'npc'; tx: number; ty: number; look: NpcLook; text: Record<World, Bilingual | null>; talk: Record<World, string | null> }
+  /** A doorway: stepping on it takes you to the door of room `to` that leads back here. */
+  | { kind: 'door'; tx: number; ty: number; to: string }
+  /** Harmless animals of the living world. */
+  | { kind: 'critter'; type: 'hen'; tx: number; ty: number }
   | { kind: 'gate'; tx: number; ty: number }
   | { kind: 'bell'; tx: number; ty: number }
   | { kind: 'urn'; tx: number; ty: number }
@@ -51,6 +56,10 @@ export interface RoomDef {
   id: string;
   name: Bilingual;
   biome: Biome;
+  /** How far the blight has got here: 0 (untouched) to 3 (the border is cracking). Surface rooms only. */
+  blight: number;
+  /** Doorways: cell index (y * cols + x) -> id of the room behind it. */
+  doors: Map<number, string>;
   /** Position in the dungeon grid, in screens. */
   gx: number;
   gy: number;
@@ -109,6 +118,13 @@ export const LEGEND: Record<string, [Terrain, Terrain]> = {
   F: [TERRAIN.WALL, TERRAIN.WALL], // palisade
   W: [TERRAIN.WALL, TERRAIN.WALL], // a well
   b: [TERRAIN.WALL, TERRAIN.WALL], // a bush
+  S: [TERRAIN.WALL, TERRAIN.WALL], // a haystack (indoors: a stool)
+  U: [TERRAIN.WALL, TERRAIN.WALL], // a log beehive
+  M: [TERRAIN.WALL, TERRAIN.WALL], // hollyhocks (indoors: herbs hung on the wall)
+  d: [TERRAIN.FLOOR, TERRAIN.FLOOR], // dzik (boar)
+  v: [TERRAIN.FLOOR, TERRAIN.FLOOR], // wilk (blighted wolf)
+  p: [TERRAIN.FLOOR, TERRAIN.FLOOR], // morownik (blight bloom)
+  c: [TERRAIN.FLOOR, TERRAIN.FLOOR], // a hen
   '"': [TERRAIN.FLOOR, TERRAIN.FLOOR], // meadow flowers
   '^': [TERRAIN.FLOOR, TERRAIN.FLOOR], // steps going down
 };
@@ -128,8 +144,11 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
   const meta: Record<string, string> = {};
   const map: string[] = [];
   const signs = new Map<number, Record<World, Bilingual | null>>();
+  const talks = new Map<number, Record<World, string | null>>();
   const looks = new Map<number, NpcLook>();
+  const doorTo = new Map<number, string>();
   let currentSign = 0;
+  let currentTalk: Record<World, string | null> | null = null;
 
   let i = 0;
   // header
@@ -154,8 +173,16 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
     const s = /^sign\s+([1-9]):$/.exec(line);
     if (s) {
       current = { jawia: null, nawia: null };
+      currentTalk = { jawia: null, nawia: null };
       currentSign = Number(s[1]);
       signs.set(currentSign, current);
+      talks.set(currentSign, currentTalk);
+      continue;
+    }
+    const d = /^door\s+([1-9]):\s*(\S+)$/.exec(line);
+    if (d) {
+      doorTo.set(Number(d[1]), d[2]);
+      current = null;
       continue;
     }
     const l = /^look:\s*(\S+)$/.exec(line);
@@ -165,10 +192,11 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
       continue;
     }
     const t = /^(jawia|nawia|both):\s*(.+)$/.exec(line);
-    if (t && current) {
-      const b = bilingual(t[2]);
-      if (t[1] === 'both') { current.jawia = b; current.nawia = b; }
-      else current[t[1] as World] = b;
+    if (t && current && currentTalk) {
+      const worlds: World[] = t[1] === 'both' ? ['jawia', 'nawia'] : [t[1] as World];
+      // "@id" starts a conversation from src/story/*.dialog.txt; anything else is the text itself
+      if (t[2].startsWith('@')) for (const w of worlds) currentTalk[w] = t[2].slice(1).trim();
+      else for (const w of worlds) current[w] = bilingual(t[2]);
       continue;
     }
     fail(`line ${i + 1}: cannot understand "${line}"`);
@@ -180,7 +208,9 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
   if (Number.isNaN(gx) || Number.isNaN(gy)) fail(`bad "at: ${meta.at}"`);
   if (map.length === 0) fail('empty map');
   const biome = (meta.biome ?? 'crypt') as Biome;
-  if (biome !== 'village' && biome !== 'forest' && biome !== 'crypt') fail(`bad "biome: ${meta.biome}" (village, forest or crypt)`);
+  if (biome !== 'village' && biome !== 'forest' && biome !== 'house' && biome !== 'crypt') fail(`bad "biome: ${meta.biome}" (village, forest, house or crypt)`);
+  const blight = meta.blight === undefined ? 0 : Number(meta.blight);
+  if (!(blight >= 0 && blight <= 3)) fail(`bad "blight: ${meta.blight}" (0 to 3)`);
 
   const cols = Math.max(...map.map((r) => r.length));
   const rows = map.length;
@@ -191,6 +221,8 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
     id: meta.room,
     name: bilingual(meta.name ?? meta.room),
     biome,
+    blight,
+    doors: new Map(),
     gx, gy, cols, rows,
     terrain: { jawia: new Uint8Array(cols * rows), nawia: new Uint8Array(cols * rows) },
     debris: new Uint8Array(cols * rows),
@@ -230,12 +262,22 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
       else if (ch === 'a') room.objects.push({ kind: 'post', tx: x, ty: y, moon: false });
       else if (ch === 'm') room.objects.push({ kind: 'post', tx: x, ty: y, moon: true });
       else if (ch === 'h') room.objects.push({ kind: 'heart', tx: x, ty: y });
+      else if (ch === 'd') room.objects.push({ kind: 'enemy', type: 'dzik', tx: x, ty: y });
+      else if (ch === 'v') room.objects.push({ kind: 'enemy', type: 'wilk', tx: x, ty: y });
+      else if (ch === 'p') room.objects.push({ kind: 'enemy', type: 'morownik', tx: x, ty: y });
+      else if (ch === 'c') room.objects.push({ kind: 'critter', type: 'hen', tx: x, ty: y });
       else if (ch >= '1' && ch <= '9') {
-        const text = signs.get(Number(ch));
-        const look = looks.get(Number(ch));
-        if (!text) fail(`sign '${ch}' is on the map but has no "sign ${ch}:" block`);
-        else if (look) room.objects.push({ kind: 'npc', tx: x, ty: y, look, text });
-        else room.objects.push({ kind: 'sign', tx: x, ty: y, text });
+        const n = Number(ch);
+        const text = signs.get(n);
+        const talk = talks.get(n);
+        const look = looks.get(n);
+        const to = doorTo.get(n);
+        if (to) {
+          room.objects.push({ kind: 'door', tx: x, ty: y, to });
+          room.doors.set(k, to);
+        } else if (!text || !talk) fail(`'${ch}' is on the map but has no "sign ${ch}:" or "door ${ch}:" block`);
+        else if (look) room.objects.push({ kind: 'npc', tx: x, ty: y, look, text, talk });
+        else room.objects.push({ kind: 'sign', tx: x, ty: y, text, talk });
       }
     }
   }
@@ -286,6 +328,14 @@ export class Dungeon {
     return r.source[gty - r.gy * SCREEN_ROWS]?.[gtx - r.gx * SCREEN_COLS] ?? ' ';
   }
 
+  /** Where a doorway leads: the room, and the tile of its door that leads back (room-local). Null if the pair is broken. */
+  doorTarget(from: RoomDef, to: string): { room: RoomDef; tx: number; ty: number } | null {
+    const room = this.byId.get(to);
+    if (!room) return null;
+    for (const [cell, back] of room.doors) if (back === from.id) return { room, tx: cell % room.cols, ty: Math.floor(cell / room.cols) };
+    return null;
+  }
+
   /** Terrain at a global tile coordinate (VOID outside every room). */
   terrainAt(world: World, gtx: number, gty: number): number {
     const r = this.roomAtTile(gtx, gty);
@@ -305,6 +355,10 @@ export class Dungeon {
     const problems: string[] = [];
     const spawns = this.rooms.filter((r) => r.spawn);
     if (spawns.length !== 1) problems.push(`expected exactly one '@' in the dungeon, found ${spawns.length}`);
+    for (const r of this.rooms)
+      for (const to of r.doors.values())
+        if (!this.byId.has(to)) problems.push(`${r.id}: a door leads to "${to}", which is not a room`);
+        else if (!this.doorTarget(r, to)) problems.push(`${r.id}: a door leads to "${to}", but "${to}" has no door back to "${r.id}"`);
     for (const r of this.rooms) {
       const ox = r.gx * SCREEN_COLS;
       const oy = r.gy * SCREEN_ROWS;

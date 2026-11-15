@@ -3,6 +3,7 @@
 Ten plik opisuje, jak gra jest zbudowana i jak się w niej pracuje. Czytaj go razem z:
 
 - [DESIGN.md](DESIGN.md) – co to za gra: świat, mechaniki, wrogowie, przebieg pokój po pokoju,
+- [DIALOGS.md](DIALOGS.md) – jak pisać rozmowy (dla scenarzysty, bez kodu),
 - [ROOMS.md](ROOMS.md) – format plików pokoi i legenda znaków,
 - [ART.md](ART.md) – kierunek graficzny, arkusze sprite'ów, podmiana grafiki na PNG.
 
@@ -24,7 +25,7 @@ Narzędzia pomocnicze:
 | Komenda | Co robi |
 |---|---|
 | `npm run typecheck` | samo `tsc --noEmit` |
-| `npm run rooms:check` | przechodzi cały świat gry po kaflach w obu światach naraz: czy da się dojść do celu, ile obrotów trzeba, czy każde przejście ma parę |
+| `npm run rooms:check` | przechodzi cały świat gry po kaflach w obu światach naraz: czy da się dojść do celu, ile obrotów trzeba, czy każde przejście i każde drzwi mają parę; sprawdza też rozmowy (czy każdy skok dokądś prowadzi, czy kwestie nie są za długie) |
 | `npm run art:preview` | zapisuje do `art-template/preview/` PNG wszystkich arkuszy i każdego pokoju (Jawia nad Nawią) |
 | `npm run art:export` | zapisuje arkusze 1:1 do `art-template/` jako szablony do przemalowania |
 | `node tools/preview.ts <katalog> <skala> <fragment id>` | podgląd tylko pokoi, których id zawiera podany fragment |
@@ -34,6 +35,7 @@ Skróty w trybie deweloperskim (`npm run dev`):
 - `http://localhost:5173/?room=barrow&world=nawia` – start od razu w danym pokoju i świecie (z pominięciem ekranu tytułowego),
 - `window.__nawia` w konsoli przeglądarki to działająca `GameScene`: `__nawia.player`, `__nawia.room`, `__nawia.world`, `__nawia.state`.
   Bohatera można przestawić (`__nawia.player.x = ...`), uczynić nietykalnym (`__nawia.player.invuln = 9999`; wtedy mruga).
+- Klawisz **H** w grze przełącza wygląd bohatera (cztery warianty do porównania; wybór jest pamiętany w przeglądarce).
 
 ## 2. Mapa repozytorium
 
@@ -53,8 +55,8 @@ src/
     actors.ts           bohater, mieszkańcy, miecz, wrogowie, strażnik, pociski
     sprites.ts          rekwizyty lochu, łuk cięcia, cząsteczki, ikony HUD, mgła, poświata
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
-    surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy...)
-    surfaceProps.ts     rekwizyty powierzchni, które są sprite'ami (drogowskaz, ognisko, garnek, bożek, brama)
+    surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
+    surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
     font.ts, title.ts   czcionka bitmapowa z polskimi znakami, obraz tytułowy
     textures.ts         most między buforami pikseli a teksturami Phasera; podmiana na PNG z /assets
   world/
@@ -63,18 +65,23 @@ src/
     Level.ts            kolizje całego świata w obu światach naraz
     painter.ts          interfejs RoomPicture + wybór malarza + warstwa powidoku
     roomPainter.ts      malarz lochu: stemple z zestawu kafli
-    surfacePainter.ts   malarz powierzchni: grunt liczony piksel po pikselu + stemple + warstwa nad głową
-    rooms/*.room.txt    pokoje
-  entities/             Player, Enemy, Boss, Shot, Prop
+    surfacePainter.ts   malarz powierzchni: grunt liczony piksel po pikselu + stemple + warstwa nad głową + skaza
+    interiorPainter.ts  malarz wnętrz chat: deski, ściany z bali, kilim, meble
+    rooms/*.room.txt    pokoje (h* izby, s* powierzchnia, 01-11 gród)
+  story/
+    dialog.ts           format rozmów, parser i „maszyna” Talk, która je odtwarza (czysty moduł)
+    dialogData.ts       wczytanie plików rozmów przez Vite
+    *.dialog.txt        rozmowy (patrz DIALOGS.md)
+  entities/             Player, Enemy, Boss, Shot, Prop, Critter (kury)
   fx/
     DualCanvas.ts       obraz pokoju w dwóch światach i pierścień, który zamienia jeden w drugi
     Lighting.ts         mapa światła liczona na CPU, mnożona przez obraz
     Fx.ts               cząsteczki
   ui/                   Hud (serca, kamień, dialog, podpowiedź), PixelText
-  audio/audio.ts        cały dźwięk syntezowany w WebAudio
+  audio/audio.ts        cały dźwięk syntezowany w WebAudio: efekty, tło grodu, melodie powierzchni
   i18n/strings.ts       teksty poza pokojami (PL/EN)
   scenes/               BootScene, TitleScene (+ intro), GameScene, EndScene
-tools/                  check-rooms, preview, export-art, rooms (wczytywanie z dysku), png (zapis PNG)
+tools/                  check-rooms, preview, export-art, rooms i story (wczytywanie z dysku), png (zapis PNG)
 docs/                   ten katalog
 assets/                 pusty; PNG wrzucone tutaj zastępują generowane arkusze
 art-template/           eksport arkuszy do przemalowania
@@ -106,7 +113,7 @@ art-template/           eksport arkuszy do przemalowania
             (kolizje, 2 światy)   (RoomPicture: obrazy)   (wrogowie, rekwizyty, boss)
 ```
 
-1. **`parseRoom`** (`roomFormat.ts`) czyta nagłówek (`room`, `at`, `name`, `biome`), mapę i bloki `sign`.
+1. **`parseRoom`** (`roomFormat.ts`) czyta nagłówek (`room`, `at`, `name`, `biome`, `blight`), mapę oraz bloki `sign` i `door`.
    Każdy znak mapy daje teren w Jawi i teren w Nawi (tabela `LEGEND`) oraz ewentualnie obiekt (`ObjectDef`).
 2. **`Dungeon`** układa pokoje na siatce ekranów (`at: x,y`). Pokój może zajmować kilka pól. `terrainAt(world, gtx, gty)` i `charAt`
    odpowiadają na pytania o dowolny kafel świata, także poza bieżącym pokojem.
@@ -118,7 +125,13 @@ art-template/           eksport arkuszy do przemalowania
 5. **`GameScene.buildRoom`** tworzy z tego `ActiveRoom`: `DualCanvas` dla gruntu, drugi `DualCanvas` dla warstwy nad głową,
    wrogów, bossa, rekwizyty i serca.
 
-### Dwa malarze
+### Trzej malarze
+
+Trzeci, najprostszy, to `InteriorPainter` (`biome: house`): deski podłogi, ściany z bali (ta nad podłogą pokazuje lico z oknami,
+półkami i ziołami; pozostałe pokazują wierzch), kilim, meble rysowane od tyłu do przodu, światło z okien i z drzwi.
+Cała mapa poza izbą to `#`; ściana, która nie dotyka podłogi, jest ciemnością za murami. Piec jest sprite'em (rekwizyt `T`), bo się pali.
+
+Dwaj pozostali:
 
 | | `RoomPainter` (loch, `biome: crypt`) | `SurfacePainter` (`biome: village` / `forest`) |
 |---|---|---|
@@ -141,6 +154,12 @@ Kolejność pracy `SurfacePainter.paint(world)`:
 W Nawi las otoczony ze wszystkich stron lasem nie jest rysowany wcale: zamiast niego jest otchłań z gwiazdami. To ta sama reguła,
 co „poza murami nie ma ziemi” w lochu.
 
+**Skaza.** Nagłówek pokoju `blight: 0–3` mówi, jak daleko zaszła. Malarz liczy siłę skazy dla każdego wiersza pikseli
+(`blightAt`): w środku pokoju to jego własny poziom, przy górnej i dolnej krawędzi średnia z sąsiadem, więc skaza „wpełza”
+od gorszej strony. Tam, gdzie szum (`blightN`) jest poniżej tej siły, trawa zmienia się w fioletową plamę z żyłkami;
+część drzew lasu jest zastępowana martwymi (`deadTree`), a ciernie `J` rysowane są rampą skazy. Poziom skazy steruje też
+powietrzem (`BLIGHT_AIR` w `GameScene`), cząsteczkami (zarodniki zamiast pyłków od poziomu 2) i melodią.
+
 ## 5. Obrót między światami
 
 Logika i obraz są rozdzielone.
@@ -154,18 +173,27 @@ Logika i obraz są rozdzielone.
   odstawia bohatera tam, gdzie wszedł do pokoju (`this.entry`), w świecie, w którym do niego wszedł.
 - **Powidok** drugiej strony jest wyłączony (`TUNE.shift.afterimage = 0`). Kod został: wartość w sekundach włącza go z powrotem.
 
+### Drzwi
+
+Drzwi to cyfra na mapie z blokiem `door N: <id pokoju>`. Obie strony deklarują się nawzajem (wieś: `door 4: home`, izba: `door 4: village`);
+`Dungeon.doorTarget()` znajduje w pokoju docelowym drzwi prowadzące z powrotem. Kafel drzwi jest chodliwy. Gdy środek bohatera
+znajdzie się na nim, `GameScene.enterDoor()` zaciemnia ekran, buduje pokój docelowy i stawia bohatera na pierwszym wolnym kaflu
+obok tamtych drzwi (pod nimi na dworze, nad nimi w izbie). Izby leżą na siatce świata z dala od reszty (`at: -1,-5`), żeby z nikim nie sąsiadować.
+Malarz powierzchni traktuje kafel drzwi w prostokącie chaty jak ścianę z otwartymi drzwiami.
+
 ## 6. Pętla gry
 
 `GameScene.update()`:
 
 1. wejście (`input.update`), klawisze globalne, pauza;
 2. *hit-stop*: po trafieniu świat stoi przez kilka klatek (`this.hitstop`), `dt = 0`;
-3. stan gry: `play`, `slide` (przejazd kamery do sąsiedniego pokoju), `rejected` (kara za obrót), `dying`, `ending`, `paused`;
+3. stan gry: `play`, `slide` (przejazd kamery do sąsiedniego pokoju), `door` (przejście przez drzwi), `talk` (rozmowa),
+   `waking` (pobudka na początku gry: powieki), `rejected` (kara za obrót), `dying`, `ending`, `paused`;
 4. `updateAtmosphere`: animacja wody, pierścień, zmiana wyglądu obiektów, powietrze miejsca;
 5. `hud.update`, `render` (wstrząs kamery, mapa światła, mgła).
 
-`updatePlay()` w kolejności: obrót → bohater → trafienia miecza (`resolveAttack`) → wrogowie i kontakt z nimi → pociski → boss → słupy →
-rekwizyty → serca → napis/rozmowa → wyjście z pokoju → podpowiedzi → kamera.
+`updatePlay()` w kolejności: obrót → początek rozmowy (klawisz ciosu obok rozmówcy) → bohater → trafienia miecza (`resolveAttack`) →
+wrogowie i kontakt z nimi → pociski → boss → słupy → rekwizyty → kury → serca → napis → drzwi → wyjście z pokoju → podpowiedzi → kamera.
 
 Pokój jest „załatwiony” (`checkCleared`), gdy zadzwonił jego mały dzwon albo, jeśli dzwonu nie ma, gdy nie został żaden wróg w żadnym świecie.
 Wtedy otwierają się jego bramy i id pokoju trafia do `this.cleared` (do końca rozgrywki). Stan nie jest zapisywany na dysk.
@@ -177,10 +205,11 @@ Wtedy otwierają się jego bramy i id pokoju trafia do `this.cleared` (do końca
 | Plik | Co robi | Najważniejsze |
 |---|---|---|
 | `Player.ts` | ruch z przyspieszeniem, zamach, tarcza, odrzut | `box` (10×8 px u stóp), `attackBox()`, `blocks(skąd)`, `hurt/drain/heal/shove`, `sync()` |
-| `Enemy.ts` | wszyscy zwykli wrogowie | tabela `SPECS`; maszyna stanów `roam → windup → dash → rest` (+ `rising` u strzygi); `home` = świat, w którym jest groźny i wrażliwy |
+| `Enemy.ts` | wszyscy zwykli wrogowie | tabela `SPECS`; maszyna stanów `roam → windup → dash → rest` (+ `rising` u strzygi); `home` = świat, w którym jest groźny i wrażliwy. Wyjątki od schematu: zjawa i wilk krążą przed atakiem, ognik i morownik strzelają zamiast skakać, dzik po zderzeniu ze ścianą długo stoi |
+| `Critter.ts` | kury | chodzą, uciekają przed bohaterem i mieczem; nie da się ich skrzywdzić; w Nawi są echem |
 | `Boss.ts` | strażnik | stany `sleep, stalk, windup, charge, stunned, recover, dying`; kolejka `events`, którą scena zamienia na dźwięk i efekty |
-| `Shot.ts` | ogień ognika, kule serca | `reflect()` odsyła do właściciela |
-| `Prop.ts` | wszystko, co stoi i ma własne życie | `kind`, `open`, `solid`, `light()`, `setWorld()`; pod gołym niebem bierze klatki z arkusza `surface` (`applyOutdoors`) |
+| `Shot.ts` | ogień ognika, ciernie morownika, kule serca | `reflect()` odsyła do właściciela (tylko ogień ognika) |
+| `Prop.ts` | wszystko, co stoi i ma własne życie | `kind`, `open`, `solid`, `light()`, `setWorld()`; parametr `Place` (`crypt`, `surface`, `house`) decyduje o wyglądzie: poza grodem bierze klatki z arkusza `surface` (`applyOutdoors`), a ogień w izbie jest piecem |
 
 Wspólne zasady: pozycja encji to środek pudełka kolizji przy stopach; sprite ma punkt zaczepienia na dolnej krawędzi;
 głębokość rysowania to `DEPTH.entities + y / 1000`, więc kto stoi niżej, ten zasłania.
@@ -202,6 +231,22 @@ Warstwy (`DEPTH`): obraz pokoju 0 → dekoracje podłogi 5 → encje 10+ → war
 
 Rejestracja: `BootScene` woła `registerArt()` (`textures.ts`), które generuje arkusze albo bierze PNG o tej samej nazwie z `assets/`.
 
+### Rozmowy
+
+`story/dialog.ts` jest czystym modułem: `parseDialogs()` zamienia pliki `.dialog.txt` w mapę `węzeł → lista operacji`
+(`say`, `set`, `jump`, `choice`), a klasa `Talk` je odtwarza: `line` (bieżąca kwestia), `choices` (odpowiedzi albo `null`),
+`next()`, `choose(i)`, `done`. Zapamiętane nazwy (`[+nazwa]`) trzyma `GameScene.flags` (zbiór, do końca rozgrywki).
+
+`GameScene.talkerNear()` szuka obok bohatera mieszkańca albo napisu z rozmową; klawisz ciosu woła `startTalk()`, gra przechodzi
+w stan `talk`, a `updateTalk()` obsługuje klawisze i przekazuje widok do `Hud.setTalk()` (tabliczka z imieniem, tekst, okno odpowiedzi).
+Żeby rozmowa zmieniała świat (otwierała bramę, dawała przedmiot), wystarczy w odpowiednim miejscu `GameScene` sprawdzić `this.flags.has('nazwa')`.
+
+### Wygląd bohatera
+
+`HERO_LOOKS` w `actors.ts` to lista wariantów: każdy podmienia głowę (8 górnych wierszy komórki dla trzech kierunków) i część kolorów,
+a ciało i wszystkie pozy dziedziczy. Każdy wariant ma własny arkusz (`hero`, `hero1`, …). `Player.setLook(klucz)` zmienia teksturę.
+Nowy wariant to nowy wpis w `HERO_LOOKS`. Docelowo zostanie jeden; lista jest po to, żeby dało się je porównać w ruchu.
+
 ## 9. Światło, mgła, dźwięk, wejście, teksty
 
 - **`Lighting`**: pełnoekranowa mapa światła 320×180 liczona co klatkę. Źródła (`LightSource`) dodają kolor w ditherowanych pasmach, całość jest
@@ -209,7 +254,11 @@ Rejestracja: `BootScene` woła `registerArt()` (`textures.ts`), które generuje 
   prawie biały, więc światło nic nie zmienia (jest dzień).
 - **`DRESS`** (`GameScene.ts`): dla pary (loch / powierzchnia, świat) podaje `ambient`, światło bohatera, mgłę i winietę. Wartości płynnie dążą do celu.
 - **`Fx`**: emitery cząsteczek (`shiftBurst`, `hit`, `death`, `debris`, `block`, `pickup`, `reject`) i tło pokoju (`setAmbience`: kurz, iskry Nawi, pyłki na powierzchni).
-- **`audio`**: jeden obiekt, `audio.sfx('nazwa')`, `startAmbience()`, `setWorld()`. Wszystko syntezowane, bez plików. Nowy efekt to nowy `case` w `sfx()` i wpis w typie `Sfx`.
+- **`audio`**: jeden obiekt, `audio.sfx('nazwa')`, `startAmbience()`, `setWorld()`, `setPlace(biom, skaza)`. Wszystko syntezowane, bez plików.
+  Nowy efekt to nowy `case` w `sfx()` i wpis w typie `Sfx`.
+  **Muzyka**: w grodzie gra tło (dron, wiatr, chór Nawi, krople). Poza grodem gra melodia z tabeli `TUNES`: `village` (wieś i izby),
+  `forest` (las), `deep` (las ze skazą od poziomu 2). Melodia to dwie linie nut na siatce równych kroków: `a4` gra, `-` przedłuża
+  poprzednią nutę, `.` to cisza, `fs5` to fis. Obrót do Nawi przycisza melodię i wpuszcza chór, więc druga strona brzmi wszędzie tak samo.
 - **`input`**: akcje `shift, attack, shield, pause, mute, fullscreen, lang`. `input.consume(akcja, bufor)` zwraca `true` raz na wciśnięcie
   (z buforem w sekundach), `input.isDown(akcja)`, `input.moveX/moveY`, `input.device`. Mapowanie klawiszy i pada jest na górze `core/input.ts`.
 - **Teksty**: poza pokojami w `i18n/strings.ts` jako pary `{ pl, en }`; w pokojach w blokach `sign`. `t(para)` wybiera bieżący język.
@@ -223,6 +272,17 @@ Rejestracja: `BootScene` woła `registerArt()` (`textures.ts`), które generuje 
 3. `npm run rooms:check` – powie, czy przejścia mają pary i czy do pokoju da się dojść.
 4. `node tools/preview.ts /tmp/podglad 3 <id>` – obraz pokoju w obu światach bez uruchamiania gry.
 5. `http://localhost:5173/?room=<id>` – wejście prosto do pokoju.
+
+### Nowa izba
+
+1. Plik z `biome: house`, mapa cała z `#`, w środku prostokąt podłogi. Rząd ściany bezpośrednio nad podłogą to lico (tam `W`, `F`, `M`).
+2. Drzwi: cyfra w dolnej ścianie i blok `door N: <pokój na zewnątrz>`; na zewnątrz ta sama cyfra w dolnym rzędzie chaty i `door N: <izba>`.
+3. `at:` w wolnym miejscu siatki, z dala od innych pokoi.
+
+### Nowa melodia
+
+Wpis w `TUNES` (`audio.ts`): `step` (sekundy na krok), `wave`, `gain`, `echo`, linie `lead` i `bass` o tej samej liczbie kroków.
+Wybór melodii dla miejsca jest w `setPlace()`.
 
 ### Nowy wróg
 
@@ -273,8 +333,10 @@ Na itch.io projekt ma być typu „HTML”, z oknem 960×540 (albo inną wielokr
 
 - Loch i powierzchnia są malowane dwiema technikami i różnią się poziomem szczegółu. Loch jest starszy (stemple z kafli).
 - Gruntu powierzchni nie da się podmienić plikiem PNG; arkusze sprite'ów tak.
-- Wrogowie i mieszkańcy mają jeden kierunek patrzenia; mieszkańcy stoją w miejscu.
-- Dźwięk jest w całości syntezowany, a powierzchnia nie ma własnego tła dźwiękowego.
+- Wrogowie i mieszkańcy mają jeden kierunek patrzenia (zwierzęta są rysowane z profilu i odbijane); mieszkańcy stoją w miejscu.
+- Dźwięk jest w całości syntezowany. Melodie powierzchni napisano „na papierze”: nikt ich jeszcze nie słuchał.
+- Pamięć rozmów (`flags`) nie wpływa jeszcze na świat gry.
+- Wnętrza chat nie mają warstwy nad głową (bohater nie chowa się za meblami).
 - Brak zapisu stanu gry: po odświeżeniu strony zaczyna się od wioski.
 - Paczka JS ma ok. 1,5 MB (Phaser).
 - W repozytorium nie ma pliku licencji.

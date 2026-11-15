@@ -1,4 +1,4 @@
-// Things that fly at the hero: a wisp's fire (Jawia) and the guardian's soul orbs (Nawia).
+// Things that fly at the hero: a wisp's fire and a blight bloom's thorns (Jawia), the guardian's soul orbs (Nawia).
 // A raised shield stops them; a wisp's own fire is sent back at the wisp.
 
 import Phaser from 'phaser';
@@ -7,9 +7,10 @@ import { SHOT } from '../art/actors.ts';
 import { BLOCK_FLY, type Box, type Level } from '../world/Level.ts';
 import type { Enemy } from './Enemy.ts';
 
-export type ShotKind = 'wisp' | 'soul';
+export type ShotKind = 'wisp' | 'soul' | 'thorn';
 
-const TINT: Record<ShotKind, number> = { wisp: 0x8ee04a, soul: 0xd070f0 };
+const TINT: Record<ShotKind, number> = { wisp: 0x8ee04a, soul: 0xd070f0, thorn: 0xe060d0 };
+const FRAME: Record<ShotKind, number> = { wisp: SHOT.WISP, soul: SHOT.SOUL, thorn: SHOT.THORN };
 let uid = 0;
 
 export class Shot {
@@ -40,7 +41,7 @@ export class Shot {
     this.y = y;
     this.vx = vx;
     this.vy = vy;
-    this.sprite = scene.add.sprite(x, y, 'shots', kind === 'wisp' ? SHOT.WISP : SHOT.SOUL).setDepth(DEPTH.fxWorld);
+    this.sprite = scene.add.sprite(x, y, 'shots', FRAME[kind]).setDepth(DEPTH.fxWorld);
     this.glow = scene.add.image(x, y, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(TINT[kind]).setScale(0.5).setDepth(DEPTH.fog + 1);
   }
 
@@ -73,7 +74,7 @@ export class Shot {
   }
 
   sync(world: World): void {
-    const base = this.kind === 'wisp' ? SHOT.WISP : SHOT.SOUL;
+    const base = FRAME[this.kind];
     const seen = world === this.home ? 1 : 0.14;
     this.sprite.setFrame(base + (Math.floor(this.t * 12) % 2)).setPosition(Math.round(this.x), Math.round(this.y)).setAlpha(seen);
     if (this.friendly) this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);

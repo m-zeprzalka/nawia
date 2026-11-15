@@ -1,0 +1,22 @@
+// The hero's own room: the game starts here, in bed, with the morning coming in through the windows.
+// Everything outside the walls is '#'. The door (4) leads out into the village.
+// In Nawia one of the family's dead still sits by the fire.
+room: home
+biome: house
+at: -1,-5
+name: Izba | Home
+
+map:
+####################
+####################
+#####W#FF##W#MM#####
+#####b...T...s.#####
+#####b..,,,,...#####
+#####@..,,,,..R#####
+#####.tt.......#####
+#####..S....o.O#####
+#########4##########
+####################
+####################
+
+door 4: village

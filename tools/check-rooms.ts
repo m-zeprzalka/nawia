@@ -6,7 +6,9 @@
 // Gates are assumed open (they open when a room is cleared), enemies are ignored.
 import { SCREEN_COLS, SCREEN_ROWS, type World } from '../src/config.ts';
 import { isWalkable } from '../src/world/roomFormat.ts';
+import { checkDialogs } from '../src/story/dialog.ts';
 import { loadDungeon } from './rooms.ts';
+import { loadDialogs } from './story.ts';
 
 const dungeon = loadDungeon();
 let failed = false;
@@ -14,6 +16,30 @@ let failed = false;
 const problems = dungeon.validate();
 for (const p of problems) console.log(`  ! ${p}`);
 if (problems.length) failed = true;
+
+// conversations: every jump leads somewhere, and every "@id" in a room file exists
+const dialogs = loadDialogs();
+const talkProblems = checkDialogs(dialogs);
+for (const r of dungeon.rooms)
+  for (const o of r.objects)
+    if (o.kind === 'sign' || o.kind === 'npc')
+      for (const id of [o.talk.jawia, o.talk.nawia])
+        if (id && !dialogs.has(id)) talkProblems.push(`room "${r.id}" starts the conversation "@${id}", which does not exist`);
+for (const p of talkProblems) console.log(`  ! ${p}`);
+// the text panel holds three rows: warn (only warn) about lines that will not fit
+for (const [id, ops] of dialogs)
+  for (const op of ops)
+    if (op.op === 'say' && Math.max(op.text.pl.length, op.text.en.length) > 125)
+      console.log(`  ? dialog "${id}": a line of ${Math.max(op.text.pl.length, op.text.en.length)} characters may not fit in the panel ("${op.text.pl.slice(0, 40)}...")`);
+if (talkProblems.length) failed = true;
+
+/** doorway (global tile) -> the doorway it leads to */
+const doorways = new Map<string, [number, number]>();
+for (const r of dungeon.rooms)
+  for (const [cell, to] of r.doors) {
+    const back = dungeon.doorTarget(r, to);
+    if (back) doorways.set(`${r.gx * SCREEN_COLS + (cell % r.cols)},${r.gy * SCREEN_ROWS + Math.floor(cell / r.cols)}`, [back.room.gx * SCREEN_COLS + back.tx, back.room.gy * SCREEN_ROWS + back.ty]);
+  }
 
 const blocked = new Set<string>();
 const switches = new Set<string>();
@@ -72,6 +98,9 @@ while (deque.length) {
     const m2 = there === here ? m : 0;
     if (free(w, x + dx, y + dy, m2)) relax(w, x + dx, y + dy, m2, c, true);
   }
+  // a doorway leads to the doorway on its other side
+  const through = doorways.get(`${x},${y}`);
+  if (through && free(w, through[0], through[1], 0)) relax(w, through[0], through[1], 0, c, true);
   // strike a turning stone from next to it (not while standing on a post: it could not rise under you)
   if (!posts.has(`${x},${y}`) && NEAR.some(([dx, dy]) => switches.has(`${x + dx},${y + dy}`))) relax(w, x, y, 1 - m, c, true);
   if (free(1 - w, x, y, m)) relax(1 - w, x, y, m, c + 1, false);
@@ -82,7 +111,7 @@ const best = (x: number, y: number): number => {
   return b;
 };
 
-console.log(`${dungeon.rooms.length} rooms, start: "${start.id}"`);
+console.log(`${dungeon.rooms.length} rooms, ${dialogs.size} conversation nodes, start: "${start.id}"`);
 for (const r of dungeon.rooms) {
   let first = Infinity;
   let reachable = 0;

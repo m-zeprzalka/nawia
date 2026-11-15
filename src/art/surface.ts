@@ -55,6 +55,14 @@ export interface SurfacePalette {
   shadowK: number;
   outline: Color;
   glow: boolean;
+  /**
+   * The blight: what Nawia leaves where it seeps through. Ground (dark, mid, light), a vein, a spark,
+   * and a ramp for the thorns and dead wood that grow out of it.
+   */
+  blight: Color[];
+  blightVein: Color;
+  blightSpark: Color;
+  blightWood: Color[];
 }
 
 export const SURF: Record<World, SurfacePalette> = {
@@ -86,6 +94,10 @@ export const SURF: Record<World, SurfacePalette> = {
     shadowK: 0.34,
     outline: rgb(0x1a1423),
     glow: false,
+    blight: ramp(0x2a1c3a, 0x3b2a4e, 0x4f3a64),
+    blightVein: rgb(0x9a4fc8),
+    blightSpark: rgb(0xff7ad8),
+    blightWood: ramp(0x1c1026, 0x2e1c40, 0x4b2a66, 0x703c94, 0xb46edc),
   },
   nawia: {
     grass: ramp(0x0b1030, 0x0f1640, 0x141d50),
@@ -115,6 +127,10 @@ export const SURF: Record<World, SurfacePalette> = {
     shadowK: 0,
     outline: rgb(0x03040c),
     glow: true,
+    blight: ramp(0x1c0f38, 0x2a1650, 0x3a1e6a),
+    blightVein: rgb(0xe08ae8),
+    blightSpark: rgb(0xffd8ff),
+    blightWood: ramp(0x12082a, 0x2a1650, 0x5a2a96, 0xa84fc8, 0xffa8f4),
   },
 };
 
@@ -408,15 +424,15 @@ export function bush(p: SurfacePalette, seed: number): Stamp {
   return s;
 }
 
-/** Brambles: what grows over a path nobody walks any more. */
-export function thicket(p: SurfacePalette, seed: number): Stamp {
+/** Brambles: what grows over a path nobody walks any more. With the blight's ramp they are its thorns. */
+export function thicket(p: SurfacePalette, seed: number, colors: readonly Color[] = p.thorn, berry: Color = p.berry): Stamp {
   const rng = mulberry32(seed);
   const s = foliage(
     [
       { x: -1, y: -6, r: 6.2 }, { x: -5.5, y: -4.5, r: 4.6 }, { x: 5, y: -4.8, r: 4.8 },
       { x: 1 + rng() * 2, y: -10, r: 4.4 },
     ],
-    p.thorn, seed, p.glow, 0.82,
+    colors, seed, p.glow, 0.82,
   );
   const b = s.buf;
   // thorny canes sticking out, and a few berries
@@ -431,9 +447,109 @@ export function thicket(p: SurfacePalette, seed: number): Stamp {
   for (let i = 0; i < 5; i++) {
     const x = s.ax - 6 + Math.floor(rng() * 12);
     const y = s.ay - 10 + Math.floor(rng() * 7);
-    if (opaque(b, x, y) && opaque(b, x - 1, y) && opaque(b, x, y + 1)) b.set(x, y, p.berry);
+    if (opaque(b, x, y) && opaque(b, x - 1, y) && opaque(b, x, y + 1)) b.set(x, y, berry);
   }
   return s;
+}
+
+/** A tree the blight has killed: bare, crooked, with the other side glowing in its knots. */
+export function deadTree(p: SurfacePalette, seed: number): Stamp {
+  const c = p.blightWood;
+  const rng = mulberry32(seed);
+  const buf = new PixelBuffer(30, 36);
+  const ax = 15;
+  const ay = 35;
+  const dot = (x: number, y: number, col: Color): void => buf.set(Math.round(x), Math.round(y), col);
+  // trunk: leaning a little, thinner towards the top
+  const top = ay - 24;
+  for (let y = ay; y >= top; y--) {
+    const t = (ay - y) / 24;
+    const cx = ax + Math.sin(t * 2.4 + seed) * 1.6;
+    const half = 2.2 - t * 1.3;
+    for (let x = Math.round(cx - half); x <= Math.round(cx + half); x++) dot(x, y, x < cx - half * 0.3 ? c[2] : x > cx + half * 0.4 ? c[0] : c[1]);
+  }
+  buf.set(ax - 3, ay, c[1]); buf.set(ax + 3, ay, c[0]); buf.set(ax - 4, ay, c[0]);
+  // boughs: each one reaches up and out, forks once, and ends in a knot of sick leaves
+  for (let i = 0; i < 5; i++) {
+    const side = i % 2 ? 1 : -1;
+    const y0 = ay - 9 - i * 3.6;
+    const len = 6 + rng() * 5;
+    let x = ax + side * 1.5;
+    let y = y0;
+    for (let k = 0; k < len; k++) {
+      x += side * (0.75 + rng() * 0.3);
+      y -= 0.45 + rng() * 0.5;
+      dot(x, y, k < 2 ? c[1] : c[2]);
+      if (k < 3) dot(x, y + 1, c[0]);
+      if (k === Math.floor(len / 2)) for (let j = 1; j <= 3; j++) dot(x + side * j * 0.5, y - j, c[2]);
+    }
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, -1], [-1, 0], [0, 1], [side, -1]]) dot(x + dx, y + dy - 1, dx === 0 && dy === 0 ? p.blightSpark : c[3]);
+  }
+  dot(ax + Math.sin(2.4 + seed) * 1.6, top - 1, c[3]);
+  rim(buf, p.glow ? c[4] : null, c[0]);
+  // knots where the other side shows through
+  buf.set(ax, ay - 7, p.blightSpark);
+  buf.set(ax - 1, ay - 14, p.blightVein);
+  return { buf, ax, ay };
+}
+
+/** A haystack on its pole. */
+export function haystack(p: SurfacePalette): Stamp {
+  const T = p.thatch;
+  const buf = new PixelBuffer(18, 24);
+  for (let y = 3; y < 24; y++) {
+    const t = (y - 3) / 20;
+    const half = 2 + Math.pow(t, 0.55) * 6.6;
+    for (let x = Math.round(9 - half); x < Math.round(9 + half); x++) {
+      const u = (x - 9) / half;
+      const strand = hash2(x, Math.floor(y / 4), 13) % 6;
+      let col: Color = u < -0.45 ? T[3] : u > 0.4 ? T[1] : T[2];
+      if (strand === 0) col = T[3];
+      else if (strand === 1 && u > -0.4) col = T[1];
+      if (y % 6 === 5) col = T[1];
+      buf.set(x, y, col);
+    }
+  }
+  buf.set(8, 0, p.wood[2]); buf.set(8, 1, p.wood[2]); buf.set(8, 2, p.wood[1]); buf.set(9, 1, p.wood[0]); buf.set(9, 2, p.wood[0]);
+  rim(buf, p.glow ? T[4] : null, T[0]);
+  return { buf, ax: 9, ay: 23 };
+}
+
+/** A log hive under a straw cap. */
+export function beehive(p: SurfacePalette): Stamp {
+  const buf = new PixelBuffer(14, 18);
+  for (let y = 6; y < 18; y++)
+    for (let x = 2; x < 12; x++) {
+      const col = x < 4 ? p.wood[3] : x > 9 ? p.wood[1] : (x + y) % 5 === 0 ? p.wood[1] : p.wood[2];
+      buf.set(x, y, y === 17 ? p.wood[0] : col);
+    }
+  for (let x = 5; x < 9; x++) { buf.set(x, 13, p.outline); buf.set(x, 14, p.outline); }
+  buf.set(4, 15, p.wood[4]); buf.set(9, 15, p.wood[4]);
+  for (let y = 0; y < 7; y++) {
+    const half = 1 + y;
+    for (let x = 7 - half; x < 7 + half; x++) buf.set(x, y, y === 6 ? p.thatch[0] : x < 7 - half + 2 ? p.thatch[3] : x >= 7 + half - 2 ? p.thatch[1] : p.thatch[2]);
+  }
+  rim(buf, p.glow ? p.thatch[4] : null, p.outline);
+  return { buf, ax: 7, ay: 17 };
+}
+
+/** Hollyhocks, the flower of every village fence. */
+export function hollyhocks(p: SurfacePalette, seed: number): Stamp {
+  const buf = new PixelBuffer(16, 24);
+  const rng = mulberry32(seed);
+  for (let i = 0; i < 3; i++) {
+    const x = 3 + i * 5;
+    const top = 2 + Math.floor(rng() * 5);
+    const f = p.flowers[(i + seed) % p.flowers.length];
+    for (let y = top; y < 24; y++) buf.set(x, y, y > 18 ? p.tuft[0] : p.leaf[3]);
+    for (let y = top; y < 17; y += 3) {
+      const side = ((y + i) & 1) * 2 - 1;
+      buf.set(x, y, f[1]); buf.set(x + side, y, f[0]); buf.set(x + side, y + 1, f[0]); buf.set(x, y + 1, f[0]); buf.set(x - side, y, f[0]);
+    }
+    // leaves at the foot
+    for (let k = 0; k < 3; k++) { buf.set(x - 1 - k, 21 + (k > 0 ? 1 : 0), p.leaf[3]); buf.set(x + 1 + k, 20 + (k > 1 ? 1 : 0), p.leaf[2]); }
+  }
+  return { buf, ax: 8, ay: 23 };
 }
 
 /** What is left of a tree in Jawia. Low enough to step over. */
@@ -598,7 +714,7 @@ export function drawWattle(b: PixelBuffer, p: SurfacePalette, x0: number, y0: nu
  */
 export function drawHouse(
   b: PixelBuffer, high: PixelBuffer | null, p: SurfacePalette,
-  x0: number, y0: number, wt: number, ht: number, doorCol: number, seed: number,
+  x0: number, y0: number, wt: number, ht: number, doorCol: number, seed: number, open = false,
 ): void {
   const W = wt * 16;
   const H = ht * 16;
@@ -638,10 +754,17 @@ export function drawHouse(
         for (let x = cx - 5; x <= cx + 4; x++) {
           const edge = x === cx - 5 || x === cx + 4 || y === wallY + 3;
           const i = x - (cx - 4);
-          b.set(x, y, edge ? L[0] : i % 3 === 2 ? p.wood[1] : y === wallY + 4 ? p.wood[3] : p.wood[2]);
+          // a door you can walk through stands open: the dark of the room, a little hearth light low down
+          const inside = y > y0 + H - 7 ? mix(p.outline, p.window[1], 0.3) : p.outline;
+          b.set(x, y, edge ? L[0] : open ? inside : i % 3 === 2 ? p.wood[1] : y === wallY + 4 ? p.wood[3] : p.wood[2]);
         }
-      b.set(cx + 2, wallY + 11, p.stone[4]);
-      b.set(cx + 2, wallY + 12, p.stone[1]);
+      if (open) {
+        // the door leaf, swung back against the wall
+        for (let y = wallY + 4; y < y0 + H - 1; y++) { b.set(cx - 4, y, p.wood[3]); b.set(cx - 3, y, p.wood[1]); }
+      } else {
+        b.set(cx + 2, wallY + 11, p.stone[4]);
+        b.set(cx + 2, wallY + 12, p.stone[1]);
+      }
       for (let x = cx - 6; x <= cx + 5; x++) { b.set(x, y0 + H - 2, p.stone[3]); b.set(x, y0 + H - 1, p.stone[1]); }
     } else if (wt < 3 || (t > 0 && t < wt - 1) || wt === 3) {
       if (wt === 3 && t === 1 && doorCol < 0) continue;
@@ -778,6 +901,12 @@ export interface Grove {
   giant: Stamp;
   bushes: Stamp[];
   thickets: Stamp[];
+  /** the blight's own thorns and the trees it has killed */
+  thorns: Stamp[];
+  dead: Stamp[];
+  haystack: Stamp;
+  beehive: Stamp;
+  hollyhocks: Stamp[];
   boulders: Stamp[];
   stump: Stamp;
   well: Stamp;
@@ -798,6 +927,11 @@ export function grove(world: World): Grove {
     giant: oak(p, 911, 16),
     bushes: [0, 1, 2].map((i) => bush(p, 40 + i * 7)),
     thickets: [0, 1, 2, 3].map((i) => thicket(p, 60 + i * 9)),
+    thorns: [0, 1, 2, 3].map((i) => thicket(p, 160 + i * 9, p.blightWood, p.blightSpark)),
+    dead: [0, 1, 2].map((i) => deadTree(p, 21 + i * 7)),
+    haystack: haystack(p),
+    beehive: beehive(p),
+    hollyhocks: [0, 1, 2].map((i) => hollyhocks(p, 5 + i)),
     boulders: [0, 1, 2, 3].map((i) => boulder(p, 80 + i * 5, 13 + (i % 2) * 2, 11 + (i >> 1) * 3)),
     stump: stump(p),
     well: well(p),

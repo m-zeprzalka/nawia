@@ -11,7 +11,9 @@ import type { LightSource, RGB } from '../fx/Lighting.ts';
 import type { Bilingual, ObjectDef } from '../world/roomFormat.ts';
 
 export type PropKind = 'brazier' | 'torch' | 'sign' | 'npc' | 'gate' | 'bell' | 'urn' | 'idol' | 'pillar' | 'soul' | 'switch' | 'post' | 'greatbell';
-export type PropDef = Exclude<ObjectDef, { kind: 'enemy' | 'boss' | 'heart' }>;
+export type PropDef = Exclude<ObjectDef, { kind: 'enemy' | 'boss' | 'heart' | 'door' | 'critter' }>;
+/** Where a prop stands decides which of its looks it wears. */
+export type Place = 'crypt' | 'surface' | 'house';
 
 const SUN: RGB = [1.0, 0.8, 0.42];
 const MOON: RGB = [0.5, 0.95, 1.0];
@@ -27,6 +29,10 @@ export class Prop {
   readonly x: number;
   readonly y: number;
   readonly text: Record<World, Bilingual | null> | null;
+  /** Signs and villagers: the conversation (an id from src/story) to start in each world, if any. */
+  readonly talk: Record<World, string | null> | null;
+  /** Villagers only. */
+  readonly lookName: string | null;
   /** Gate: open. Urn: smashed. Post: sunk into the floor. */
   open = false;
   /** Posts only: does it belong to the moon (raised while the turning stone shows the moon)? */
@@ -35,8 +41,9 @@ export class Prop {
   private moonUp = false;
   /** Urns only: is there a heart inside? Fixed per urn, so players can learn which ones to break. */
   readonly holdsHeart: boolean;
-  /** Stands under the open sky (village, forest): it is then drawn from the `surface` sheet. */
+  /** Not in the stronghold (village, forest, inside a house): it is then drawn from the `surface` sheet. */
   readonly outdoors: boolean;
+  private readonly indoors: boolean;
   /** Villagers only: which frames of the `folk` sheet. */
   private readonly look: number;
 
@@ -50,16 +57,20 @@ export class Prop {
   private swing = -1;
   private near = 0;
 
-  constructor(scene: Phaser.Scene, def: PropDef, ox: number, oy: number, world: World, outdoors = false) {
+  constructor(scene: Phaser.Scene, def: PropDef, ox: number, oy: number, world: World, place: Place = 'crypt') {
     this.kind = def.kind;
     this.tx = def.tx;
     this.ty = def.ty;
     this.x = ox + def.tx * TILE + TILE / 2;
     this.y = oy + def.ty * TILE + TILE / 2;
     this.world = world;
+    const outdoors = place !== 'crypt';
     this.outdoors = outdoors;
+    this.indoors = place === 'house';
     this.look = def.kind === 'npc' ? FOLK[def.look] : 0;
+    this.lookName = def.kind === 'npc' ? def.look : null;
     this.text = def.kind === 'sign' || def.kind === 'npc' ? def.text : null;
+    this.talk = def.kind === 'sign' || def.kind === 'npc' ? def.talk : null;
     this.moon = def.kind === 'post' && def.moon;
     const h = hash2(Math.round(this.x), Math.round(this.y), 5);
     this.variant = h % 3;
@@ -94,6 +105,7 @@ export class Prop {
     const w = this.world;
     switch (this.kind) {
       case 'brazier':
+        if (this.indoors) return { x: this.x, y: this.y + 4, radius: 96, color: FIRE[w], intensity: 0.5, flicker: 1, phase: this.phase };
         if (this.outdoors) return { x: this.x, y: this.y, radius: 64, color: FIRE[w], intensity: 0.6, flicker: 1, phase: this.phase };
         return { x: this.x, y: this.y - 8, radius: 88, color: FIRE[w], intensity: 0.8, flicker: 1, phase: this.phase };
       case 'torch':
@@ -245,7 +257,7 @@ export class Prop {
         s.setTexture('surface', row + SOBJ.SIGN);
         return true;
       case 'brazier':
-        s.setTexture('surface', row + SOBJ.FIRE + f);
+        s.setTexture('surface', row + (this.indoors ? SOBJ.HEARTH : SOBJ.FIRE) + f);
         return true;
       case 'urn':
         s.setTexture('surface', row + SOBJ.POT).setVisible(!this.open);
@@ -262,7 +274,8 @@ export class Prop {
           const a = (0.5 + 0.1 * Math.sin(this.t * 3.1 + this.phase)) * (1 - this.near * 0.6);
           s.setTexture('objects', OBJ.SOUL + this.variant).setAlpha(a).setY(this.bottom - 2 + bob).setDepth(DEPTH.entities + (this.bottom - 3) / 1000);
         } else {
-          s.setTexture('surface', SOBJ.OFFERING).setAlpha(1).setY(this.bottom).setDepth(DEPTH.floorDecor);
+          // under the open sky white flowers grow where the dead stand; indoors the living see nothing at all
+          s.setTexture('surface', SOBJ.OFFERING).setAlpha(this.indoors ? 0 : 1).setY(this.bottom).setDepth(DEPTH.floorDecor);
         }
         return true;
       default:

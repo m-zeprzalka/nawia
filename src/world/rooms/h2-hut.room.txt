@@ -1,0 +1,25 @@
+// The herbalist's hut: herbs drying on every wall, jars, a pot over the fire.
+// She is the one who set the hag stone in the hilt, and the first real conversation of the game.
+room: hut
+biome: house
+at: 1,-5
+name: Chata zielarki | The Herbalist's Hut
+
+map:
+####################
+####################
+######MMW#FFMM######
+######.T....O.######
+######...1....######
+######tt.,,,.R######
+######S..,,,.o######
+######....o...######
+#########5##########
+####################
+####################
+
+sign 1:
+  look: herbalist
+  jawia: @zielarka
+
+door 5: village

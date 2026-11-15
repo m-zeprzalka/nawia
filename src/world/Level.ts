@@ -41,7 +41,7 @@ export class Level {
       this.grids.set(room.id, grid);
       // things that stand on the floor block both worlds (posts go up and down at runtime)
       for (const o of room.objects) {
-        if (o.kind === 'enemy' || o.kind === 'boss' || o.kind === 'torch' || o.kind === 'soul' || o.kind === 'heart') continue;
+        if (o.kind === 'enemy' || o.kind === 'boss' || o.kind === 'torch' || o.kind === 'soul' || o.kind === 'heart' || o.kind === 'door' || o.kind === 'critter') continue;
         if (o.kind === 'post') this.setBlocked(room, o.tx, o.ty, !o.moon);
         else if (o.kind === 'greatbell') for (const dx of [-1, 0, 1]) this.setBlocked(room, o.tx + dx, o.ty, true);
         else this.setBlocked(room, o.tx, o.ty, true);

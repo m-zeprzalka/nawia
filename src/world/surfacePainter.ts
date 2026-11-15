@@ -22,11 +22,11 @@ import type { RoomPicture } from './painter.ts';
 const K = {
   GRASS: 0, FLOWERS: 1, PATH: 2, STEPS: 3, WATER: 4, PLANK: 5, FOREST: 6, DARK: 7,
   TREE: 8, GIANT: 9, OLDTREE: 10, STUMP: 11, THICKET: 12, FENCE: 13, HOUSE: 14, ROCK: 15,
-  PALISADE: 16, WELL: 17, BUSH: 18,
+  PALISADE: 16, WELL: 17, BUSH: 18, HAY: 19, HIVE: 20, MALWY: 21,
 } as const;
 
 /** What a pixel of ground turned out to be. */
-const C = { GRASS: 0, PATH: 1, WATER: 2, BANK: 3, FOREST: 4, VOID: 5 } as const;
+const C = { GRASS: 0, PATH: 1, WATER: 2, BANK: 3, FOREST: 4, VOID: 5, BLIGHT: 6 } as const;
 
 const M = 3; // tiles of margin read from the neighbouring rooms, so nothing is cut off at a doorway
 
@@ -102,6 +102,10 @@ export class SurfacePainter implements RoomPicture {
   /** Noise that does not depend on the world, computed once: the wobble of every edge, and the patches of the meadow. */
   private readonly wobble: Float32Array;
   private readonly patch: Float32Array;
+  /** Noise the blight grows by, or null if this room has none. */
+  private blightN: Float32Array | null = null;
+  /** How strong the blight is at a row of pixels, 0..1. */
+  private blightAt: (py: number) => number = () => 0;
 
   constructor(room: RoomDef, dungeon: Dungeon, echo: Record<World, PixelBuffer>) {
     this.room = room;
@@ -121,6 +125,22 @@ export class SurfacePainter implements RoomPicture {
       this.wobble[i] = (w1[i] - 0.5) * 5 + (w2[i] - 0.5) * 2.2;
       this.patch[i] = p1[i] * 0.65 + p2[i] * 0.35;
     }
+    // the blight: none at the village, more with every room towards the barrow, and it creeps in from the worse side
+    const level = (dy: number): number => {
+      const nb = dungeon.roomAtTile(room.gx * SCREEN_COLS, (room.gy + dy) * SCREEN_ROWS + (dy > 0 ? room.rows - SCREEN_ROWS : 0));
+      return nb && nb !== room && (nb.biome === 'village' || nb.biome === 'forest') ? nb.blight : room.blight;
+    };
+    const above = (level(-1) + room.blight) / 2;
+    const below = (level(1) + room.blight) / 2;
+    this.blightAt = (py: number): number => {
+      const t = py / this.h;
+      return (t < 0.5 ? above + (room.blight - above) * t * 2 : room.blight + (below - room.blight) * (t - 0.5) * 2) / 3;
+    };
+    if (above > 0 || below > 0 || room.blight > 0) {
+      const [b1, b2] = [n(0.06, 0.07, 71), n(0.21, 0.21, 72)];
+      this.blightN = new Float32Array(this.w * this.h);
+      for (let i = 0; i < this.blightN.length; i++) this.blightN[i] = b1[i] * 0.62 + b2[i] * 0.38;
+    }
     for (const world of WORLDS) this.paint(world);
   }
 
@@ -139,6 +159,8 @@ export class SurfacePainter implements RoomPicture {
     if (!there) return K.FOREST;
     if (there.biome === 'crypt') return K.DARK;
     const jawia = world === 'jawia';
+    // a doorway in the front wall of a house is still house
+    if (there.doors.has((gy - there.gy * SCREEN_ROWS) * there.cols + gx - there.gx * SCREEN_COLS)) return K.HOUSE;
     switch (this.dungeon.charAt(gx, gy)) {
       case '#': case ' ': case '!': return K.FOREST;
       case 't': return K.TREE;
@@ -148,6 +170,9 @@ export class SurfacePainter implements RoomPicture {
       case 'F': return K.PALISADE;
       case 'W': return K.WELL;
       case 'b': return K.BUSH;
+      case 'S': return K.HAY;
+      case 'U': return K.HIVE;
+      case 'M': return K.MALWY;
       case '^': return K.STEPS;
       case ',': case 'G': return K.PATH;
       case '"': return K.FLOWERS;
@@ -284,6 +309,18 @@ export class SurfacePainter implements RoomPicture {
             c = n < 0.41 ? p.grass[0] : n < 0.59 ? p.grass[1] : p.grass[2];
             // the forest's own shade, and the lip of grass along a path
             if (fs < 5.5 || ps < 1) c = p.grass[0];
+            // where the blight has taken the ground
+            if (this.blightN) {
+              const edge = this.blightAt(py) * 0.56 - this.blightN[i];
+              if (edge > 0) {
+                cls[i] = C.BLIGHT;
+                c = edge < 0.022 ? p.blight[0] : n < 0.5 ? p.blight[1] : p.blight[2];
+                // veins follow the way the stain spread: rings, like the grain of a stump
+                const ring = Math.abs(((edge * 11) % 1) - 0.5);
+                if (edge > 0.05 && ring < 0.045 && hash2(X, Y, 73) % 3 !== 0) c = p.blightVein;
+                else if (edge > 0.06 && hash2(X, Y, 74) % 420 === 0) c = p.blightSpark;
+              }
+            }
           }
         }
         ground.u32[i] = c;
@@ -319,6 +356,20 @@ export class SurfacePainter implements RoomPicture {
             ground.set(x - 1, y, col); ground.set(x, y - 1, tip); ground.set(x + 1, y, col);
         }
       }
+
+    // thorns pushing up through blighted ground
+    if (this.blightN)
+      for (let gj = Math.floor(oy / 9); gj * 9 < oy + h; gj++)
+        for (let gi = Math.floor(ox / 9); gi * 9 < ox + w; gi++) {
+          const hs = hash2(gi, gj, 75);
+          const x = gi * 9 + (hs % 8) - ox;
+          const y = gj * 9 + ((hs >>> 3) % 8) - oy;
+          if (x < 2 || y < 4 || x >= w - 2 || y >= h || cls[y * w + x] !== C.BLIGHT || (hs >>> 8) % 3 !== 0) continue;
+          ground.set(x, y, p.blightWood[1]);
+          ground.set(x, y - 1, p.blightWood[2]);
+          ground.set(x + ((hs >>> 12) & 1 ? 1 : -1), y - 2, p.blightWood[3]);
+          if ((hs >>> 14) % 3 === 0) ground.set(x, y - 3, p.blightSpark);
+        }
 
     // ---- 4. everything that stands on the ground
     const low = new PixelBuffer(w, h);
@@ -364,8 +415,10 @@ export class SurfacePainter implements RoomPicture {
             const bx = x0 + 8 + ((hs >>> 4) % 7) - 3;
             const by = y0 + 15 - ((hs >>> 8) % 3);
             const r = hs % 10;
-            const s = r < 6 ? pick(g.oaks) : r < 9 ? pick(g.spruces) : pick(g.birches);
-            shadeEllipse(bx + 4, by + 1, 10, 4);
+            // deeper into the blight, more of the forest is dead
+            const sick = (hs >>> 16) % 100 < this.blightAt(by) * 46;
+            const s = sick ? pick(g.dead) : r < 6 ? pick(g.oaks) : r < 9 ? pick(g.spruces) : pick(g.birches);
+            shadeEllipse(bx + 4, by + 1, sick ? 6 : 10, sick ? 2.5 : 4);
             jobs.push({ by, draw: () => place(s, bx, by) });
             break;
           }
@@ -385,12 +438,13 @@ export class SurfacePainter implements RoomPicture {
             jobs.push({ by: y0 + 12, draw: () => place(g.stump, x0 + 8, y0 + 12, true) });
             break;
           case K.THICKET: {
-            const s = pick(g.thickets);
+            const tangle = this.blightN ? g.thorns : g.thickets;
+            const s = pick(tangle);
             shadeEllipse(x0 + 10, y0 + 15, 9, 3);
             jobs.push({ by: y0 + 15, draw: () => place(s, x0 + 8, y0 + 15, true) });
             // fill the seams between neighbouring brambles
-            if (kind(x + 1, y) === K.THICKET) jobs.push({ by: y0 + 14, draw: () => place(g.thickets[(hs >>> 3) % 4], x0 + 16, y0 + 14, true) });
-            if (kind(x, y + 1) === K.THICKET) jobs.push({ by: y0 + 22, draw: () => place(g.thickets[(hs >>> 5) % 4], x0 + 8, y0 + 22, true) });
+            if (kind(x + 1, y) === K.THICKET) jobs.push({ by: y0 + 14, draw: () => place(tangle[(hs >>> 3) % 4], x0 + 16, y0 + 14, true) });
+            if (kind(x, y + 1) === K.THICKET) jobs.push({ by: y0 + 22, draw: () => place(tangle[(hs >>> 5) % 4], x0 + 8, y0 + 22, true) });
             break;
           }
           case K.BUSH: {
@@ -403,6 +457,20 @@ export class SurfacePainter implements RoomPicture {
             const s = pick(g.boulders);
             shadeEllipse(x0 + 10, y0 + 15, 8, 3);
             jobs.push({ by: y0 + 15, draw: () => place(s, x0 + 8, y0 + 15, true) });
+            break;
+          }
+          case K.HAY:
+            shadeEllipse(x0 + 12, y0 + 15, 10, 4);
+            jobs.push({ by: y0 + 15, draw: () => place(g.haystack, x0 + 8, y0 + 15) });
+            break;
+          case K.HIVE:
+            shadeEllipse(x0 + 10, y0 + 15, 7, 3);
+            jobs.push({ by: y0 + 15, draw: () => place(g.beehive, x0 + 8, y0 + 15) });
+            break;
+          case K.MALWY: {
+            const s = pick(g.hollyhocks);
+            shadeEllipse(x0 + 10, y0 + 15, 7, 2.5);
+            jobs.push({ by: y0 + 15, draw: () => place(s, x0 + 8, y0 + 15) });
             break;
           }
           case K.WELL:
@@ -449,10 +517,16 @@ export class SurfacePainter implements RoomPicture {
             while (kind(x + wt, y) === K.HOUSE) wt++;
             while (kind(x, y + ht) === K.HOUSE) ht++;
             let door = -1;
-            for (let i = 0; i < wt; i++) if (this.dungeon.charAt(gx + i, gy + ht - 1) === 'D') door = i;
+            let open = false;
+            for (let i = 0; i < wt; i++) {
+              const cell = (y + ht - 1) * cols + x + i;
+              const inRoom = x + i >= 0 && x + i < cols && y + ht - 1 >= 0 && y + ht - 1 < rows;
+              if (inRoom && room.doors.has(cell)) { door = i; open = true; }
+              else if (this.dungeon.charAt(gx + i, gy + ht - 1) === 'D') door = i;
+            }
             shadeRect(x0 + wt * TILE - 1, y0 + 10, 7, ht * TILE - 6);
             shadeRect(x0 + 4, y0 + ht * TILE, wt * TILE + 2, 4);
-            jobs.push({ by: y0 + ht * TILE - 1, draw: () => drawHouse(low, high, p, x0, y0, wt, ht, door, hs) });
+            jobs.push({ by: y0 + ht * TILE - 1, draw: () => drawHouse(low, high, p, x0, y0, wt, ht, door, hs, open) });
             break;
           }
         }

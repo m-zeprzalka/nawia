@@ -2,6 +2,7 @@
 // and steel cannot reach them over the water. Behind it the old bridge (:) leads to the island, in Nawia only.
 room: forest-pond
 biome: forest
+blight: 1
 at: 1,-2
 name: Uroczysko | The Hallowed Pool
 

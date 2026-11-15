@@ -80,6 +80,19 @@ export const STR = {
   hintStone: { pl: 'Kamienia nie rani stal. Niech sam się rozbije.', en: 'Steel does not hurt the stone. Let it break itself.' },
   hintHeart: { pl: 'Pękł. Jego serce bije po drugiej stronie.', en: 'It cracked. Its heart beats on the other side.' },
 
+  hintTalk: { pl: '[Z] lub [J] — rozmowa', en: '[Z] or [J] — talk' },
+  hintTalkPad: { pl: '(A) — rozmowa', en: '(A) — talk' },
+  hintMove: { pl: '[WASD] lub strzałki — ruch', en: '[WASD] or arrows — move' },
+  hintMovePad: { pl: 'lewa gałka — ruch', en: 'left stick — move' },
+  look: { pl: 'Wygląd', en: 'Look' },
+  /** Names for villagers who only have a single line in a room file (conversations name their own speakers). */
+  npcName: {
+    herbalist: { pl: 'Zielarka', en: 'Herbalist' },
+    elder: { pl: 'Starzec', en: 'Elder' },
+    woman: { pl: 'Gospodyni', en: 'Housewife' },
+    child: { pl: 'Dziecko', en: 'Child' },
+  },
+
   dead: { pl: 'Nawia cię nie chce. Jeszcze nie.', en: 'Nawia does not want you. Not yet.' },
 
   endTitle: { pl: 'Dzwon odpowiedział.', en: 'The bell answered.' },

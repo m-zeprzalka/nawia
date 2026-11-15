@@ -4,27 +4,31 @@ import Phaser from 'phaser';
 import {
   DEPTH, GAME_H, GAME_W, TILE, TUNE, VIEW_PAD_Y, otherWorld, type World,
 } from '../config.ts';
+import { HERO_LOOKS } from '../art/actors.ts';
 import { OBJ, PX } from '../art/sprites.ts';
 import { ART, addBufferTexture } from '../art/textures.ts';
 import { audio } from '../audio/audio.ts';
 import { globalKeys } from '../core/globalKeys.ts';
 import { input, type Dir } from '../core/input.ts';
 import { Boss } from '../entities/Boss.ts';
+import { Critter } from '../entities/Critter.ts';
 import { Enemy } from '../entities/Enemy.ts';
 import { Player } from '../entities/Player.ts';
-import { Prop } from '../entities/Prop.ts';
+import { Prop, type Place } from '../entities/Prop.ts';
 import { Shot, type ShotKind } from '../entities/Shot.ts';
 import { DualCanvas } from '../fx/DualCanvas.ts';
 import { Fx } from '../fx/Fx.ts';
 import { Lighting, type LightSource, type RGB } from '../fx/Lighting.ts';
 import { STR, t } from '../i18n/strings.ts';
+import { Talk, type Dialogs } from '../story/dialog.ts';
+import { loadDialogs } from '../story/dialogData.ts';
 import { Hud } from '../ui/Hud.ts';
 import { loadDungeon } from '../world/dungeonData.ts';
 import { BLOCK_FLY, Level, overlap, roomOriginX, roomOriginY } from '../world/Level.ts';
 import { paintRoom, type RoomPicture } from '../world/painter.ts';
 import { isSurface, type RoomDef } from '../world/roomFormat.ts';
 
-type State = 'play' | 'slide' | 'rejected' | 'dying' | 'ending' | 'paused';
+type State = 'play' | 'slide' | 'rejected' | 'dying' | 'ending' | 'paused' | 'talk' | 'door' | 'waking';
 
 interface Pickup {
   x: number;
@@ -47,6 +51,11 @@ interface ActiveRoom {
   top: DualCanvas | null;
   /** Under the open sky (village, forest) rather than in the stronghold. */
   outdoors: boolean;
+  /** Stronghold, open sky or inside a house: decides the air, the music and how props look. */
+  place: Place;
+  /** Doorways into houses (and out of them). */
+  doors: { tx: number; ty: number; to: string }[];
+  critters: Critter[];
   /** Afterimage of the other world's solids, one per world you can be standing in. */
   echo: Record<World, Phaser.GameObjects.Image>;
   echoKeys: string[];
@@ -74,7 +83,12 @@ interface Dressing {
   /** how much the corners of the screen darken */
   vignette: number;
 }
-const DRESS: Record<'crypt' | 'surface', Record<World, Dressing>> = {
+const placeOf = (r: RoomDef): Place => (isSurface(r.biome) ? 'surface' : r.biome === 'house' ? 'house' : 'crypt');
+
+/** What the air of Jawia drifts towards where the blight is thickest (Nawia needs no help). */
+const BLIGHT_AIR: Dressing = { ambient: [0.8, 0.75, 0.94], heroLight: [1.0, 0.9, 0.7], heroGlow: 0, fog: [0.74, 0.52, 0.92], fogAlpha: 0.17, vignette: 0.75 };
+
+const DRESS: Record<Place, Record<World, Dressing>> = {
   // The stronghold: Jawia is dark and lit by fire. Nawia has no darkness to speak of: it glows by itself.
   crypt: {
     jawia: { ambient: [0.45, 0.46, 0.6], heroLight: [0.95, 0.8, 0.6], heroGlow: 0.56, fog: [0.6, 0.72, 0.66], fogAlpha: 0.13, vignette: 1 },
@@ -84,6 +98,11 @@ const DRESS: Record<'crypt' | 'surface', Record<World, Dressing>> = {
   surface: {
     jawia: { ambient: [1.0, 0.97, 0.9], heroLight: [1.0, 0.9, 0.7], heroGlow: 0, fog: [1.0, 0.96, 0.84], fogAlpha: 0.05, vignette: 0.3 },
     nawia: { ambient: [0.88, 0.92, 1.0], heroLight: [0.5, 0.8, 1.0], heroGlow: 0.12, fog: [0.62, 0.8, 1.0], fogAlpha: 0.18, vignette: 0.4 },
+  },
+  // Inside a house: warm and dim, lit by the hearth and by what comes in through the windows.
+  house: {
+    jawia: { ambient: [0.8, 0.73, 0.66], heroLight: [1.0, 0.85, 0.6], heroGlow: 0.2, fog: [1.0, 0.9, 0.7], fogAlpha: 0, vignette: 0.9 },
+    nawia: { ambient: [0.78, 0.84, 1.0], heroLight: [0.5, 0.8, 1.0], heroGlow: 0.2, fog: [0.62, 0.8, 1.0], fogAlpha: 0.1, vignette: 0.9 },
   },
 };
 const WATER_FRAME_TIME = 0.22;
@@ -139,6 +158,19 @@ export class GameScene extends Phaser.Scene {
   private heartHintT = 0;
   private stoneHintT = 0;
   private soulsHintT = 0;
+  private dialogs: Dialogs = new Map();
+  /** What conversations have set: things the story remembers for the length of a run. */
+  private flags = new Set<string>();
+  private talk: Talk | null = null;
+  private talkCursor = 0;
+  private talkLatch = 0;
+  private veil!: Phaser.GameObjects.Rectangle;
+  private lids: Phaser.GameObjects.Rectangle[] = [];
+  private doorTo: { room: RoomDef; tx: number; ty: number } | null = null;
+  /** False from the moment he arrives through a door until he has stepped clear of every doorway. */
+  private offDoor = true;
+  private hasMoved = false;
+  private look = 0;
 
   constructor() {
     super('game');
@@ -171,6 +203,12 @@ export class GameScene extends Phaser.Scene {
     this.heartHintT = 0;
     this.stoneHintT = 0;
     this.soulsHintT = 0;
+    this.dialogs = loadDialogs();
+    this.flags = new Set();
+    this.talk = null;
+    this.doorTo = null;
+    this.offDoor = true;
+    this.hasMoved = false;
 
     // dev shortcuts: ?room=bridge&world=nawia
     const params = new URLSearchParams(location.search);
@@ -183,12 +221,13 @@ export class GameScene extends Phaser.Scene {
     const ox = roomOriginX(start);
     const oy = roomOriginY(start);
     const spawn = start.spawn && start === dungeon.startRoom() ? start.spawn : { tx: 2, ty: Math.floor(start.rows / 2) };
-    const free = this.level.findFree(this.world, ox + spawn.tx * TILE + 8, oy + spawn.ty * TILE + 8, 5, 4, 64) ?? {
+    const free = this.level.findFree(this.world, ox + spawn.tx * TILE + 8, oy + spawn.ty * TILE + 8, 5, 4, 200) ?? {
       x: ox + spawn.tx * TILE + 8,
       y: oy + spawn.ty * TILE + 8,
     };
 
-    const dress = DRESS[isSurface(start.biome) ? 'surface' : 'crypt'][this.world];
+    const direct = start !== dungeon.startRoom() || this.world === 'nawia';
+    const dress = DRESS[placeOf(start)][this.world];
     this.ambient = [...dress.ambient];
     this.heroLight = [...dress.heroLight];
     this.heroGlow = dress.heroGlow;
@@ -206,6 +245,20 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this);
     this.hud.setHearts(this.player.hp);
     this.hud.setWorld(this.world, false);
+    this.veil = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x000000).setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.flash + 20).setAlpha(0);
+    this.lids = [0, 1].map(() =>
+      this.add.rectangle(0, 0, GAME_W, GAME_H / 2 + 2, 0x000000).setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.flash + 30).setVisible(false),
+    );
+    // which hero the player last tried on (H cycles through them)
+    let saved = 0;
+    try {
+      saved = Number(localStorage.getItem('nawia.look') ?? 0) || 0;
+    } catch {
+      /* private mode: fine */
+    }
+    this.look = Math.min(HERO_LOOKS.length - 1, Math.max(0, saved));
+    this.player.setLook(HERO_LOOKS[this.look].key);
+    this.input.keyboard?.on('keydown-H', this.cycleLook, this);
 
     this.room = this.buildRoom(start);
     this.entry = { x: this.player.x, y: this.player.y, world: this.world, facing: this.player.facing };
@@ -221,10 +274,18 @@ export class GameScene extends Phaser.Scene {
     audio.unlock();
     audio.startAmbience();
     audio.setWorld(this.world);
-    this.hud.flash(0x000000, 1, 900);
+    if (direct) this.hud.flash(0x000000, 1, 900);
+    else {
+      // he wakes up in his own bed: eyes open, close again, and open for good
+      this.state = 'waking';
+      this.stateT = 0;
+      this.lids.forEach((l) => l.setVisible(true));
+      this.updateWaking(0);
+    }
     input.flush();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-H', this.cycleLook, this);
       this.destroyRoom(this.room);
       if (this.leaving) this.destroyRoom(this.leaving);
     });
@@ -239,6 +300,7 @@ export class GameScene extends Phaser.Scene {
     const ox = roomOriginX(def);
     const oy = roomOriginY(def);
     const outdoors = isSurface(def.biome);
+    const place = placeOf(def);
     const painter = paintRoom(def, this.level.dungeon, ART.tilesets);
     const view = new DualCanvas(this, painter.buffers, this.world);
     view.image.setPosition(ox, oy).setDepth(DEPTH.room);
@@ -258,7 +320,7 @@ export class GameScene extends Phaser.Scene {
     // a room is settled once its bell has rung or, if it has none, once nothing in it is left standing
     const cleared = this.cleared.has(def.id) || (!hasFoes && !hasBell);
     const room: ActiveRoom = {
-      def, ox, oy, w: painter.w, h: painter.h, painter, view, top, outdoors, echo, echoKeys,
+      def, ox, oy, w: painter.w, h: painter.h, painter, view, top, outdoors, place, doors: [], critters: [], echo, echoKeys,
       props: [], enemies: [], pickups: [], shots: [], boss: null, pips: [], moon: false, bellRung: cleared,
     };
     const bounds = { x: ox, y: oy, w: painter.w, h: painter.h };
@@ -269,6 +331,7 @@ export class GameScene extends Phaser.Scene {
         if (cleared) continue;
         const e = new Enemy(this, o.type, cx, cy, this.world, bounds);
         if (o.type === 'ognik') e.onShoot = (x, y, vx, vy) => this.spawnShot(room, 'wisp', 'jawia', x, y, vx, vy, e);
+        if (o.type === 'morownik') e.onShoot = (x, y, vx, vy) => this.spawnShot(room, 'thorn', 'jawia', x, y, vx, vy, e);
         room.enemies.push(e);
       } else if (o.kind === 'boss') {
         if (cleared) continue;
@@ -281,11 +344,15 @@ export class GameScene extends Phaser.Scene {
             this.add.image(GAME_W / 2 + (i - (TUNE.boss.hp - 1) / 2) * 9, GAME_H - 26, 'px', PX.DIAMOND)
               .setScrollFactor(0).setDepth(DEPTH.flash - 1).setVisible(false),
           );
+      } else if (o.kind === 'door') {
+        room.doors.push(o);
+      } else if (o.kind === 'critter') {
+        room.critters.push(new Critter(this, cx, cy, this.world, bounds));
       } else if (o.kind === 'heart') {
         const key = `${def.id}:${o.tx},${o.ty}`;
         if (!this.taken.has(key)) this.dropHeart(room, cx, cy, key);
       } else {
-        const p = new Prop(this, o, ox, oy, this.world, outdoors);
+        const p = new Prop(this, o, ox, oy, this.world, place);
         if (p.kind === 'gate') p.setOpen(cleared);
         // the turning stone starts sun side up: sun posts stand, moon posts lie flush with the floor
         if (p.kind === 'post') p.setOpen(p.moon);
@@ -300,7 +367,7 @@ export class GameScene extends Phaser.Scene {
 
   private spawnShot(room: ActiveRoom, kind: ShotKind, home: World, x: number, y: number, vx: number, vy: number, owner: Enemy | null): void {
     room.shots.push(new Shot(this, kind, home, x, y, vx, vy, owner));
-    if (kind === 'wisp') audio.sfx('shoot');
+    if (kind !== 'soul') audio.sfx('shoot');
   }
 
   private dropHeart(room: ActiveRoom, x: number, y: number, key?: string): void {
@@ -316,6 +383,7 @@ export class GameScene extends Phaser.Scene {
     for (const key of r.echoKeys) if (this.textures.exists(key)) this.textures.remove(key);
     r.props.forEach((p) => p.destroy());
     r.enemies.forEach((e) => e.destroy());
+    r.critters.forEach((c) => c.destroy());
     r.pickups.forEach((p) => p.sprite.destroy());
     r.shots.forEach((sh) => sh.destroy());
     r.boss?.destroy();
@@ -326,7 +394,20 @@ export class GameScene extends Phaser.Scene {
     this.timeInRoom = 0;
     this.echoT = 0;
     this.hud.showRoomName(t(this.room.def.name));
-    this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h, this.room.outdoors);
+    this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h, this.room.outdoors, this.room.def.blight);
+    audio.setPlace(this.room.def.biome, this.room.def.blight);
+  }
+
+  /** H: try the next hero on. The choice is remembered between visits. */
+  private cycleLook(): void {
+    this.look = (this.look + 1) % HERO_LOOKS.length;
+    this.player.setLook(HERO_LOOKS[this.look].key);
+    try {
+      localStorage.setItem('nawia.look', String(this.look));
+    } catch {
+      /* private mode: fine */
+    }
+    this.hud.showRoomName(`${t(STR.look)}: ${t(HERO_LOOKS[this.look].name)}`);
   }
 
   /** Starts the ring in a room: on the ground and on whatever hangs overhead. (cx, cy) are global px. */
@@ -383,6 +464,15 @@ export class GameScene extends Phaser.Scene {
       case 'ending':
         this.updateEnding(dt);
         break;
+      case 'talk':
+        this.updateTalk(dt);
+        break;
+      case 'door':
+        this.updateDoor(dt);
+        break;
+      case 'waking':
+        this.updateWaking(dt);
+        break;
     }
 
     this.updateAtmosphere(dt, rawDt);
@@ -405,15 +495,29 @@ export class GameScene extends Phaser.Scene {
       if (this.state !== 'play') return;
     }
 
+    // next to someone who has something to say, the strike key starts the conversation instead
+    const talker = this.talkerNear();
+    if (talker && input.consume('attack', TUNE.inputBuffer)) {
+      this.startTalk(talker);
+      return;
+    }
+
     if (player.update(dt, level, this.world, true)) {
       audio.sfx('swing');
       this.hasAttacked = true;
     }
+    if (input.moveX !== 0 || input.moveY !== 0) this.hasMoved = true;
     if (player.guarding) this.hasGuarded = true;
     if (player.attackActive) this.resolveAttack();
 
     for (const e of room.enemies) {
       e.update(dt, level, this.world, player.x, player.y, !player.dead);
+      if (e.bumped) {
+        // the boar met something harder than itself
+        audio.sfx('clink');
+        this.fx.debris(e.x, e.y + 4, undefined, 4);
+        this.trauma = Math.max(this.trauma, 0.35);
+      }
       if (!e.solid || e.home !== this.world || !overlap(e.box, player.box)) continue;
       if (player.blocks(e.x, e.y)) {
         // caught on the shield: it staggers back, and that is the opening
@@ -434,14 +538,28 @@ export class GameScene extends Phaser.Scene {
     if (this.state !== 'play') return;
     this.settlePosts();
     for (const p of room.props) p.update(dt, player.x, player.y);
+    for (const c of room.critters) {
+      c.update(dt, level, this.world, player.x, player.y);
+      if (c.startled) audio.sfx('cluck');
+    }
     this.updatePickups(dt);
 
     // inscriptions read themselves when you stand next to them, in the words of the world you are in
     let near: Prop | null = null;
     for (const p of room.props)
-      if ((p.kind === 'sign' || p.kind === 'npc') && Math.abs(p.x - player.x) < 21 && Math.abs(p.y - player.y) < 21) near = p;
+      if (p.kind === 'sign' && Math.abs(p.x - player.x) < 21 && Math.abs(p.y - player.y) < 21) near = p;
     const text = near?.text?.[this.world];
     this.hud.setDialog(text ? t(text) : null);
+
+    // a doorway: in he goes
+    const dtx = Math.floor((player.x - room.ox) / TILE);
+    const dty = Math.floor((player.y - room.oy) / TILE);
+    const door = room.doors.find((d) => d.tx === dtx && d.ty === dty);
+    if (!door) this.offDoor = true;
+    else if (this.offDoor) {
+      this.enterDoor(door.to);
+      return;
+    }
 
     // left the room?
     const next = level.dungeon.roomAtTile(Math.floor(player.x / TILE), Math.floor(player.y / TILE));
@@ -481,7 +599,9 @@ export class GameScene extends Phaser.Scene {
     const threat = this.room.enemies.some((e) => e.home === this.world);
     let hint: string | null = null;
     if (this.rejectHintT > 0) hint = t(STR.hintRejected);
-    else if (!this.hasShifted && this.timeInRoom > 1.5) hint = t(pad ? STR.hintShiftPad : STR.hintShift);
+    else if (!this.hasMoved && this.timeInRoom > 1) hint = t(pad ? STR.hintMovePad : STR.hintMove);
+    else if (this.talkerNear()) hint = t(pad ? STR.hintTalkPad : STR.hintTalk);
+    else if (!this.hasShifted && this.timeInRoom > 1.5 && this.room.place !== 'house') hint = t(pad ? STR.hintShiftPad : STR.hintShift);
     else if (!this.hasAttacked && threat) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
     else if (!this.hasGuarded && threat) hint = t(pad ? STR.hintShieldPad : STR.hintShield);
     else if (this.heartHintT > 0 && this.world === 'jawia' && this.room.boss?.heartBare) hint = t(STR.hintHeart);
@@ -527,7 +647,7 @@ export class GameScene extends Phaser.Scene {
   private applyWorldDressing(world: World, announce: boolean): void {
     const { room } = this;
     this.player.slash.setTint(ACCENT[world]);
-    this.fx.setAmbience(world, room.ox, room.oy, room.w, room.h, room.outdoors);
+    this.fx.setAmbience(world, room.ox, room.oy, room.w, room.h, room.outdoors, room.def.blight);
     this.hud.setWorld(world, announce);
     audio.setWorld(world);
   }
@@ -655,6 +775,8 @@ export class GameScene extends Phaser.Scene {
       if (e.home !== this.world || !overlap(a, e.box)) continue;
       if (this.strike(e, player.swingId, player.x, player.y)) landed = true;
     }
+    // nobody gets to hit a hen, but she does not know that
+    if (this.world === 'jawia') for (const c of room.critters) if (overlap(a, c.box)) c.scare(player.x, player.y);
 
     // a blade stops fire as well as a shield does; it just does not send it back
     for (const sh of room.shots) if (!sh.friendly && sh.home === this.world && overlap(a, sh.box)) sh.dead = true;
@@ -887,6 +1009,192 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // ------------------------------------------------------------------ talking
+
+  /** A villager (or an inscription with a conversation behind it) within arm's reach, with something to say in this world. */
+  private talkerNear(): Prop | null {
+    const { player, room } = this;
+    for (const p of room.props) {
+      if (p.kind !== 'npc' && p.kind !== 'sign') continue;
+      if (Math.abs(p.x - player.x) >= 21 || Math.abs(p.y - player.y) >= 21) continue;
+      const id = p.talk?.[this.world];
+      if (id ? this.dialogs.has(id) : p.kind === 'npc' && p.text?.[this.world]) return p;
+    }
+    return null;
+  }
+
+  private startTalk(p: Prop): void {
+    const { player } = this;
+    const id = p.talk?.[this.world];
+    const text = p.text?.[this.world];
+    if (id && this.dialogs.has(id)) this.talk = new Talk(this.dialogs, this.flags, id);
+    else if (text) {
+      // a villager with a single line in the room file: the same machinery, one node long
+      const who = p.lookName ? STR.npcName[p.lookName as keyof typeof STR.npcName] : null;
+      this.talk = new Talk(new Map([['_', [{ op: 'say', who, text }]]]), this.flags, '_');
+    } else return;
+    if (this.talk.done) {
+      this.talk = null;
+      return;
+    }
+    this.state = 'talk';
+    this.stateT = 0;
+    this.talkCursor = 0;
+    this.talkLatch = 0;
+    // turn to whoever he is talking to
+    const dx = p.x - player.x;
+    const dy = p.y - player.y;
+    player.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
+    player.vx = 0;
+    player.vy = 0;
+    player.attackT = -1;
+    player.guarding = false;
+    this.hud.setHint(null);
+    this.showTalk();
+  }
+
+  private showTalk(): void {
+    const tk = this.talk;
+    if (!tk) return;
+    this.hud.setTalk({
+      name: tk.line?.who ? t(tk.line.who) : null,
+      text: tk.line ? t(tk.line.text) : '',
+      choices: tk.choices ? tk.choices.map((c) => t(c.text)) : null,
+      cursor: this.talkCursor,
+    });
+  }
+
+  private updateTalk(dt: number): void {
+    const { player, room } = this;
+    const tk = this.talk;
+    player.update(dt, this.level, this.world, false);
+    for (const p of room.props) p.update(dt, player.x, player.y);
+    for (const c of room.critters) c.update(dt, this.level, this.world, player.x, player.y);
+    if (!tk) {
+      this.state = 'play';
+      return;
+    }
+    // up and down move between the answers
+    const dir = input.moveY > 0.5 ? 1 : input.moveY < -0.5 ? -1 : 0;
+    if (dir !== 0 && this.talkLatch === 0 && tk.choices && !this.hud.typing) {
+      const n = Math.min(4, tk.choices.length);
+      this.talkCursor = (this.talkCursor + dir + n) % n;
+      audio.sfx('text');
+      this.showTalk();
+    }
+    this.talkLatch = dir;
+
+    if (!(input.consume('attack', 0.1) || input.consume('shift', 0.1))) return;
+    if (this.hud.typing) {
+      this.hud.finishTyping();
+      return;
+    }
+    if (tk.choices) {
+      tk.choose(this.talkCursor);
+      this.talkCursor = 0;
+    } else tk.next();
+    if (tk.done) {
+      this.talk = null;
+      this.hud.setTalk(null);
+      this.state = 'play';
+      this.shiftCd = 0.25;
+      input.flush();
+    } else this.showTalk();
+  }
+
+  // ------------------------------------------------------------------ doors, waking
+
+  /** Through a doorway into room `to`: the screen goes dark, and he is standing by the door that leads back. */
+  private enterDoor(to: string): void {
+    const target = this.level.dungeon.doorTarget(this.room.def, to);
+    if (!target) return;
+    this.doorTo = target;
+    this.state = 'door';
+    this.stateT = 0;
+    this.player.attackT = -1;
+    this.player.guarding = false;
+    this.hud.setDialog(null);
+    this.hud.setHint(null);
+    audio.sfx('door');
+  }
+
+  private updateDoor(dt: number): void {
+    const { player } = this;
+    const DARK = 0.2;
+    if (this.doorTo && this.stateT < DARK) {
+      this.veil.setAlpha(this.stateT / DARK);
+      player.update(dt, this.level, this.world, false);
+      return;
+    }
+    if (this.doorTo) {
+      const { room: def, tx, ty } = this.doorTo;
+      this.doorTo = null;
+      this.veil.setAlpha(1);
+      this.destroyRoom(this.room);
+      this.room = this.buildRoom(def);
+      const room = this.room;
+      // step clear of the doorway: below it outside a house, above it inside
+      let x = room.ox + tx * TILE + 8;
+      let y = room.oy + ty * TILE + 8;
+      let facing: Dir = 'down';
+      for (const [dx, dy, f] of [[0, 1, 'down'], [0, -1, 'up'], [-1, 0, 'left'], [1, 0, 'right']] as const) {
+        const nx = room.ox + (tx + dx) * TILE + 8;
+        const ny = room.oy + (ty + dy) * TILE + 8;
+        if (this.level.blocked(this.world, nx, ny, 5, 4)) continue;
+        x = nx;
+        y = ny;
+        facing = f;
+        break;
+      }
+      player.x = x;
+      player.y = y;
+      player.facing = facing;
+      player.vx = 0;
+      player.vy = 0;
+      player.kx = 0;
+      player.ky = 0;
+      this.offDoor = false;
+      this.entry = { x, y, world: this.world, facing };
+      const cam = this.cameraTarget(room, x, y);
+      this.camX = cam.x;
+      this.camY = cam.y;
+      this.echoT = 0;
+      this.onEnterRoom();
+      player.sync();
+    }
+    const k = (this.stateT - DARK) / 0.3;
+    this.veil.setAlpha(Math.max(0, 1 - k));
+    if (k >= 1) {
+      this.state = 'play';
+      input.flush();
+    }
+  }
+
+  /** The first seconds of the game: eyelids. */
+  private updateWaking(dt: number): void {
+    const { player, room } = this;
+    player.update(dt, this.level, this.world, false);
+    for (const p of room.props) p.update(dt, player.x, player.y);
+    const s = this.stateT;
+    // shut, a first look, shut again, then open for good
+    const ease = (v: number): number => v * v * (3 - 2 * v);
+    let open: number;
+    if (s < 0.8) open = 0;
+    else if (s < 1.5) open = ease((s - 0.8) / 0.7) * 0.34;
+    else if (s < 1.9) open = 0.34 * (1 - ease((s - 1.5) / 0.4));
+    else if (s < 2.2) open = 0;
+    else open = ease(Math.min(1, (s - 2.2) / 1.1));
+    const half = GAME_H / 2 + 2;
+    this.lids[0].setY(Math.round(-open * half));
+    this.lids[1].setY(Math.round(GAME_H / 2 - 2 + open * half));
+    if (s >= 3.3) {
+      this.lids.forEach((l) => l.setVisible(false));
+      this.state = 'play';
+      this.timeInRoom = 0;
+      input.flush();
+    }
+  }
+
   // ------------------------------------------------------------------ room to room
 
   private startSlide(next: RoomDef): void {
@@ -1077,15 +1385,17 @@ export class GameScene extends Phaser.Scene {
 
     // colours of the air ease towards the current world
     const k = 1 - Math.exp(-rawDt * 9);
-    const dress = DRESS[room.outdoors ? 'surface' : 'crypt'][world];
+    const dress = DRESS[room.place][world];
+    // the deeper into the blight, the less of a bright morning is left
+    const sick = room.place === 'surface' && world === 'jawia' ? room.def.blight / 3 : 0;
     for (let i = 0; i < 3; i++) {
-      this.ambient[i] = lerp(this.ambient[i], dress.ambient[i], k);
+      this.ambient[i] = lerp(this.ambient[i], lerp(dress.ambient[i], BLIGHT_AIR.ambient[i], sick), k);
       this.heroLight[i] = lerp(this.heroLight[i], dress.heroLight[i], k);
-      this.fogTint[i] = lerp(this.fogTint[i], dress.fog[i], k);
+      this.fogTint[i] = lerp(this.fogTint[i], lerp(dress.fog[i], BLIGHT_AIR.fog[i], sick), k);
     }
     this.heroGlow = lerp(this.heroGlow, dress.heroGlow, k);
-    this.fogAlpha = lerp(this.fogAlpha, dress.fogAlpha, k);
-    this.vignette = lerp(this.vignette, dress.vignette, k);
+    this.fogAlpha = lerp(this.fogAlpha, lerp(dress.fogAlpha, BLIGHT_AIR.fogAlpha, sick), k);
+    this.vignette = lerp(this.vignette, lerp(dress.vignette, BLIGHT_AIR.vignette, sick), k);
 
     this.trauma = Math.max(0, this.trauma - rawDt * 2.2);
     this.kick *= Math.exp(-rawDt * 22);

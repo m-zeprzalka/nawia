@@ -1,4 +1,5 @@
-// Where the game starts. Nothing here can hurt you: walk, talk, turn the stone and look around.
+// The village: a bright morning, hens in the yard, nothing that can hurt you. Walk, talk, look around.
+// Both houses can be entered (4: the hero's home, where the game starts; 5: the herbalist's hut).
 // The garden in the corner is fenced (J): what the living built is not there in Nawia.
 // Under the old linden (O) the dead of the village stand, and only show on the other side.
 room: village
@@ -10,23 +11,26 @@ map:
 ####################
 ##t.HHHH......HHH.##
 #...HHHH..O...HHH..#
-#.o.HDHH.s.s.oHDH.t#
-#....,....".1..,...#
-#.@..,,,,,,,,,,,,,,,
-#..."..W3.,........#
-#t2.......,.JJJJJJJ#
-##...b....,,J"h"".##
-###.t...."..J.""..##
+#.oMH4HH.s.s.MH5H.t#
+#....,..c."....,...#
+#.S..,,,,,,,,,,,,,,,
+#..."..W3.,..c.1...#
+#t2..c....,.JJJJJJJ#
+##...b....,,J"h""U##
+###.t...."..J.""U###
 ####################
 
 sign 1:
-  look: herbalist
-  jawia: Kurzy bóg siedzi już w rękojeści twojego miecza. Przekręć go, a zobaczysz to, co ja widzę co noc. | The hag stone sits in the hilt of your sword now. Turn it, and you will see what I see every night.
+  look: woman
+  jawia: @gospodyni
 
 sign 2:
   look: child
-  jawia: Idziesz do lasu? Dziadek mówi, że pod kurhanem jest zejście do zatopionego grodu. | Are you going to the forest? Grandpa says there is a way down to the drowned stronghold under the barrow.
+  jawia: @dziecko
 
 sign 3:
   look: elder
-  jawia: Odkąd dzwon milczy, umarli nie odchodzą. Stoją pod starą lipą. Tyle że my ich nie widzimy. | Since the bell fell silent, the dead do not leave. They stand under the old linden. We just cannot see them.
+  jawia: @starzec
+
+door 4: home
+door 5: hut

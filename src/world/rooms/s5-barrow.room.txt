@@ -1,18 +1,19 @@
-// The way down. The gate (G) in the ring of boulders opens when both sides are quiet:
-// a drowned one in Jawia, a wraith in Nawia. Thorns (J) and remembered trees (N, stumps in Jawia)
-// make the clearing a different shape on each side.
+// The way down, and the heart of the blight. The gate (G) in the ring of boulders opens when both sides are quiet:
+// two blighted wolves (v) and a blight bloom (p) in Jawia, a wraith (z) in Nawia.
+// Thorns (J) and remembered trees (N, stumps in Jawia) make the clearing a different shape on each side.
 room: barrow
 biome: forest
+blight: 3
 at: 0,-1
 name: Kurhan | The Barrow
 
 map:
 ###########.########
 ####t....t.,.t..####
-##....N....,....."##
+##....N....,..v.."##
 #..J......,,...N...#
-#..J..z.R.,,.R.....#
-#........,,,,....u.#
+#..J..z.R.,,.R..p..#
+#........,,,,....v.#
 #..N...1R.,,.R...~~#
 #....,,,,,,.....~~~#
 #RRRRGRRRRRRt...~~##

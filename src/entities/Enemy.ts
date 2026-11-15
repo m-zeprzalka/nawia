@@ -6,6 +6,9 @@
 //   zjawa    - Nawia. Circles, then swoops straight through you. Flies over water.
 //   ognik    - Jawia. Hangs where it is (often over water) and spits fire. A raised shield sends the fire back.
 //   strzyga  - has two souls. Kill the body in Jawia and the second soul gets up in Nawia.
+//   dzik     - Jawia. A boar: paws the ground, then charges a long way in a straight line. A wall stops it cold.
+//   wilk     - Jawia. A blighted wolf: circles on the ground like a wraith does in the air, lunges, backs off.
+//   morownik - Jawia. A blight bloom: rooted. Opens and spits three thorns; the blade reaches it, the shield stops the thorns.
 
 import Phaser from 'phaser';
 import { DEPTH, otherWorld, type World } from '../config.ts';
@@ -51,7 +54,23 @@ const SPECS: Record<EnemyKind, Spec> = {
     home: 'jawia', frame: MOB.STRZYGA, hp: 3, hw: 6, hh: 5, speed: 62, wander: 20, sight: 140, mask: BLOCK_WALK, hover: 0, fps: 4,
     reach: 58, windup: 0.26, dash: 215, dashTime: 0.24, rest: 0.45, cooldown: 1.2, glow: 0,
   },
+  dzik: {
+    home: 'jawia', frame: MOB.DZIK, hp: 3, hw: 6, hh: 5, speed: 30, wander: 16, sight: 128, mask: BLOCK_WALK, hover: 0, fps: 5,
+    reach: 92, windup: 0.62, dash: 205, dashTime: 0.8, rest: 1.0, cooldown: 1.7, glow: 0,
+  },
+  wilk: {
+    home: 'jawia', frame: MOB.WILK, hp: 2, hw: 6, hh: 5, speed: 72, wander: 22, sight: 150, mask: BLOCK_WALK, hover: 0, fps: 7,
+    reach: 70, windup: 0.3, dash: 195, dashTime: 0.3, rest: 0.6, cooldown: 1.3, glow: 0xc050e0,
+  },
+  morownik: {
+    home: 'jawia', frame: MOB.MOROWNIK, hp: 2, hw: 6, hh: 6, speed: 0, wander: 0, sight: 118, mask: BLOCK_WALK, hover: 0, fps: 1.6,
+    reach: 118, windup: 0.75, dash: 0, dashTime: 0, rest: 0.5, cooldown: 2.6, glow: 0xc050e0,
+  },
 };
+
+/** How fast a blight bloom's thorns fly, and how wide it spreads them (radians). */
+const THORN_SPEED = 64;
+const THORN_FAN = [-0.42, 0, 0.42];
 
 /** How fast a wisp's fire flies. */
 const WISP_SHOT_SPEED = 74;
@@ -77,7 +96,9 @@ export class Enemy {
   flash = 0;
   /** Strzyga: true for the frame in which her second soul got up on the other side. */
   rose = false;
-  /** Ognik: called when it spits fire (position, velocity). */
+  /** Dzik: true for the frame in which its charge ended against something solid. */
+  bumped = false;
+  /** Ognik, morownik: called when it spits (position, velocity). */
   onShoot: ((x: number, y: number, vx: number, vy: number) => void) | null = null;
 
   readonly sprite: Phaser.GameObjects.Sprite;
@@ -174,6 +195,7 @@ export class Enemy {
     this.flash = Math.max(0, this.flash - dt);
     this.cd = Math.max(0, this.cd - dt);
     this.rose = false;
+    this.bumped = false;
     const here = world === this.home;
 
     if (this.misplaced) {
@@ -199,7 +221,7 @@ export class Enemy {
         if (this.modeT >= 0.9) this.setMode('roam');
         break;
       case 'rest':
-        if (this.kind === 'strzyga' && sees) {
+        if ((this.kind === 'strzyga' || this.kind === 'wilk') && sees) {
           // she never stays where she struck
           vx = (-dx / dist) * 34;
           vy = (-dy / dist) * 34;
@@ -216,6 +238,10 @@ export class Enemy {
           if (this.kind === 'ognik') {
             this.onShoot?.(this.x, this.y - 3, this.ax * WISP_SHOT_SPEED, this.ay * WISP_SHOT_SPEED);
             this.setMode('rest');
+          } else if (this.kind === 'morownik') {
+            const aim = Math.atan2(this.ay, this.ax);
+            for (const a of THORN_FAN) this.onShoot?.(this.x, this.y - 5, Math.cos(aim + a) * THORN_SPEED, Math.sin(aim + a) * THORN_SPEED);
+            this.setMode('rest');
           } else this.setMode('dash');
         }
         break;
@@ -227,10 +253,11 @@ export class Enemy {
       case 'roam':
         if (sees) {
           if (!this.saw) this.angle = Math.atan2(-dy, -dx);
-          const ready = this.cd <= 0 && dist < s.reach && (this.kind !== 'zjawa' || this.modeT > this.orbitFor);
+          const circles = this.kind === 'zjawa' || this.kind === 'wilk';
+          const ready = this.cd <= 0 && dist < s.reach && (!circles || this.modeT > this.orbitFor);
           if (ready) {
             this.setMode('windup');
-          } else if (this.kind === 'zjawa') {
+          } else if (circles) {
             // wraiths never come straight at you: they circle, closing in
             this.angle += dt * 1.6 * this.spin;
             const tx = px + Math.cos(this.angle) * 42;
@@ -239,7 +266,7 @@ export class Enemy {
             const sp = Math.min(s.speed, d * 6);
             vx = ((tx - this.x) / d) * sp;
             vy = ((ty - this.y) / d) * sp;
-          } else if (this.kind !== 'ognik') {
+          } else if (s.speed > 0) {
             vx = (dx / dist) * s.speed;
             vy = (dy / dist) * s.speed;
             if (this.kind === 'strzyga') {
@@ -282,7 +309,13 @@ export class Enemy {
     const hit = level.move(this.home, box, (vx + this.kx) * dt, (vy + this.ky) * dt, this.mask);
     if (hit.hitX || hit.hitY) {
       this.wanderT = Math.min(this.wanderT, 0.15);
-      if (this.mode === 'dash' && this.modeT > 0.06) this.setMode('rest');
+      if (this.mode === 'dash' && this.modeT > 0.06) {
+        // a boar that runs into something sits there seeing stars: that is when to hit it
+        if (this.kind === 'dzik') {
+          this.bumped = true;
+          this.setMode('rest', 1.7);
+        } else this.setMode('rest');
+      }
     }
     const b = this.bounds;
     const m = 10;
@@ -340,6 +373,7 @@ export class Enemy {
   }
 
   private shove(fromX: number, fromY: number, force: number): void {
+    if (this.spec.speed === 0 && this.kind !== 'ognik') return; // rooted
     const d = Math.hypot(this.x - fromX, this.y - fromY) || 1;
     this.kx = ((this.x - fromX) / d) * force;
     this.ky = ((this.y - fromY) / d) * force;

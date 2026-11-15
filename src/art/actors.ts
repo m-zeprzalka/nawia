@@ -144,11 +144,150 @@ const SHIELD_FRONT = fromAscii(art(8, ['..oooo..', '.owddwo.', 'owdmmdwo', 'odmi
 /** ...and edge-on. */
 const SHIELD_EDGE = fromAscii(art(4, ['.oo.', 'owwo', 'owdo', 'omdo', 'omdo', 'owDo', 'owWo', '.oo.']), HP);
 
-function heroFrame(dir: Dir3, pose: Pose): PixelBuffer {
+/**
+ * Looks to try on. Each one keeps the body and swaps the head (rows 0-7 of the cell) and some colours,
+ * so every look has every pose for free. Press H in the game to cycle through them.
+ */
+export interface HeroLook {
+  /** texture key of its sheet */
+  key: string;
+  name: { pl: string; en: string };
+  pal: Record<string, Color>;
+  heads: Record<Dir3, string[]> | null;
+}
+
+const STRAW: Record<string, Color> = { j: rgb(0xecca62), J: rgb(0xbb963c), q: rgb(0x7a4a2c), Q: rgb(0x55331f) };
+
+export const HERO_LOOKS: HeroLook[] = [
+  { key: 'hero', name: { pl: 'Wojak', en: 'Warrior' }, pal: {}, heads: null },
+  {
+    key: 'hero1',
+    name: { pl: 'Pastuszek', en: 'Shepherd boy' },
+    // a straw hat with a red ribbon, a brown sheepskin on his back
+    pal: { ...STRAW, c: rgb(0x8f6238), C: rgb(0x63402a), k: rgb(0xb4844c) },
+    heads: {
+      down: art(16, [
+        '.....oooooo.....',
+        '....ojjjjjjo....',
+        '....orrrrrro....',
+        '.oooJjjjjjjJooo.',
+        '.ojjjjjjjjjjjjo.',
+        '..ooqsessesqoo..',
+        '...oSsessesSo...',
+        '....ossSSsso....',
+      ]),
+      up: art(16, [
+        '.....oooooo.....',
+        '....ojjjjjjo....',
+        '....orrrrrro....',
+        '.oooJjjjjjjJooo.',
+        '.ojjjjjjjjjjjjo.',
+        '..ooqqqqqqqqoo..',
+        '...oQqqqqqqQo...',
+        '....oQQQQQQo....',
+      ]),
+      side: art(16, [
+        '.....oooooo.....',
+        '....ojjjjjjo....',
+        '....orrrrrro....',
+        '.oooJjjjjjjjooo.',
+        '.ojjjjjjjjjjjjo.',
+        '..oooqqssseso...',
+        '....oqqsssesso..',
+        '.....oqsssSso...',
+      ]),
+    },
+  },
+  {
+    key: 'hero2',
+    name: { pl: 'Góral', en: 'Highlander' },
+    // a fur cap, dark hair, a pale sheepskin coat
+    pal: {
+      f: rgb(0x5c4236), F: rgb(0x80604c), q: rgb(0x33262a), Q: rgb(0x1f171c),
+      c: rgb(0xdccba2), C: rgb(0xa9976e), k: rgb(0xf2e7c4), r: rgb(0x9a3038), R: rgb(0x6e2230),
+    },
+    heads: {
+      down: art(16, [
+        '....oooooooo....',
+        '...offfFffFfo...',
+        '...ofFfffFffo...',
+        '...offfffffFo...',
+        '...oqqssssqqo...',
+        '...oqsessesqo...',
+        '...oSsessesSo...',
+        '....ossSSsso....',
+      ]),
+      up: art(16, [
+        '....oooooooo....',
+        '...offfFffFfo...',
+        '...ofFfffFffo...',
+        '...offfffffFo...',
+        '...oqqqqqqqqo...',
+        '...oqqqqqqqQo...',
+        '...oQqqqqqQQo...',
+        '....oQQQQQQo....',
+      ]),
+      side: art(16, [
+        '....oooooooo....',
+        '...offfFffFfo...',
+        '...ofFfffFffo...',
+        '...offfffffFo...',
+        '...oqqqqsssso...',
+        '....oqqqsseso...',
+        '....oqqqssesso..',
+        '.....oqsssSso...',
+      ]),
+    },
+  },
+  {
+    key: 'hero3',
+    name: { pl: 'Wędrowiec', en: 'Wanderer' },
+    // a blue-grey hood and short cape, a red scarf at the chin
+    pal: {
+      u: rgb(0x4d6f90), U: rgb(0x2f4862), v: rgb(0x7092b2), q: rgb(0x7a4a2c),
+      c: rgb(0x4d6f90), C: rgb(0x2f4862), k: rgb(0x7092b2),
+    },
+    heads: {
+      down: art(16, [
+        '.....oooooo.....',
+        '....ovuuuuUo....',
+        '...ovuuuuuuUo...',
+        '...ouuqqqquUo...',
+        '...ouqssssqUo...',
+        '...ousesseSUo...',
+        '...oUsessesUo...',
+        '....oUrrrrUo....',
+      ]),
+      up: art(16, [
+        '.....oooooo.....',
+        '....ovuuuuUo....',
+        '...ovuuuuuuUo...',
+        '...ouuuuuuuUo...',
+        '...ouuuuuuuUo...',
+        '...ouuuuuuUUo...',
+        '...oUuuuuuUUo...',
+        '....oUUUUUUo....',
+      ]),
+      side: art(16, [
+        '.....oooooo.....',
+        '....ovuuuuUo....',
+        '...ovuuuuuuuo...',
+        '...ouuuuuqquo...',
+        '...ouuuuqssso...',
+        '....oUuuqseso...',
+        '....oUuuqsesso..',
+        '.....oUrrrrso...',
+      ]),
+    },
+  },
+];
+
+function heroFrame(look: HeroLook, dir: Dir3, pose: Pose): PixelBuffer {
   const b = new PixelBuffer(16, 16);
+  const pal = { ...HP, ...look.pal };
   const striking = pose === 'atk0' || pose === 'atk1';
-  const legs = fromAscii(LEGS[dir][pose === 'walkA' || striking ? 'a' : pose === 'walkB' ? 'b' : 'stand'], HP);
-  const upper = fromAscii(UPPER[dir], HP);
+  const legs = fromAscii(LEGS[dir][pose === 'walkA' || striking ? 'a' : pose === 'walkB' ? 'b' : 'stand'], pal);
+  const upper = fromAscii(look.heads ? [...look.heads[dir], ...UPPER[dir].slice(8)] : UPPER[dir], pal);
   // contact frames dip, behind the shield he crouches, a strike leans into the blow
   let dx = 0;
   let dy = pose === 'walkA' || pose === 'walkB' || pose === 'guard' ? 1 : 0;
@@ -212,11 +351,11 @@ export function heroFromBehind(): PixelBuffer {
   return card;
 }
 
-function heroSheet(): Sheet {
+function heroSheet(look: HeroLook): Sheet {
   const poses: (Pose | null)[] = ['stand', 'walkA', 'walkB', 'atk0', 'atk1', 'guard', null, null];
   const frames: (PixelBuffer | null)[] = [];
-  for (const dir of ['down', 'up', 'side'] as Dir3[]) for (const p of poses) frames.push(p ? heroFrame(dir, p) : null);
-  return grid('hero', HERO.fw, HERO.fh, HERO.cols, frames);
+  for (const dir of ['down', 'up', 'side'] as Dir3[]) for (const p of poses) frames.push(p ? heroFrame(look, dir, p) : null);
+  return grid(look.key, HERO.fw, HERO.fh, HERO.cols, frames);
 }
 
 // =============================================================== the people of the village
@@ -368,7 +507,14 @@ function swordSheet(): Sheet {
 // Row 0: utopiec (2 idle, lunge)      Row 1: zjawa (2 idle, swoop)      Row 2: ognik (4 frames of flame)
 // Row 3: strzyga, body (2 idle, pounce)   Row 4: strzyga, second soul   Row 5: the guardian's heart (2 shielded, 2 bare)
 
-export const MOB = { fw: 16, fh: 16, cols: 4, UTOPIEC: 0, ZJAWA: 4, OGNIK: 8, STRZYGA: 12, STRZYGA_N: 16, HEART: 20 } as const;
+// Row 6: dzik (2 running, charge)   Row 7: wilk (2 running, pounce)   Row 8: morownik (2 closed, open)   Row 9: hen (2 walking)
+// Beasts are drawn in profile, facing right; the game flips them.
+
+export const MOB = {
+  fw: 16, fh: 16, cols: 4,
+  UTOPIEC: 0, ZJAWA: 4, OGNIK: 8, STRZYGA: 12, STRZYGA_N: 16, HEART: 20,
+  DZIK: 24, WILK: 28, MOROWNIK: 32, HEN: 36,
+} as const;
 
 /** Utopiec: the drowned one. Eyes on top of its head like a frog's, a mouth as wide as its face. */
 const UTOPIEC_PAL: Record<string, Color> = {
@@ -571,6 +717,169 @@ function heartFrame(f: number, bare: boolean): PixelBuffer {
   return out;
 }
 
+/** Dzik: a boar. Nothing unnatural about it, which does not make it friendly. */
+const DZIK_PAL: Record<string, Color> = {
+  o: INK.outline,
+  d: rgb(0x7e5c49), D: rgb(0x533c35), m: rgb(0x3a2a2e), M: rgb(0x5e4439),
+  n: rgb(0xd39c8c), N: rgb(0xa36c62), w: rgb(0xf6f1e6), e: rgb(0x1a1423), h: rgb(0x2a2026),
+};
+const DZIK_A = art(16, [
+  '................',
+  '................',
+  '......ooooo.....',
+  '....oommmmmoo...',
+  '..oommMMMMMmmoo.',
+  '.oddddMMMMdddddo',
+  'odddddddddddeddo',
+  'oddddddddddddddo',
+  'oDdddddddddddnno',
+  'oDDdddddddddwnNo',
+  '.oDDDdddddDDowo.',
+  '.oDDDDooDDDDoo..',
+  '.oDDo..oDDo.....',
+  '.oho...oho......',
+  '.oo....oo.......',
+  '................',
+]);
+const DZIK_B = [
+  ...DZIK_A.slice(0, 12),
+  ...art(16, ['...oDDooDDo.....', '...oho.oho......', '...oo..oo.......', '................']),
+];
+const DZIK_C = art(16, [
+  '................',
+  '................',
+  '................',
+  '...ooommmmoo....',
+  '.oommMMMMMmmoo..',
+  'odddddMMMMddddo.',
+  'odddddddddddddoo',
+  'oDdddddddddddedo',
+  'oDDddddddddddnno',
+  '.oDDDddddddwwnNo',
+  'ooDDDDddddDDooo.',
+  'oDDoooooooDDo...',
+  'oho.......ohoo..',
+  'oo.........ooo..',
+  '................',
+  '................',
+]);
+
+/** Wilk: a wolf the blight has got into. Violet under the fur, and its eyes are the colour of the other side. */
+const WILK_PAL: Record<string, Color> = {
+  o: rgb(0x16101e),
+  g: rgb(0x7d7898), G: rgb(0x4e4968), b: rgb(0xd6d2e6),
+  e: rgb(0xff5ad8), n: rgb(0x1a1423), w: rgb(0xf6f1e6), v: rgb(0xb05fe0), m: rgb(0x2a1426),
+};
+const WILK_A = art(16, [
+  '................',
+  '................',
+  '...........o.o..',
+  '..........ogogo.',
+  '.........oggggo.',
+  'oo.....ooggegggo',
+  'oGooooogggggggno',
+  '.oGggggggggggwo.',
+  '..oGgggggggbboo.',
+  '..oGggvgggbbo...',
+  '..oGGgggggbbo...',
+  '..oGGooooGGo....',
+  '..oGo....oGo....',
+  '..ogo....ogo....',
+  '..ooo....ooo....',
+  '................',
+]);
+const WILK_B = [
+  ...WILK_A.slice(0, 12),
+  ...art(16, ['...oGo..oGo.....', '...ogo..ogo.....', '...ooo..ooo.....', '................']),
+];
+const WILK_C = art(16, [
+  '................',
+  '................',
+  '............o.o.',
+  '...........ogogo',
+  'oo........oggggo',
+  'oGoooooooggegggo',
+  '.oGgggggggggwwno',
+  '..oGgggggggmmoo.',
+  '..oGggvgggbwwo..',
+  '.ooGGggggbboo...',
+  'oGGooooooooGGo..',
+  'ogo.........ogo.',
+  'oo...........oo.',
+  '................',
+  '................',
+  '................',
+]);
+
+/** Morownik: the flower of the blight. Shut, it is a bud on thorns. When it opens, it spits. */
+const MOROWNIK_PAL: Record<string, Color> = {
+  o: rgb(0x1a0f24),
+  p: rgb(0x7c3cac), P: rgb(0x4b2172), l: rgb(0xb46edc),
+  c: rgb(0xff7ad8), C: rgb(0xffe2ff),
+  s: rgb(0x3b2b4c), S: rgb(0x5c4c6e), t: rgb(0xdccdec),
+  g: rgb(0x2e3d2a), G: rgb(0x4b5b31),
+};
+const MOROWNIK_A = art(16, [
+  '................',
+  '................',
+  '.......oo.......',
+  '......olPo......',
+  '.....olppPo.....',
+  '.....olppPo.....',
+  '....olpppPPo....',
+  '....olpcpPPo....',
+  '....oppcpPPo....',
+  '.....oppPPo.....',
+  '..t...osSo...t..',
+  '.oGo..osSo..oGo.',
+  'oGGGoooSsoooGGgo',
+  '.ogGGGosSoGGGgo.',
+  '..oooGosSoGooo..',
+  '.....oooooo.....',
+]);
+const MOROWNIK_C = art(16, [
+  '................',
+  '..oo........oo..',
+  '.olpo......oplo.',
+  '.olppo....oppPo.',
+  '..oppPo..opPPo..',
+  '...oppPoopPPo...',
+  '....opcCCcPo....',
+  '...oopCCCCPoo...',
+  '..olpcCCCCcPPo..',
+  '.olppPcccCPPPPo.',
+  '.oppPo.osSo.oPPo',
+  '..ooGo.osSo.oGoo',
+  'oGGGoooSsoooGGgo',
+  '.ogGGGosSoGGGgo.',
+  '..oooGosSoGooo..',
+  '.....oooooo.....',
+]);
+
+/** A hen. She has nothing to do with any of this. */
+const HEN_PAL: Record<string, Color> = {
+  o: INK.outline, w: rgb(0xf4ecd8), W: rgb(0xc9bda2), r: rgb(0xd43c44), y: rgb(0xe8a83a), e: rgb(0x1a1423),
+};
+const HEN_A = art(16, [
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '.........rr.....',
+  '........owwo....',
+  '..oo...owwewyy..',
+  '.owwo.owwwwo....',
+  '.owwwowwwwwo....',
+  '..owwwwwwwwo....',
+  '...owwwWWwo.....',
+  '....oooooo......',
+  '.....y..y.......',
+  '....yy.yy.......',
+]);
+const HEN_B = [...HEN_A.slice(0, 14), ...art(16, ['......y.y.......', '.....yy.yy......'])];
+
 function mobSheet(): Sheet {
   const strzyga = (which: StrzygaForm): PixelBuffer[] =>
     [STRZYGA_ROWS, squash(STRZYGA_ROWS), STRZYGA_POUNCE].map((rows) => softOutline(fromAscii(rows, STRZYGA_PAL[which]), STRZYGA_PAL[which].o));
@@ -581,6 +890,10 @@ function mobSheet(): Sheet {
     ...strzyga('body'), null,
     ...strzyga('soul'), null,
     heartFrame(0, false), heartFrame(1, false), heartFrame(0, true), heartFrame(1, true),
+    ...[DZIK_A, DZIK_B, DZIK_C].map((rows) => softOutline(fromAscii(rows, DZIK_PAL))), null,
+    ...[WILK_A, WILK_B, WILK_C].map((rows) => softOutline(fromAscii(rows, WILK_PAL), WILK_PAL.o)), null,
+    ...[MOROWNIK_A, squash(MOROWNIK_A), MOROWNIK_C].map((rows) => softOutline(fromAscii(rows, MOROWNIK_PAL), MOROWNIK_PAL.o)), null,
+    softOutline(fromAscii(HEN_A, HEN_PAL)), softOutline(fromAscii(HEN_B, HEN_PAL)), null, null,
   ]);
 }
 
@@ -705,7 +1018,7 @@ function bossSheet(): Sheet {
 // =============================================================== things that fly at you
 // 8x8 cells: wisp fire x2, soul orb x2.
 
-export const SHOT = { fw: 8, fh: 8, cols: 4, WISP: 0, SOUL: 2 } as const;
+export const SHOT = { fw: 8, fh: 8, cols: 4, WISP: 0, SOUL: 2, THORN: 4 } as const;
 
 function orb(ramp: readonly Color[], dark: Color, f: number): PixelBuffer {
   const b = new PixelBuffer(8, 8);
@@ -718,14 +1031,17 @@ function orb(ramp: readonly Color[], dark: Color, f: number): PixelBuffer {
   return b.outlined(dark);
 }
 
+const THORN = [rgb(0xffe2ff), rgb(0xff7ad8), rgb(0x7c3cac)];
+
 function shotSheet(): Sheet {
   const soul = [rgb(0xffffff), INK.soul[4], INK.soul[3]];
   return grid('shots', SHOT.fw, SHOT.fh, SHOT.cols, [
     orb(WISP_FIRE, rgb(0x12301c), 0), orb(WISP_FIRE, rgb(0x12301c), 1),
     orb(soul, INK.soul[0], 0), orb(soul, INK.soul[0], 1),
+    orb(THORN, MOROWNIK_PAL.o, 0), orb(THORN, MOROWNIK_PAL.o, 1),
   ]);
 }
 
 export function makeActorSheets(): Sheet[] {
-  return [heroSheet(), folkSheet(), swordSheet(), mobSheet(), bossSheet(), shotSheet()];
+  return [...HERO_LOOKS.map(heroSheet), folkSheet(), swordSheet(), mobSheet(), bossSheet(), shotSheet()];
 }

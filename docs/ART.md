@@ -11,7 +11,10 @@ Cała grafika powstaje w kodzie (`src/art/`). Nie ma ani jednego pliku graficzne
 - **Nawia – świat duchów.** To samo miejsce, jakim pamiętają je umarli: granatowe powierzchnie, a **krawędzie i szczeliny świecą**.
   Poza światem nie ma ziemi, tylko gwiazdy (poza murami grodu, w głębi lasu, w miejscu wody).
   Dusze i zjawy są fioletowe, żeby nie zlewały się z cyjanem otoczenia.
-- Bohater wygląda tak samo po obu stronach: jasne włosy, czerwona przepaska, lniana koszula, czerwony płaszcz, okrągła tarcza.
+- **Ton rośnie.** Wieś jest wesoła: żółta strzecha, malwy, kury, czerwono-kremowy haft. Im głębiej w las, tym więcej **skazy**:
+  fiolet i magenta, czyli kolory dusz, wchodzą w zieleń. Fiolet w Jawi zawsze znaczy „tu przecieka Nawia”.
+- Bohater wygląda tak samo po obu stronach. Jego wygląd jest w trakcie wyboru: cztery warianty przełącza w grze klawisz H
+  (`HERO_LOOKS` w `src/art/actors.ts`). Wspólne dla wszystkich: lniana koszula z czerwonym rąbkiem i okrągła czerwono-kremowa tarcza.
 - **Postaci są rysowane na siatce**, jak w klasykach 8- i 16-bitowych: bohater, mieszkańcy i każdy zwykły wróg to dokładnie
   jeden kafel 16×16, strażnik to 2×2 kafle (32×32). Miecz jest osobnym sprite'em 16×16 kładzionym obok bohatera.
 
@@ -24,7 +27,9 @@ Cała grafika powstaje w kodzie (`src/art/`). Nie ma ani jednego pliku graficzne
    (źdźbło, kamyk, fala). Żadnego ditheringu w obrazie pokoju.
 4. **Miękki kontur.** Postaci mają kontur zabarwiony tym, z czym sąsiaduje (włosy: brąz, płaszcz: wino), a nie czarną kreskę.
 5. **Sylwetka mówi, kto to.** Utopiec: oczy na czubku głowy i paszcza na całą twarz. Zjawa: długie włosy i suknia bez końca.
-   Ognik: trzy języki płomienia. Strzyga: sowie pędzelki, oczy jak latarnie, dziób. Strażnik: kamienna baba pod płaską czapą.
+   Ognik: trzy języki płomienia. Strzyga: sowie pędzelki, oczy jak latarnie, dziób. Dzik: grzywa i szable. Wilk: uszy, ogon
+   i oko w kolorze drugiej strony. Morownik: pąk na cierniach, który otwiera się w gwiazdę. Strażnik: kamienna baba pod płaską czapą.
+6. **Wzór ludowy tam, gdzie jest tkanina albo ramka.** Kilim w izbie, pasiak na łóżku, haft krzyżykowy na krawędzi okna rozmowy.
 
 Palety: `src/art/palette.ts` (loch, postaci) i `SURF` w `src/art/surface.ts` (powierzchnia).
 Podgląd wszystkiego naraz: `npm run art:preview`.
@@ -44,8 +49,14 @@ z przezroczystością kładzione na kafel bazowy, dzięki czemu zestaw jest mał
 - cienie rzucane są nakładane na grunt jednym tonem (tylko w Jawi: w Nawi nie ma słońca);
 - woda i gwiazdy mają 4 klatki.
 
-Co na powierzchni jest sprite'em, a nie farbą: drogowskaz, ognisko, garnek, bożek, brama, mieszkańcy, dusze, serca
-(arkusze `surface` i `folk`). Reszta jest częścią obrazu pokoju.
+Co na powierzchni jest sprite'em, a nie farbą: drogowskaz, ognisko, garnek, bożek, brama, mieszkańcy, kury, dusze, serca
+(arkusze `surface`, `folk`, `mobs`). Reszta jest częścią obrazu pokoju.
+
+**Skaza** jest częścią malarza powierzchni: fioletowe plamy o ostrych krawędziach z żyłkami układającymi się w słoje,
+martwe drzewa z iskrami w sękach, ciernie rysowane rampą skazy (`blight`, `blightWood` w `SURF`).
+
+**Wnętrza chat (`biome: house`)** maluje `src/world/interiorPainter.ts`: deski, ściany z bali, okna rzucające światło na podłogę,
+półki ze słojami, suszone zioła, kilim, łóżko pod pasiakiem, stół, stołek, skrzynia, beczka. Piec jest sprite'em (arkusz `surface`).
 
 ## Podmiana grafiki na PNG
 
@@ -61,14 +72,14 @@ albo funkcje w `surface.ts`.
 
 | Plik | Komórka | Układ |
 |---|---|---|
-| `hero.png` | 16×16 | wiersze: przód, tył, bok (w prawo; lewo to odbicie); kolumny: stoi, krok A, krok B, zamach, cios, garda, 2 wolne (łuk). Podeszwy na dolnej krawędzi komórki |
+| `hero.png`, `hero1.png`, `hero2.png`, `hero3.png` | 16×16 | warianty bohatera (Wojak, Pastuszek, Góral, Wędrowiec), wszystkie w tym samym układzie. Wiersze: przód, tył, bok (w prawo; lewo to odbicie); kolumny: stoi, krok A, krok B, zamach, cios, garda, 2 wolne (łuk). Podeszwy na dolnej krawędzi komórki |
 | `folk.png` | 16×16 | mieszkańcy, po 2 klatki: zielarka, starzec, kobieta, dziecko |
 | `sword.png` | 16×16 | 8 klatek: ostrze skierowane na N, NE, E, SE, S, SW, W, NW. Rękojeść w klatce N leży w punkcie (7.5, 11.5), w NE w (3.5, 11.5); pozostałe to obroty |
-| `mobs.png` | 16×16 | 4 kolumny. Wiersz 0: utopiec (2 klatki spoczynku, atak); 1: zjawa; 2: ognik (4 klatki płomienia); 3: strzyga, ciało; 4: strzyga, druga dusza; 5: serce strażnika (2 klatki w skorupie, 2 odsłonięte) |
+| `mobs.png` | 16×16 | 4 kolumny. Wiersz 0: utopiec (2 klatki spoczynku, atak); 1: zjawa; 2: ognik (4 klatki płomienia); 3: strzyga, ciało; 4: strzyga, druga dusza; 5: serce strażnika (2 klatki w skorupie, 2 odsłonięte); 6: dzik (2 klatki biegu, szarża); 7: wilk (2 klatki biegu, skok); 8: morownik (2 klatki zamknięty, otwarty); 9: kura (2 klatki). Zwierzęta są rysowane z profilu, w prawo |
 | `boss.png` | 32×32 | strażnik: spoczynek A, spoczynek B (krok), zamach, szarża, ogłuszony (pęknięty) |
-| `shots.png` | 8×8 | ogień ognika ×2, kula duszy ×2 |
+| `shots.png` | 8×8 | ogień ognika ×2, kula duszy ×2; w drugim wierszu cierń morownika ×2 |
 | `objects.png` | 16×32 | rekwizyty grodu. Wiersz 0: Jawia – kosz ×4, pochodnia ×4; wiersz 1: to samo w Nawi; wiersz 2: kamień z napisem (J), (N), krata, krata otwarta, dzwon ×3, serce; wiersz 3: urna (J), (N), bożek (J), (N), kolumna (J), (N), kości; wiersz 4: dusze ×3, kamień słońca i księżyca (słońce, księżyc); wiersz 5: słup słońca (stoi, schowany), słup księżyca (stoi, schowany) |
-| `surface.png` | 16×32 | rekwizyty powierzchni. Wiersz 0 (Jawia): drogowskaz, ognisko ×4, garnek, bożek, białe kwiaty; wiersz 1: to samo w Nawi; wiersz 2: brama (J) zamknięta i otwarta, brama (N) zamknięta i otwarta |
+| `surface.png` | 16×32 | rekwizyty powierzchni i izb. Wiersz 0 (Jawia): drogowskaz, ognisko ×4, garnek, bożek, białe kwiaty; wiersz 1: to samo w Nawi; wiersz 2: brama (J) zamknięta i otwarta, brama (N) zamknięta i otwarta; wiersz 3: piec ×4 (Jawia); wiersz 4: piec ×4 (Nawia) |
 | `greatbell.png` | 48×48 | wielki dzwon: w spoczynku, wychylony w lewo, w prawo |
 | `slash.png` | 32×32 | łuk za ostrzem; wiersze: prawo, dół, lewo, góra; 3 klatki; biały (barwiony w grze kolorem świata) |
 | `px.png` | 8×8 | cząsteczki, białe |
