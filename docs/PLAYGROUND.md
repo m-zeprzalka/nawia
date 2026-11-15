@@ -10,6 +10,24 @@ wersje stoją w rzędach archiwum.
 Bohater jest jeden: ten, który jest dziś w grze (jasne włosy, czerwona krajka z końcami na wietrze, jasna koszula, czerwony
 płaszcz, okrągła tarcza). Stoi na placu jako **G1**. Szukamy dla niego stylu, więc stoi obok w wielu wersjach.
 
+### Cztery wcielenia na jeden kafel (W1–W4)
+
+Rozmiar jest już prawie przesądzony: **jeden kafel (16×16)**, najwyżej 1,25. Tu zmienia się to, kim bohater jest. Każde wcielenie
+bierze archetyp z opowieści przygodowych i robi z niego naszą własną postać. Żadne nie jest kopią cudzego bohatera: nie ma tu
+ani jego imienia, ani stroju, ani znaków rozpoznawczych; jest typ postaci.
+
+![Od lewej: bohater z gry (G1), potem W1 Domator, W2 Śmiałek, W3 Północny, W4 Łowca potworów](img/hero-types.png)
+
+| Kod | Wcielenie | Archetyp | Jak wygląda u nas |
+|---|---|---|---|
+| **W1** | Domator | mały domator, który ruszył w drogę (bajki o wyprawie) | czupryna loków, serdak, zielona opończa, tobołek na kiju |
+| **W2** | Śmiałek | chłopak z mieczem i tarczą z 16-bitowych przygodówek | jedna śmiała barwa tuniki (błękit), krajka, miecz w dłoni, tarcza z krzyżem słonecznym |
+| **W3** | Północny | łucznik-wojownik z północy (komiks przygodowy) | długie czarne włosy, futro na barkach, gołe ramiona, łuk na plecach |
+| **W4** | Łowca potworów | samotny łowca z ponurych opowieści | popielate włosy związane z tyłu, nabijana skóra, miecz na plecach, kamień z dziurką na piersi |
+
+Wszystkie są w tym samym czystym wykończeniu co bohater z gry (głowa szeroka na 8 pikseli, oczy na dwa piksele, kontur barwny)
+i mieszczą się w 15 kolorach. Są w `HERO_TYPES` w `src/art/heroStyles.ts`.
+
 ### Pięciu różnych grafików (V1–V5)
 
 Ten sam bohater narysowany od zera pięć razy, tak jak zrobiłoby to pięć różnych osób: inne proporcje, kształt głowy, oczy,
@@ -38,7 +56,7 @@ Wcześniejsza próba: rysunek bohatera z gry wykończony na cztery sposoby. To j
 | **S3** | Malowany | 16×16 | bez konturu od strony światła, ciemny brzeg tylko w cieniu; miękkie barwy |
 | **S4** | Wysoki 16x20 | 16×20 | wykończenie 16 bitów na 1,25 kafla |
 
-Wszystko to jest w `src/art/heroStyles.ts` (`HERO_HANDS`, `HERO_STYLES`).
+Wszystko to jest w `src/art/heroStyles.ts` (`HERO_TYPES`, `HERO_HANDS`, `HERO_STYLES`).
 
 | Pięć pomysłów na bohatera, w dwóch wysokościach | Potwory według wielkości | Dwa kafle: bies i leszy |
 |---|---|---|
@@ -69,8 +87,8 @@ Przy każdym eksponacie plac pokazuje, ile kolorów faktycznie zużywa. Dziś ws
 
 - z ekranu tytułowego: strzałka w dół na **Plac prób**, potem Shift albo Z,
 - albo wprost: `http://localhost:5173/?lab`,
-- albo od razu na wybranym zestawie: `?lab&hero=V2&mood=zmierzch`
-  (`hero`: kod eksponatu, np. `V2`, `S2`, `G1`, `A3`, `B5`; `size`: `small`, `tall` (wzrost mieszkańców);
+- albo od razu na wybranym zestawie: `?lab&hero=W2&mood=zmierzch`
+  (`hero`: kod eksponatu, np. `W2`, `V2`, `S2`, `G1`, `A3`, `B5`; `size`: `small`, `tall` (wzrost mieszkańców);
   `mood`: `poranek`, `zmierzch`, `jesien`, `ponuro`, `noc`; `ink`: `tinted`, `dark`, `none`).
 
 ## Klawisze
@@ -78,7 +96,7 @@ Przy każdym eksponacie plac pokazuje, ile kolorów faktycznie zużywa. Dziś ws
 | Klawisz | Co zmienia |
 |---|---|
 | WASD / strzałki | bohater chodzi |
-| **Q / E** | poprzedni / następny bohater, którym się chodzi: po kolei wszyscy, od V1 do archiwum |
+| **Q / E** | poprzedni / następny bohater, którym się chodzi: po kolei wszyscy, od W1 do archiwum |
 | **1 / 2** | wzrost mieszkańców: 16×16 albo 16×24 |
 | **O** | kontur lalek (A, B, mieszkańcy): barwny / ciemny / bez konturu |
 | **N** | nastrój scenerii (pora dnia, pora roku) |
@@ -97,7 +115,8 @@ Każdy eksponat ma kod. Wystarczy napisać „bohater B1, strzyga P9, zjawa P12,
 
 | Kody | Co | Zachowanie |
 |---|---|---|
-| **V1–V5** | jeden bohater, pięciu różnych grafików (patrz wyżej) | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **W1–W4** | cztery wcielenia bohatera na jeden kafel (patrz wyżej) | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **V1–V5** | jeden bohater, pięciu różnych grafików | jak wyżej |
 | **G1** | bohater, który jest dziś w grze | jak wyżej |
 | **S1–S4** | rysunek z gry w czterech wykończeniach | jak wyżej |
 | **A1–A5** | lalki na jeden kafel (16×16): pięć pomysłów na postać | jak wyżej |
@@ -173,7 +192,7 @@ Czego jeszcze nie ma: zamachu mieczem, gardy, obrażeń, ataków potworów. Post
 |---|---|
 | scena | `src/scenes/PlaygroundScene.ts` (miejsca eksponatów to tabele `*_SPOTS`) |
 | mapa łąki | `src/lab/playground.room.txt` (zwykły plik pokoju; nie należy do świata gry) |
-| style bohatera | `src/art/heroStyles.ts`: `HERO_HANDS` (V) i `HERO_STYLES` (S): głowa z tułowiem, trzy układy nóg, tarcza, paleta, sposób obrysowania; `styleFrame`, `styleSheet` |
+| style bohatera | `src/art/heroStyles.ts`: `HERO_TYPES` (W), `HERO_HANDS` (V) i `HERO_STYLES` (S): głowa z tułowiem, trzy układy nóg, tarcza, paleta, sposób obrysowania; `styleFrame`, `styleSheet` |
 | ludzie (lalki) | `src/art/dolls.ts`: ciała `TALL_SHIRT`, `SMALL_SHIRT`, `*_ROBE`; głowy `HEAD_*`; rzeczy (`SHIELD`, `CLOAK_*`, `BOW_*`...); `HERO_LOOKS`, `FOLK_LOOKS`; `dollFrame`, `dollSheet` |
 | archiwum | `src/art/archive.ts`: wcześniejsze postacie ze szkieletu i pierwsze zwierzęta, bez zmian |
 | szkielet potworów | `src/art/rig.ts`: `Figure`, `figureFrame`, `figureSheet` |
@@ -184,7 +203,7 @@ Litery w rysunkach ludzi znaczą wszędzie to samo (`h H l` włosy, `s S t` skó
 `f F` buty, `c C d` płaszcz albo kaptur, `m n M` metal...; pełna lista jest na górze `dolls.ts`), więc pod ten sam rysunek
 można podłożyć inną paletę.
 
-- **Nowy styl bohatera**: wpis w `HERO_HANDS` (albo `HERO_STYLES`): `upper` (głowa i tułów, od góry komórki), `legs` (stoi, krok, drugi krok),
+- **Nowy styl albo wcielenie bohatera**: wpis w `HERO_TYPES`, `HERO_HANDS` albo `HERO_STYLES` (`shield` może być listą rzeczy: miecz i tarcza, łuk, tobołek): `upper` (głowa i tułów, od góry komórki), `legs` (stoi, krok, drugi krok),
   `shield` (rysunek i miejsce w każdym widoku), `pal`, `ink` (`drawn`: kontur jest w rysunku jako litera `o`; `tinted`: dorysowany
   dookoła; `rim`: dorysowany tylko z prawej i u dołu) i `line` (kolor dorysowanej kreski przy danej literze). Wysokość komórki to `fh`.
 - **Wszyscy bohaterowie, którymi da się chodzić**, to jedna lista: `listCandidates()` w scenie. Kto na niej jest, ten stoi

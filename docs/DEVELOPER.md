@@ -59,7 +59,7 @@ src/
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
     surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
     surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
-    heroStyles.ts       bohater z gry w wielu stylach: pięć różnych rąk (V1-V5) i cztery wykończenia jednego rysunku (S1-S4)
+    heroStyles.ts       bohater w wielu wersjach: cztery wcielenia (W1-W4), pięć różnych rąk (V1-V5), cztery wykończenia (S1-S4)
     dolls.ts            ludzie placu prób, rysowani ręcznie jak lalki z papieru: ciała w dwóch wysokościach, głowy,
                         rzeczy w warstwach; pięć pomysłów na postać i mieszkańcy (jeszcze nie w grze)
     archive.ts          archiwum placu prób: wcześniejsze postacie ze szkieletu i pierwsze zwierzęta, bez zmian
