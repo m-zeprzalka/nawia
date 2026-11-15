@@ -10,34 +10,10 @@
 // The hero is assembled from parts (upper body, legs, shield) so every pose stays consistent
 // and new poses (a bow, later) are a few lines, not a redraw.
 
-import { PixelBuffer, fromAscii, mix, rgb, type Color } from '../core/PixelBuffer.ts';
+import { PixelBuffer, fromAscii, rgb, type Color } from '../core/PixelBuffer.ts';
 import { hash2 } from '../core/rng.ts';
 import { INK, PAL } from './palette.ts';
-import { art, grid, type Sheet } from './sheet.ts';
-
-/** Tints every outline pixel with the colours it touches. */
-function softOutline(b: PixelBuffer, outline: Color = INK.outline, k = 0.72): PixelBuffer {
-  const out = b.clone();
-  for (let y = 0; y < b.h; y++)
-    for (let x = 0; x < b.w; x++) {
-      if (b.get(x, y) !== outline) continue;
-      let r = 0;
-      let g = 0;
-      let bl = 0;
-      let n = 0;
-      for (let dy = -1; dy <= 1; dy++)
-        for (let dx = -1; dx <= 1; dx++) {
-          const c = b.get(x + dx, y + dy);
-          if (c >>> 24 === 0 || c === outline) continue;
-          r += c & 255;
-          g += (c >> 8) & 255;
-          bl += (c >> 16) & 255;
-          n++;
-        }
-      if (n) out.set(x, y, mix((0xff000000 | ((bl / n) << 16) | ((g / n) << 8) | (r / n)) >>> 0, outline, k));
-    }
-  return out;
-}
+import { art, grid, softOutline, type Sheet } from './sheet.ts';
 
 /** A breathing frame for free: everything above the feet sinks by one pixel. */
 function squash(rows: string[]): string[] {
@@ -312,7 +288,7 @@ function heroFrame(look: HeroLook, dir: Dir3, pose: Pose): PixelBuffer {
     if (pose === 'guard') b.blit(SHIELD_EDGE, 11, 5);
     else b.blit(SHIELD_ROUND, striking ? 4 : 7, 7 + dy);
   }
-  return softOutline(b);
+  return softOutline(b, INK.outline);
 }
 
 /**
@@ -449,7 +425,7 @@ const CHILD = art(16, [
 
 function folkSheet(): Sheet {
   const frames: PixelBuffer[] = [];
-  for (const rows of [HERBALIST, ELDER, WOMAN, CHILD]) for (const r of [rows, squash(rows)]) frames.push(softOutline(fromAscii(r, FP)));
+  for (const rows of [HERBALIST, ELDER, WOMAN, CHILD]) for (const r of [rows, squash(rows)]) frames.push(softOutline(fromAscii(r, FP), INK.outline));
   return grid('folk', FOLK.fw, FOLK.fh, FOLK.cols, frames);
 }
 
@@ -884,16 +860,16 @@ function mobSheet(): Sheet {
   const strzyga = (which: StrzygaForm): PixelBuffer[] =>
     [STRZYGA_ROWS, squash(STRZYGA_ROWS), STRZYGA_POUNCE].map((rows) => softOutline(fromAscii(rows, STRZYGA_PAL[which]), STRZYGA_PAL[which].o));
   return grid('mobs', MOB.fw, MOB.fh, MOB.cols, [
-    ...[UTOPIEC_A, squash(UTOPIEC_A), UTOPIEC_C].map((rows) => softOutline(fromAscii(rows, UTOPIEC_PAL))), null,
+    ...[UTOPIEC_A, squash(UTOPIEC_A), UTOPIEC_C].map((rows) => softOutline(fromAscii(rows, UTOPIEC_PAL), INK.outline)), null,
     ...[ZJAWA_A, ZJAWA_B, ZJAWA_C].map((rows) => fromAscii(rows, ZJAWA_PAL)), null,
     ognikFrame(0), ognikFrame(1), ognikFrame(2), ognikFrame(3),
     ...strzyga('body'), null,
     ...strzyga('soul'), null,
     heartFrame(0, false), heartFrame(1, false), heartFrame(0, true), heartFrame(1, true),
-    ...[DZIK_A, DZIK_B, DZIK_C].map((rows) => softOutline(fromAscii(rows, DZIK_PAL))), null,
+    ...[DZIK_A, DZIK_B, DZIK_C].map((rows) => softOutline(fromAscii(rows, DZIK_PAL), INK.outline)), null,
     ...[WILK_A, WILK_B, WILK_C].map((rows) => softOutline(fromAscii(rows, WILK_PAL), WILK_PAL.o)), null,
     ...[MOROWNIK_A, squash(MOROWNIK_A), MOROWNIK_C].map((rows) => softOutline(fromAscii(rows, MOROWNIK_PAL), MOROWNIK_PAL.o)), null,
-    softOutline(fromAscii(HEN_A, HEN_PAL)), softOutline(fromAscii(HEN_B, HEN_PAL)), null, null,
+    softOutline(fromAscii(HEN_A, HEN_PAL), INK.outline), softOutline(fromAscii(HEN_B, HEN_PAL), INK.outline), null, null,
   ]);
 }
 

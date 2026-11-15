@@ -395,7 +395,7 @@ export class GameScene extends Phaser.Scene {
     this.echoT = 0;
     this.hud.showRoomName(t(this.room.def.name));
     this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h, this.room.outdoors, this.room.def.blight);
-    audio.setPlace(this.room.def.biome, this.room.def.blight);
+    audio.setPlace(this.room.def.biome);
   }
 
   /** H: try the next hero on. The choice is remembered between visits. */

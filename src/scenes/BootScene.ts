@@ -16,7 +16,8 @@ export class BootScene extends Phaser.Scene {
     registerArt(this);
     input.attach();
     // dev shortcut: ?room=<id> jumps straight into the dungeon
-    const direct = new URLSearchParams(location.search).has('room');
-    this.scene.start(direct ? 'game' : 'title');
+    // ...and ?lab opens the playground
+    const q = new URLSearchParams(location.search);
+    this.scene.start(q.has('lab') ? 'lab' : q.has('room') ? 'game' : 'title');
   }
 }

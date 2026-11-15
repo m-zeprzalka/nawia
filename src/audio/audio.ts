@@ -1,8 +1,9 @@
 // All sound is synthesized with WebAudio at runtime: no audio files to ship or license.
 //
 // Underground, one drone runs under both worlds; each world adds its own layer, and the shift crossfades them.
-// Under the open sky there is music: three short tunes played by a tiny step sequencer (see TUNES below).
-// Turning the stone ducks the tune and lets the choir of Nawia through, so the other side sounds the same everywhere.
+// Under the open sky and indoors there is no background sound at all in Jawia: only what happens makes a noise.
+// (There used to be tunes there. They were tiring, and were taken out.) Nawia keeps a quieter choir everywhere,
+// so that turning the stone still sounds like stepping across.
 
 import type { World } from '../config.ts';
 import type { Biome } from '../world/roomFormat.ts';
@@ -12,81 +13,6 @@ export type Sfx =
   | 'door' | 'text' | 'gate' | 'bell' | 'start' | 'die' | 'block' | 'smash' | 'pickup' | 'reject'
   | 'shoot' | 'switch' | 'crash' | 'roar' | 'rise' | 'greatbell' | 'cluck';
 
-// ------------------------------------------------------------- tunes
-// A tune is two lines of notes on a grid of equal steps: "a4" plays, "-" holds the note before it,
-// "." is silence, "|" is only there for the eye. "fs5" is F sharp. Both lines must have the same number of steps.
-
-interface Tune {
-  /** seconds per step */
-  step: number;
-  lead: string;
-  bass: string;
-  wave: OscillatorType;
-  gain: number;
-  /** how much of the lead goes into the echo */
-  echo: number;
-}
-
-const TUNES: Record<'village' | 'forest' | 'deep', Tune> = {
-  // The village: a dance in D, with the raised fourth (G sharp) of highland fiddles in its second half.
-  village: {
-    step: 0.2,
-    wave: 'square',
-    gain: 0.05,
-    echo: 0,
-    lead:
-      'a4 d5 fs5 a5 | g5 fs5 e5 d5 | e5 fs5 g5 e5 | fs5 - d5 - | a4 d5 fs5 a5 | b5 a5 g5 fs5 | e5 g5 fs5 e5 | d5 - - . |' +
-      'e5 a5 a5 gs5 | a5 b5 cs6 a5 | b5 a5 gs5 fs5 | e5 - a5 - | fs5 a5 d6 a5 | b5 a5 g5 fs5 | e5 a4 cs5 e5 | d5 - - . |',
-    bass:
-      'd3 . a3 . | g3 . d3 . | a2 . e3 . | d3 . a3 . | d3 . a3 . | g2 . d3 . | a2 . e3 . | d3 . d3 . |' +
-      'a2 . e3 . | a2 . e3 . | e3 . b2 . | a2 . e3 . | d3 . a3 . | g2 . d3 . | a2 . e3 . | d3 . d3 . |',
-  },
-  // The forest near the village: a shepherd's pipe, unhurried, over long held notes.
-  forest: {
-    step: 0.3,
-    wave: 'triangle',
-    gain: 0.085,
-    echo: 0.35,
-    lead: 'b4 - d5 e5 | g5 - e5 d5 | e5 - - d5 | b4 - - . | a4 - b4 d5 | e5 - g5 e5 | d5 - b4 a4 | g4 - - . |',
-    bass: 'g2 - - - | - - - - | e2 - - - | - - - - | c3 - - - | - - - - | d3 - - - | g2 - - - |',
-  },
-  // Where the blight is thick: the same pipe, lower and slower, and it has learned a wrong note.
-  deep: {
-    step: 0.38,
-    wave: 'sine',
-    gain: 0.1,
-    echo: 0.7,
-    lead: 'e4 - g4 a4 | as4 - a4 g4 | e4 - - . | . . b3 - | e4 - g4 a4 | b4 - as4 a4 | g4 - e4 - | e4 - - . |',
-    bass: 'e2 - - - | - - - - | e2 - - - | as2 - - - | e2 - - - | - - - - | c3 - - - | e2 - - - |',
-  },
-};
-
-const SEMITONE: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
-
-/** One line of a tune as a list of steps: [frequency, length in steps], or null where nothing starts. */
-function parseLine(line: string): ([number, number] | null)[] {
-  const out: ([number, number] | null)[] = [];
-  let last: [number, number] | null = null;
-  for (const tok of line.split(/[\s|]+/)) {
-    if (!tok) continue;
-    if (tok === '-') {
-      if (last) last[1]++;
-      out.push(null);
-      continue;
-    }
-    if (tok === '.') {
-      last = null;
-      out.push(null);
-      continue;
-    }
-    const m = /^([a-g])(s?)(\d)$/.exec(tok);
-    if (!m) throw new Error(`bad note "${tok}"`);
-    const midi = 12 * (Number(m[3]) + 1) + SEMITONE[m[1]] + (m[2] ? 1 : 0);
-    last = [440 * Math.pow(2, (midi - 69) / 12), 1];
-    out.push(last);
-  }
-  return out;
-}
 
 // A minor pentatonic, the scale of the whole game (the bell is an A).
 const SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
@@ -103,17 +29,9 @@ class AudioEngine {
   private timer: number | null = null;
   private nextNote = 0;
   private lastText = 0;
-  /** Everything that belongs underground (drone, wind, choir, drips) goes through here... */
+  /** Everything in the background (drone, wind, choir, drips) goes through here, so a place can turn it down. */
   private cave!: GainNode;
-  /** ...and the tunes of the surface through here. */
-  private song!: GainNode;
   private biome: Biome = 'crypt';
-  private blight = 0;
-  private tune: Tune | null = null;
-  private tuneLead: ([number, number] | null)[] = [];
-  private tuneBass: ([number, number] | null)[] = [];
-  private songStep = 0;
-  private songNext = 0;
 
   get isMuted(): boolean {
     return this.muted;
@@ -162,14 +80,6 @@ class AudioEngine {
 
     this.cave = ctx.createGain();
     this.cave.connect(this.musicBus);
-    this.song = ctx.createGain();
-    this.song.gain.value = 0;
-    // square waves through a gentle low-pass: a wooden pipe rather than a buzzer
-    const soft = ctx.createBiquadFilter();
-    soft.type = 'lowpass';
-    soft.frequency.value = 2400;
-    this.song.connect(soft).connect(this.musicBus);
-
     // a dark feedback delay: the "cave"
     const delay = ctx.createDelay(1);
     delay.delayTime.value = 0.31;
@@ -266,19 +176,6 @@ class AudioEngine {
   private schedule(): void {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
-    // the tune of the place, a few steps ahead of the clock
-    const tune = this.tune;
-    if (tune) {
-      if (this.songNext < ctx.currentTime - 0.5) this.songNext = ctx.currentTime + 0.05; // the tab was asleep
-      while (this.songNext < ctx.currentTime + 0.4) {
-        const lead = this.tuneLead[this.songStep];
-        const bass = this.tuneBass[this.songStep];
-        if (lead) this.voice(tune.wave, lead[0], this.songNext, lead[1] * tune.step, tune.gain, tune.echo);
-        if (bass) this.voice('triangle', bass[0], this.songNext, bass[1] * tune.step, 0.11, 0);
-        this.songStep = (this.songStep + 1) % this.tuneLead.length;
-        this.songNext += tune.step;
-      }
-    }
     // drips and glassy echoes belong underground and to Nawia
     const underground = this.biome === 'crypt' || this.world === 'nawia';
     while (this.nextNote < ctx.currentTime + 0.4) {
@@ -320,53 +217,17 @@ class AudioEngine {
     this.mix();
   }
 
-  /** Where the hero is: decides between the drone of the stronghold and the tunes of the surface. */
-  setPlace(biome: Biome, blight: number): void {
+  /** Where the hero is: the stronghold has its drone, everywhere else Jawia is quiet. */
+  setPlace(biome: Biome): void {
     this.biome = biome;
-    this.blight = blight;
-    const next = biome === 'crypt' ? null : biome === 'forest' ? (blight >= 2 ? TUNES.deep : TUNES.forest) : TUNES.village;
-    if (next !== this.tune) {
-      this.tune = next;
-      if (next) {
-        this.tuneLead = parseLine(next.lead);
-        this.tuneBass = parseLine(next.bass);
-      }
-      this.songStep = 0;
-      this.songNext = (this.ctx?.currentTime ?? 0) + 0.25;
-    }
     this.mix();
   }
 
   private mix(): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    const surface = this.biome !== 'crypt';
-    const nawia = this.world === 'nawia';
-    const cave = !surface ? 1 : nawia ? 0.9 : this.biome === 'forest' && this.blight >= 2 ? 0.45 : 0;
-    const song = !surface ? 0 : nawia ? 0.1 : this.biome === 'house' ? 0.45 : 1;
-    this.cave.gain.setTargetAtTime(cave, ctx.currentTime, 0.3);
-    this.song.gain.setTargetAtTime(song, ctx.currentTime, 0.3);
-  }
-
-  /** One note of a tune: a soft attack, a body that fades a little, a short tail. */
-  private voice(type: OscillatorType, freq: number, at: number, dur: number, gain: number, echo: number): void {
-    const ctx = this.ctx!;
-    const o = ctx.createOscillator();
-    o.type = type;
-    o.frequency.value = freq;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, at);
-    g.gain.linearRampToValueAtTime(gain, at + 0.012);
-    g.gain.linearRampToValueAtTime(gain * 0.6, at + dur * 0.85);
-    g.gain.linearRampToValueAtTime(0.0001, at + dur + 0.05);
-    o.connect(g).connect(this.song);
-    if (echo > 0) {
-      const send = ctx.createGain();
-      send.gain.value = echo;
-      g.connect(send).connect(this.echo);
-    }
-    o.start(at);
-    o.stop(at + dur + 0.1);
+    const level = this.biome === 'crypt' ? 1 : this.world === 'nawia' ? 0.55 : 0;
+    this.cave.gain.setTargetAtTime(level, ctx.currentTime, 0.3);
   }
 
   // ------------------------------------------------------------- building blocks

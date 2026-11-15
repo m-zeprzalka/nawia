@@ -20,8 +20,10 @@ a pisanie rozmów w [DIALOGS.md](DIALOGS.md).
 2. **Dwa światy, jedna mapa.** Każde miejsce istnieje w Jawi i w Nawi, ale nie tak samo. Zagadki biorą się z różnic.
 3. **Pokoju trzeba się nauczyć.** Nic na ekranie nie pokazuje drugiej strony. Obrót w złym miejscu kosztuje.
 4. **Jakość ponad ilość.** Mało lokacji, każda dopracowana.
-5. **Od wesołej wsi do skazy.** Gra zaczyna się pogodnie: poranek, kury, skoczna melodia. Zło pojawia się dopiero w głębi lasu
+5. **Od wesołej wsi do skazy.** Gra zaczyna się pogodnie: poranek, kury, malwy. Zło pojawia się dopiero w głębi lasu
    i narasta z każdym pokojem. Kontrast jest częścią opowieści.
+6. **Potwory mają być straszne, nie śmieszne.** Epoka, do której mierzymy, to 16-bitowe konsole tuż przed grami 3D,
+   nie konsole 8-bitowe. Styl postaci jest w trakcie wyboru na placu prób ([PLAYGROUND.md](PLAYGROUND.md)).
 
 ## Świat
 
@@ -33,7 +35,7 @@ kurzego boga (kamień z dziurą). Kto go przekręci, obraca świat. Bohater budz
 idzie przez las do kurhanu, schodzi do grodu pod jeziorem i ma rozkołysać dzwon.
 
 **Skaza.** Tam, gdzie granica pęka, Nawia przecieka do Jawi. Widać to jako fioletowe plamy na ziemi, martwe drzewa i cierń.
-Przy wsi las jest zdrowy; im bliżej kurhanu, tym skazy więcej, powietrze ciemnieje, a melodia zmienia się na niższą i wolniejszą.
+Przy wsi las jest zdrowy; im bliżej kurhanu, tym skazy więcej i tym ciemniejsze powietrze.
 Co skaza dotknie, dziczeje: stąd wilki o oczach w kolorze drugiej strony i kwiaty, które plują cierniami.
 
 Teksty rozmów w grze są robocze: pokazują możliwości systemu i czekają na scenariusz.
@@ -168,10 +170,11 @@ Izba ⇄ Wieś ⇄ Chata zielarki          (⇄ to drzwi)
 
 Pomysły w kolejności, w jakiej wydają się warte zrobienia przed terminem:
 
-1. Scenariusz: prawdziwe teksty rozmów w miejsce roboczych; rozmowy, które coś zmieniają w świecie.
-2. Wybór jednego wyglądu bohatera i dopracowanie go (dziś są cztery do porównania).
+1. Wybór stylu na placu prób: bohater, potwory, nastrój scenerii. Potem przeniesienie wybranych postaci do gry
+   (klatki ciosu i gardy, ataki potworów).
+2. Scenariusz: prawdziwe teksty rozmów w miejsce roboczych; rozmowy, które coś zmieniają w świecie.
 3. Przemalować gród w tym samym stylu co powierzchnię (dziś loch jest w starszej technice).
-4. Przesłuchanie melodii i efektów; ptaki i woda na powierzchni.
+4. Dźwięk powierzchni: dziś jest tam cisza. Jeśli ma coś grać, to oszczędnie (ptaki, woda), nie w pętli.
 5. Łuk: strzał przez wodę i otchłań, przełączniki na odległość.
 6. Leszy jako pan skażonego lasu (mini-boss przed kurhanem).
 7. Balans po grze ręką: dziś trudność znana jest tylko z liczb.

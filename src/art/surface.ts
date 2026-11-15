@@ -134,6 +134,98 @@ export const SURF: Record<World, SurfacePalette> = {
   },
 };
 
+// ------------------------------------------------------------------ moods
+// The same landscape at another hour or in another season: every colour of a palette is passed through
+// one function, and a few ramps are replaced outright. Used by the playground to compare looks;
+// a mood that wins can become the palette of the game (or of one part of it).
+
+const lum = (c: Color): number => (0.3 * (c & 255) + 0.59 * ((c >> 8) & 255) + 0.11 * ((c >> 16) & 255)) / 255;
+
+/** Scales saturation and brightness. */
+function adjust(c: Color, sat: number, val: number): Color {
+  const l = lum(c) * 255;
+  const ch = (v: number): number => Math.max(0, Math.min(255, Math.round((l + (v - l) * sat) * val)));
+  return ((c & 0xff000000) | (ch((c >> 16) & 255) << 16) | (ch((c >> 8) & 255) << 8) | ch(c & 255)) >>> 0;
+}
+
+/** Applies `f` to every colour of a palette, then lays `over` on top. */
+function recolour(p: SurfacePalette, f: (c: Color) => Color, over: Partial<SurfacePalette> = {}): SurfacePalette {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(p)) {
+    if (k === 'shadowK' || typeof v === 'boolean') out[k] = v;
+    else if (typeof v === 'number') out[k] = f(v);
+    else out[k] = (v as (Color | Color[])[]).map((x) => (typeof x === 'number' ? f(x) : x.map(f)));
+  }
+  return { ...(out as unknown as SurfacePalette), ...over };
+}
+
+export interface Mood {
+  id: string;
+  name: { pl: string; en: string };
+  palette: SurfacePalette;
+  /** what the same light does to anyone standing in it: a multiply tint for sprites (0xRRGGBB) */
+  tint: number;
+}
+
+const DAY = SURF.jawia;
+
+/** Looks for the living world. Nawia has one look only: it does not have weather. */
+export const MOODS: Mood[] = [
+  { id: 'poranek', name: { pl: 'poranek', en: 'morning' }, palette: DAY, tint: 0xffffff },
+  {
+    id: 'zmierzch',
+    name: { pl: 'zmierzch', en: 'dusk' },
+    tint: 0xffd2b0,
+    // low sun: warm where the light falls, violet where it does not, long dark shadows
+    palette: recolour(
+      DAY,
+      (c) => {
+        const l = lum(c);
+        const a = adjust(c, 0.92, 0.86);
+        return mix(mix(a, rgb(0xff9650, c >>> 24), 0.24 * l), rgb(0x34246a, c >>> 24), 0.34 * (1 - l));
+      },
+      { shadow: rgb(0x24143e), shadowK: 0.48, window: DAY.window },
+    ),
+  },
+  {
+    id: 'jesien',
+    name: { pl: 'jesień', en: 'autumn' },
+    tint: 0xfff0dc,
+    palette: recolour(DAY, (c) => adjust(c, 0.9, 0.95), {
+      grass: ramp(0x6a6a34, 0x86843c, 0xa39c48),
+      tuft: ramp(0x52552a, 0xd9b95a),
+      forestFloor: ramp(0x2e2218, 0x4a3420),
+      leaf: ramp(0x3a1a18, 0x7a2c1c, 0xb4501e, 0xdc8a2a, 0xf6c850),
+      birch: ramp(0x6a4812, 0xa87a1c, 0xd8aa2c, 0xf2d24c, 0xfcea90),
+      thorn: ramp(0x231a14, 0x3e2c1e, 0x624428, 0x8a6030, 0xb88a44),
+      moss: rgb(0x8a8438),
+    }),
+  },
+  {
+    id: 'ponuro',
+    name: { pl: 'ponuro', en: 'overcast' },
+    tint: 0xbcc2d2,
+    // no sun at all: the colour drains out, shadows go soft, everything leans towards slate
+    palette: recolour(DAY, (c) => mix(adjust(c, 0.46, 0.78), rgb(0x56607a, c >>> 24), 0.15), { shadowK: 0.18 }),
+  },
+  {
+    id: 'noc',
+    name: { pl: 'noc', en: 'night' },
+    tint: 0x7484c4,
+    palette: recolour(DAY, (c) => mix(adjust(c, 0.55, 0.47), rgb(0x2a3c8c, c >>> 24), 0.3), { shadow: rgb(0x04051a), shadowK: 0.32, window: DAY.window }),
+  },
+];
+
+/** The Mega Drive could show 512 colours: three bits a channel. Snaps a picture to that grid. */
+export function quantize9(b: PixelBuffer): void {
+  const q = (v: number): number => Math.round(Math.round((v / 255) * 7) * (255 / 7));
+  for (let i = 0; i < b.u32.length; i++) {
+    const c = b.u32[i];
+    if (c >>> 24 === 0) continue;
+    b.u32[i] = ((c & 0xff000000) | (q((c >> 16) & 255) << 16) | (q((c >> 8) & 255) << 8) | q(c & 255)) >>> 0;
+  }
+}
+
 // ------------------------------------------------------------------ noise
 
 /** Smooth value noise, 0..1. Feed it global pixel coordinates and patterns run on across rooms. */
@@ -912,13 +1004,12 @@ export interface Grove {
   well: Stamp;
 }
 
-const groves: Partial<Record<World, Grove>> = {};
+const groves = new Map<string, Grove>();
 
-/** Every tree is drawn once per world and reused: rooms build fast and the forest looks like one forest. */
-export function grove(world: World): Grove {
-  const made = groves[world];
+/** Every tree is drawn once per palette and reused: rooms build fast and the forest looks like one forest. */
+export function grove(p: SurfacePalette, key: string): Grove {
+  const made = groves.get(key);
   if (made) return made;
-  const p = SURF[world];
   const g: Grove = {
     oaks: [0, 1, 2, 3, 4, 5].map((i) => oak(p, 100 + i * 17, 9.6 + (i % 3) * 0.7)),
     spruces: [0, 1, 2, 3].map((i) => spruce(p, 300 + i * 13, 30 + (i % 3) * 2)),
@@ -936,6 +1027,6 @@ export function grove(world: World): Grove {
     stump: stump(p),
     well: well(p),
   };
-  groves[world] = g;
+  groves.set(key, g);
   return g;
 }

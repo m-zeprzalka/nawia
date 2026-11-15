@@ -36,6 +36,8 @@ export const STR = {
   pressShift: { pl: 'naciśnij  SHIFT', en: 'press  SHIFT' },
   pressShiftPad: { pl: 'naciśnij  Y', en: 'press  Y' },
   langHint: { pl: '[L] English', en: '[L] Polski' },
+  menuPlay: { pl: 'Graj', en: 'Play' },
+  menuLab: { pl: 'Plac prób (style grafiki)', en: 'Playground (art styles)' },
   jam: { pl: 'GitHub Game Off 2026 — demo', en: 'GitHub Game Off 2026 — demo' },
 
   intro: [

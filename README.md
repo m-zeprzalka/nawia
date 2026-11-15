@@ -20,12 +20,16 @@ to where you entered the room, half a heart lighter. Nothing on screen shows you
 Learn the room, then turn the stone.
 
 > Status: playable demo, start to finish. Eighteen rooms: you wake up in your own house, in a cheerful village with hens
-> in the yard and a dance tune playing; both houses can be entered. The forest beyond it darkens as the blight thickens
+> in the yard; both houses can be entered. The forest beyond it darkens as the blight thickens
 > towards the barrow (five surface rooms, painted per pixel, with tree crowns you can walk behind), and under the barrow lies
 > the drowned stronghold (eleven rooms, one of them two screens wide).
 > Both worlds everywhere, sword and shield, seven kinds of enemies, conversations with choices, a sun-and-moon switch puzzle,
 > a memory room of invisible crossings, a boss that has to be fought in both worlds, and a bell at the end.
-> All art, sound and music are generated in code.
+> All art and sound are generated in code.
+>
+> The look of the characters is being chosen: the title menu has a **playground** where the hero, the villagers and
+> thirteen monsters stand side by side in 16-bit proportions (16x24 and 24x32), in several drawing styles and under
+> five moods of scenery. See [docs/PLAYGROUND.md](docs/PLAYGROUND.md).
 
 ## Documentation (in Polish)
 
@@ -33,6 +37,7 @@ Learn the room, then turn the stone.
   the shift, entities, recipes for adding rooms, enemies, scenery and props.
 - [docs/DESIGN.md](docs/DESIGN.md) – the game itself: world, mechanics, enemies, the route room by room.
 - [docs/DIALOGS.md](docs/DIALOGS.md) – how to write conversations (plain text files, no code).
+- [docs/PLAYGROUND.md](docs/PLAYGROUND.md) – the playground: comparing character, monster and scenery styles.
 - [docs/ROOMS.md](docs/ROOMS.md) – the room file format and the full legend.
 - [docs/ART.md](docs/ART.md) – art direction, sprite sheets, replacing generated art with PNGs.
 
@@ -98,8 +103,10 @@ Jump straight into a room while developing: `http://localhost:5173/?room=barrow&
 - **The shift** is instant in logic and a ring in pictures: both worlds of a room are pre-rendered, and a per-pixel
   ring composites one into the other (`src/fx/DualCanvas.ts`).
 - **Light** is a CPU light map with dithered bands, multiplied over the scene (`src/fx/Lighting.ts`).
-- **Sound and music** are synthesized with WebAudio (`src/audio/audio.ts`): no audio files. The surface tunes are two lines
-  of notes each, played by a small step sequencer.
+- **Sound** is synthesized with WebAudio (`src/audio/audio.ts`): no audio files. The stronghold has a drone under it;
+  the surface is quiet.
+- **The playground** (`?lab`, or from the title menu) draws figures with a small rig (`src/art/rig.ts`): proportions,
+  materials and features in, three views and a walk cycle out.
 - **Conversations** are plain text files (`src/story/*.dialog.txt`) with answers to pick, jumps and things remembered.
 - Feel tuning lives in one place: `TUNE` in `src/config.ts` (the hero, the shift and its penalty, the boss).
   Enemy behaviour numbers are the `SPECS` table at the top of `src/entities/Enemy.ts`.

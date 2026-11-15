@@ -4,6 +4,7 @@ import { GAME_H, GAME_W } from './config.ts';
 import { BootScene } from './scenes/BootScene.ts';
 import { EndScene } from './scenes/EndScene.ts';
 import { GameScene } from './scenes/GameScene.ts';
+import { PlaygroundScene } from './scenes/PlaygroundScene.ts';
 import { TitleScene } from './scenes/TitleScene.ts';
 
 /**
@@ -32,7 +33,7 @@ const game = new Phaser.Game({
   },
   // sound is synthesized by src/audio (plain WebAudio); Phaser's own sound manager is not needed
   audio: { noAudio: true },
-  scene: [BootScene, TitleScene, GameScene, EndScene],
+  scene: [BootScene, TitleScene, GameScene, EndScene, PlaygroundScene],
 });
 
 const refit = (): void => {

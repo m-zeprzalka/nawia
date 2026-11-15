@@ -1,6 +1,6 @@
 // Small helpers shared by everything that draws sprite sheets.
 
-import { PixelBuffer, type Color } from '../core/PixelBuffer.ts';
+import { PixelBuffer, mix, type Color } from '../core/PixelBuffer.ts';
 
 export interface Sheet {
   key: string;
@@ -45,4 +45,28 @@ export function flame(b: PixelBuffer, fire: readonly Color[], cx: number, base: 
   }
   const sx = Math.round(cx + Math.sin(f * 2.1) * 3);
   b.set(sx, base - height - 1 - (f % 2), f % 2 ? fire[2] : fire[1]);
+}
+
+/** Tints every outline pixel with the colours it touches: hair gets a brown edge, cloth a wine one. */
+export function softOutline(b: PixelBuffer, outline: Color, k = 0.72): PixelBuffer {
+  const out = b.clone();
+  for (let y = 0; y < b.h; y++)
+    for (let x = 0; x < b.w; x++) {
+      if (b.get(x, y) !== outline) continue;
+      let r = 0;
+      let g = 0;
+      let bl = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const c = b.get(x + dx, y + dy);
+          if (c >>> 24 === 0 || c === outline) continue;
+          r += c & 255;
+          g += (c >> 8) & 255;
+          bl += (c >> 16) & 255;
+          n++;
+        }
+      if (n) out.set(x, y, mix((0xff000000 | ((bl / n) << 16) | ((g / n) << 8) | (r / n)) >>> 0, outline, k));
+    }
+  return out;
 }

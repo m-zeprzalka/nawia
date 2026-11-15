@@ -4,6 +4,7 @@ Ten plik opisuje, jak gra jest zbudowana i jak się w niej pracuje. Czytaj go ra
 
 - [DESIGN.md](DESIGN.md) – co to za gra: świat, mechaniki, wrogowie, przebieg pokój po pokoju,
 - [DIALOGS.md](DIALOGS.md) – jak pisać rozmowy (dla scenarzysty, bez kodu),
+- [PLAYGROUND.md](PLAYGROUND.md) – plac prób: porównywanie stylów postaci, potworów i scenerii,
 - [ROOMS.md](ROOMS.md) – format plików pokoi i legenda znaków,
 - [ART.md](ART.md) – kierunek graficzny, arkusze sprite'ów, podmiana grafiki na PNG.
 
@@ -35,7 +36,8 @@ Skróty w trybie deweloperskim (`npm run dev`):
 - `http://localhost:5173/?room=barrow&world=nawia` – start od razu w danym pokoju i świecie (z pominięciem ekranu tytułowego),
 - `window.__nawia` w konsoli przeglądarki to działająca `GameScene`: `__nawia.player`, `__nawia.room`, `__nawia.world`, `__nawia.state`.
   Bohatera można przestawić (`__nawia.player.x = ...`), uczynić nietykalnym (`__nawia.player.invuln = 9999`; wtedy mruga).
-- Klawisz **H** w grze przełącza wygląd bohatera (cztery warianty do porównania; wybór jest pamiętany w przeglądarce).
+- Klawisz **H** w grze przełącza wygląd bohatera (cztery warianty 16×16; wybór jest pamiętany w przeglądarce).
+- `http://localhost:5173/?lab` otwiera plac prób (jest też w menu na ekranie tytułowym).
 
 ## 2. Mapa repozytorium
 
@@ -57,6 +59,8 @@ src/
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
     surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
     surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
+    rig.ts              „szkielet” postaci 16-bitowych: figura z proporcji i materiałów, trzy widoki, klatki chodu
+    cast.ts             obsada placu prób: kostiumy bohatera, mieszkańcy, potwory (jeszcze nie w grze)
     font.ts, title.ts   czcionka bitmapowa z polskimi znakami, obraz tytułowy
     textures.ts         most między buforami pikseli a teksturami Phasera; podmiana na PNG z /assets
   world/
@@ -68,6 +72,7 @@ src/
     surfacePainter.ts   malarz powierzchni: grunt liczony piksel po pikselu + stemple + warstwa nad głową + skaza
     interiorPainter.ts  malarz wnętrz chat: deski, ściany z bali, kilim, meble
     rooms/*.room.txt    pokoje (h* izby, s* powierzchnia, 01-11 gród)
+  lab/                  mapa placu prób i jej loader (poza światem gry)
   story/
     dialog.ts           format rozmów, parser i „maszyna” Talk, która je odtwarza (czysty moduł)
     dialogData.ts       wczytanie plików rozmów przez Vite
@@ -80,7 +85,7 @@ src/
   ui/                   Hud (serca, kamień, dialog, podpowiedź), PixelText
   audio/audio.ts        cały dźwięk syntezowany w WebAudio: efekty, tło grodu, melodie powierzchni
   i18n/strings.ts       teksty poza pokojami (PL/EN)
-  scenes/               BootScene, TitleScene (+ intro), GameScene, EndScene
+  scenes/               BootScene, TitleScene (menu + intro), GameScene, EndScene, PlaygroundScene (plac prób)
 tools/                  check-rooms, preview, export-art, rooms i story (wczytywanie z dysku), png (zapis PNG)
 docs/                   ten katalog
 assets/                 pusty; PNG wrzucone tutaj zastępują generowane arkusze
@@ -158,7 +163,7 @@ co „poza murami nie ma ziemi” w lochu.
 (`blightAt`): w środku pokoju to jego własny poziom, przy górnej i dolnej krawędzi średnia z sąsiadem, więc skaza „wpełza”
 od gorszej strony. Tam, gdzie szum (`blightN`) jest poniżej tej siły, trawa zmienia się w fioletową plamę z żyłkami;
 część drzew lasu jest zastępowana martwymi (`deadTree`), a ciernie `J` rysowane są rampą skazy. Poziom skazy steruje też
-powietrzem (`BLIGHT_AIR` w `GameScene`), cząsteczkami (zarodniki zamiast pyłków od poziomu 2) i melodią.
+powietrzem (`BLIGHT_AIR` w `GameScene`) i cząsteczkami (zarodniki zamiast pyłków od poziomu 2).
 
 ## 5. Obrót między światami
 
@@ -254,11 +259,10 @@ Nowy wariant to nowy wpis w `HERO_LOOKS`. Docelowo zostanie jeden; lista jest po
   prawie biały, więc światło nic nie zmienia (jest dzień).
 - **`DRESS`** (`GameScene.ts`): dla pary (loch / powierzchnia, świat) podaje `ambient`, światło bohatera, mgłę i winietę. Wartości płynnie dążą do celu.
 - **`Fx`**: emitery cząsteczek (`shiftBurst`, `hit`, `death`, `debris`, `block`, `pickup`, `reject`) i tło pokoju (`setAmbience`: kurz, iskry Nawi, pyłki na powierzchni).
-- **`audio`**: jeden obiekt, `audio.sfx('nazwa')`, `startAmbience()`, `setWorld()`, `setPlace(biom, skaza)`. Wszystko syntezowane, bez plików.
+- **`audio`**: jeden obiekt, `audio.sfx('nazwa')`, `startAmbience()`, `setWorld()`, `setPlace(biom)`. Wszystko syntezowane, bez plików.
   Nowy efekt to nowy `case` w `sfx()` i wpis w typie `Sfx`.
-  **Muzyka**: w grodzie gra tło (dron, wiatr, chór Nawi, krople). Poza grodem gra melodia z tabeli `TUNES`: `village` (wieś i izby),
-  `forest` (las), `deep` (las ze skazą od poziomu 2). Melodia to dwie linie nut na siatce równych kroków: `a4` gra, `-` przedłuża
-  poprzednią nutę, `.` to cisza, `fs5` to fis. Obrót do Nawi przycisza melodię i wpuszcza chór, więc druga strona brzmi wszędzie tak samo.
+  **Tło**: w grodzie gra dron z wiatrem, chórem Nawi i kroplami. Poza grodem (na dworze i w izbach) w Jawi nie ma żadnego tła:
+  słychać tylko to, co się dzieje. W Nawi chór gra wszędzie, na powierzchni ciszej (`mix()` w `audio.ts`).
 - **`input`**: akcje `shift, attack, shield, pause, mute, fullscreen, lang`. `input.consume(akcja, bufor)` zwraca `true` raz na wciśnięcie
   (z buforem w sekundach), `input.isDown(akcja)`, `input.moveX/moveY`, `input.device`. Mapowanie klawiszy i pada jest na górze `core/input.ts`.
 - **Teksty**: poza pokojami w `i18n/strings.ts` jako pary `{ pl, en }`; w pokojach w blokach `sign`. `t(para)` wybiera bieżący język.
@@ -278,11 +282,6 @@ Nowy wariant to nowy wpis w `HERO_LOOKS`. Docelowo zostanie jeden; lista jest po
 1. Plik z `biome: house`, mapa cała z `#`, w środku prostokąt podłogi. Rząd ściany bezpośrednio nad podłogą to lico (tam `W`, `F`, `M`).
 2. Drzwi: cyfra w dolnej ścianie i blok `door N: <pokój na zewnątrz>`; na zewnątrz ta sama cyfra w dolnym rzędzie chaty i `door N: <izba>`.
 3. `at:` w wolnym miejscu siatki, z dala od innych pokoi.
-
-### Nowa melodia
-
-Wpis w `TUNES` (`audio.ts`): `step` (sekundy na krok), `wave`, `gain`, `echo`, linie `lead` i `bass` o tej samej liczbie kroków.
-Wybór melodii dla miejsca jest w `setPlace()`.
 
 ### Nowy wróg
 
@@ -334,7 +333,8 @@ Na itch.io projekt ma być typu „HTML”, z oknem 960×540 (albo inną wielokr
 - Loch i powierzchnia są malowane dwiema technikami i różnią się poziomem szczegółu. Loch jest starszy (stemple z kafli).
 - Gruntu powierzchni nie da się podmienić plikiem PNG; arkusze sprite'ów tak.
 - Wrogowie i mieszkańcy mają jeden kierunek patrzenia (zwierzęta są rysowane z profilu i odbijane); mieszkańcy stoją w miejscu.
-- Dźwięk jest w całości syntezowany. Melodie powierzchni napisano „na papierze”: nikt ich jeszcze nie słuchał.
+- Dźwięk jest w całości syntezowany. Powierzchnia nie ma tła dźwiękowego (melodie zostały usunięte jako męczące).
+- Styl postaci jest w trakcie wyboru: gra używa sprite'ów 16×16, a nowe figury 16-bitowe istnieją tylko na placu prób.
 - Pamięć rozmów (`flags`) nie wpływa jeszcze na świat gry.
 - Wnętrza chat nie mają warstwy nad głową (bohater nie chowa się za meblami).
 - Brak zapisu stanu gry: po odświeżeniu strony zaczyna się od wioski.

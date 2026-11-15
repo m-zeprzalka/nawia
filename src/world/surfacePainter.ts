@@ -28,6 +28,17 @@ const K = {
 /** What a pixel of ground turned out to be. */
 const C = { GRASS: 0, PATH: 1, WATER: 2, BANK: 3, FOREST: 4, VOID: 5, BLIGHT: 6 } as const;
 
+/** How a surface room is to be painted, when not in the game's own colours (the playground does this). */
+export interface SurfaceLook {
+  /** names the look: trees are cached under it */
+  key: string;
+  palettes: Record<World, SurfacePalette>;
+  /** blight strength 0..1 at a pixel, instead of the one that follows from the rooms' `blight:` headers */
+  blight?: (px: number, py: number) => number;
+}
+
+const GAME_LOOK: SurfaceLook = { key: 'game', palettes: SURF };
+
 const M = 3; // tiles of margin read from the neighbouring rooms, so nothing is cut off at a doorway
 
 /** Water (or, in Nawia, the abyss) as it would look if nothing in it moved. `d` is the depth in px from the bank. */
@@ -97,6 +108,7 @@ export class SurfacePainter implements RoomPicture {
   readonly echo: Record<World, PixelBuffer>;
 
   private readonly dungeon: Dungeon;
+  private readonly look: SurfaceLook;
   /** Four frames of ground per world, if anything in it moves (water, stars). */
   private readonly frames: Record<World, PixelBuffer[] | null> = { jawia: null, nawia: null };
   /** Noise that does not depend on the world, computed once: the wobble of every edge, and the patches of the meadow. */
@@ -104,12 +116,13 @@ export class SurfacePainter implements RoomPicture {
   private readonly patch: Float32Array;
   /** Noise the blight grows by, or null if this room has none. */
   private blightN: Float32Array | null = null;
-  /** How strong the blight is at a row of pixels, 0..1. */
-  private blightAt: (py: number) => number = () => 0;
+  /** How strong the blight is at a pixel, 0..1. */
+  private blightAt: (px: number, py: number) => number = () => 0;
 
-  constructor(room: RoomDef, dungeon: Dungeon, echo: Record<World, PixelBuffer>) {
+  constructor(room: RoomDef, dungeon: Dungeon, echo: Record<World, PixelBuffer>, look: SurfaceLook = GAME_LOOK) {
     this.room = room;
     this.dungeon = dungeon;
+    this.look = look;
     this.echo = echo;
     this.w = room.cols * TILE;
     this.h = room.rows * TILE;
@@ -132,11 +145,13 @@ export class SurfacePainter implements RoomPicture {
     };
     const above = (level(-1) + room.blight) / 2;
     const below = (level(1) + room.blight) / 2;
-    this.blightAt = (py: number): number => {
-      const t = py / this.h;
-      return (t < 0.5 ? above + (room.blight - above) * t * 2 : room.blight + (below - room.blight) * (t - 0.5) * 2) / 3;
-    };
-    if (above > 0 || below > 0 || room.blight > 0) {
+    this.blightAt =
+      look.blight ??
+      ((_px: number, py: number): number => {
+        const t = py / this.h;
+        return (t < 0.5 ? above + (room.blight - above) * t * 2 : room.blight + (below - room.blight) * (t - 0.5) * 2) / 3;
+      });
+    if (look.blight || above > 0 || below > 0 || room.blight > 0) {
       const [b1, b2] = [n(0.06, 0.07, 71), n(0.21, 0.21, 72)];
       this.blightN = new Float32Array(this.w * this.h);
       for (let i = 0; i < this.blightN.length; i++) this.blightN[i] = b1[i] * 0.62 + b2[i] * 0.38;
@@ -148,6 +163,15 @@ export class SurfacePainter implements RoomPicture {
     for (const world of WORLDS) {
       const f = this.frames[world];
       if (f) this.buffers[world].u32.set(f[frame & 3].u32);
+    }
+  }
+
+  /** Runs `fn` over every picture this painter holds (the playground uses it to change the colour depth). */
+  eachBuffer(fn: (b: PixelBuffer) => void): void {
+    for (const world of WORLDS) {
+      fn(this.buffers[world]);
+      fn(this.overhead[world]);
+      for (const f of this.frames[world] ?? []) fn(f);
     }
   }
 
@@ -189,8 +213,8 @@ export class SurfacePainter implements RoomPicture {
   private paint(world: World): void {
     const { room, w, h } = this;
     const { cols, rows } = room;
-    const p = SURF[world];
-    const g = grove(world);
+    const p = this.look.palettes[world];
+    const g = grove(p, `${this.look.key}:${world}`);
     const ox = room.gx * SCREEN_COLS * TILE;
     const oy = room.gy * SCREEN_ROWS * TILE;
 
@@ -311,7 +335,7 @@ export class SurfacePainter implements RoomPicture {
             if (fs < 5.5 || ps < 1) c = p.grass[0];
             // where the blight has taken the ground
             if (this.blightN) {
-              const edge = this.blightAt(py) * 0.56 - this.blightN[i];
+              const edge = this.blightAt(px, py) * 0.56 - this.blightN[i];
               if (edge > 0) {
                 cls[i] = C.BLIGHT;
                 c = edge < 0.022 ? p.blight[0] : n < 0.5 ? p.blight[1] : p.blight[2];
@@ -416,7 +440,7 @@ export class SurfacePainter implements RoomPicture {
             const by = y0 + 15 - ((hs >>> 8) % 3);
             const r = hs % 10;
             // deeper into the blight, more of the forest is dead
-            const sick = (hs >>> 16) % 100 < this.blightAt(by) * 46;
+            const sick = (hs >>> 16) % 100 < this.blightAt(bx, by) * 46;
             const s = sick ? pick(g.dead) : r < 6 ? pick(g.oaks) : r < 9 ? pick(g.spruces) : pick(g.birches);
             shadeEllipse(bx + 4, by + 1, sick ? 6 : 10, sick ? 2.5 : 4);
             jobs.push({ by, draw: () => place(s, bx, by) });
