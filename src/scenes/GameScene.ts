@@ -49,7 +49,7 @@ interface ActiveRoom {
 
 const ACCENT: Record<World, number> = { jawia: 0xffcf6a, nawia: 0x9af4ff };
 // Jawia is dark and lit by fire. Nawia has no darkness to speak of: it glows by itself.
-const AMBIENT: Record<World, RGB> = { jawia: [0.42, 0.43, 0.58], nawia: [0.7, 0.76, 0.98] };
+const AMBIENT: Record<World, RGB> = { jawia: [0.45, 0.46, 0.6], nawia: [0.7, 0.76, 0.98] };
 const HERO_LIGHT: Record<World, RGB> = { jawia: [0.95, 0.8, 0.6], nawia: [0.5, 0.8, 1.0] };
 const HERO_GLOW: Record<World, number> = { jawia: 0.56, nawia: 0.3 };
 const FOG: Record<World, { tint: RGB; alpha: number }> = {
