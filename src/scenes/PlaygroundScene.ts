@@ -17,7 +17,7 @@ import { HERO as GAME_HERO, HERO_LOOKS as GAME_LOOKS } from '../art/actors.ts';
 import { BUILDS as OLD_BUILDS, HEROES as OLD_HEROES, OLD_BEASTS } from '../art/archive.ts';
 import { CREATURES } from '../art/cast.ts';
 import { FOLK_LOOKS, HERO_LOOKS, dollSheet, type Ink, type Size } from '../art/dolls.ts';
-import { HERO_HANDS, HERO_STYLES, HERO_TYPES, styleSheet } from '../art/heroStyles.ts';
+import { HERO_HANDS, HERO_SCHOOLS, HERO_STYLES, HERO_TYPES, styleSheet } from '../art/heroStyles.ts';
 import { RIG, figureSheet, type FigureStyle } from '../art/rig.ts';
 import { MOODS, SURF } from '../art/surface.ts';
 import { ART, addBufferTexture } from '../art/textures.ts';
@@ -75,17 +75,19 @@ const INKS: { id: Ink; name: Bilingual }[] = [
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
 
 /** Where the exhibits stand, in tiles. */
-const TYPE_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13], [11, 13]];
+const SCHOOL_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13], [11, 13]];
 const GAME_SPOT: [number, number] = [18, 13];
-const HAND_SPOTS: [number, number][] = [[2, 18], [5, 18], [8, 18], [11, 18], [14, 18]];
-const STYLE_SPOTS: [number, number][] = [[2, 23], [5, 23], [8, 23], [11, 23]];
-const SMALL_SPOTS: [number, number][] = [[2, 28], [5, 28], [8, 28], [11, 28], [14, 28]];
-const TALL_SPOTS: [number, number][] = [[2, 33], [5, 33], [8, 33], [11, 33], [14, 33]];
-const OLD_LOOK_SPOTS: [number, number][] = [[2, 38], [5, 38], [8, 38]];
-const OLD_RIG_SPOTS: [number, number][] = [[11, 38], [13, 38], [15, 38], [17, 38], [19, 38], [21, 38]];
+const TYPE_SPOTS: [number, number][] = [[2, 18], [5, 18], [8, 18], [11, 18]];
+const HAND_SPOTS: [number, number][] = [[2, 23], [5, 23], [8, 23], [11, 23], [14, 23]];
+const STYLE_SPOTS: [number, number][] = [[2, 28], [5, 28], [8, 28], [11, 28]];
+const SMALL_SPOTS: [number, number][] = [[2, 33], [5, 33], [8, 33], [11, 33], [14, 33]];
+const TALL_SPOTS: [number, number][] = [[2, 38], [5, 38], [8, 38], [11, 38], [14, 38]];
+const OLD_LOOK_SPOTS: [number, number][] = [[2, 43], [5, 43], [8, 43]];
+const OLD_RIG_SPOTS: [number, number][] = [[11, 43], [13, 43], [15, 43], [17, 43], [19, 43], [21, 43]];
 const OLD_BEAST_SPOTS: [number, number][] = [[25, 23], [29, 23], [33, 23], [38, 23]];
 const HEADINGS: { spot: [number, number]; name: Bilingual }[] = [
-  { spot: TYPE_SPOTS[0], name: { pl: 'cztery wcielenia na jeden kafel (G1: bohater z gry)', en: 'four incarnations, one tile each (G1: the game hero)' } },
+  { spot: SCHOOL_SPOTS[0], name: { pl: 'cztery postacie, cztery szkoły rysunku (G1: bohater z gry)', en: 'four characters, four schools of drawing (G1: the game hero)' } },
+  { spot: TYPE_SPOTS[0], name: { pl: 'cztery wcielenia z jednego szablonu', en: 'four incarnations from one template' } },
   { spot: HAND_SPOTS[0], name: { pl: 'jeden bohater, pięciu różnych grafików', en: 'one hero, five different artists' } },
   { spot: STYLE_SPOTS[0], name: { pl: 'bohater z gry w czterech wykończeniach', en: 'the game hero finished four ways' } },
   { spot: SMALL_SPOTS[0], name: SIZES[0].name },
@@ -353,8 +355,9 @@ export class PlaygroundScene extends Phaser.Scene {
     const game = (i: number, spot: [number, number], note: Bilingual): void => {
       out.push({ code: `G${i + 1}`, name: GAME_LOOKS[i].name, note, spot, sprites: () => this.gameSprites(GAME_LOOKS[i].key) });
     };
-    HERO_TYPES.forEach((s, i) => out.push({ code: `W${i + 1}`, name: s.name, note: s.note, spot: TYPE_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
+    HERO_SCHOOLS.forEach((s, i) => out.push({ code: `R${i + 1}`, name: s.name, note: s.note, spot: SCHOOL_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
     game(0, GAME_SPOT, { pl: 'bohater, który jest dziś w grze: punkt odniesienia', en: 'the hero the game has today: what the others are measured against' });
+    HERO_TYPES.forEach((s, i) => out.push({ code: `W${i + 1}`, name: s.name, note: s.note, spot: TYPE_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
     HERO_HANDS.forEach((s, i) => out.push({ code: `V${i + 1}`, name: s.name, note: s.note, spot: HAND_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
     HERO_STYLES.forEach((s, i) => out.push({ code: `S${i + 1}`, name: s.name, note: s.note, spot: STYLE_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
     HERO_LOOKS.forEach((c, i) => out.push({ code: `A${i + 1}`, name: c.name, note: c.note, spot: SMALL_SPOTS[i], sprites: () => this.heroSprites('small', i) }));

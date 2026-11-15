@@ -1169,6 +1169,360 @@ const LOWCA_POTWOROW: HeroStyle = {
 /** The hero as four other people: an archetype each, a figure of our own every time. */
 export const HERO_TYPES: HeroStyle[] = [DOMATOR, SMIALEK, POLNOCNY, LOWCA_POTWOROW];
 
+// ==================================================================================================
+// Four characters, four schools.
+//
+// The incarnations above differ in costume and share everything else: one body, one face, one line.
+// These four are the same archetypes again, and nothing is shared: each has its own build, its own face,
+// its own way with line and colour, as if it had come from a different game.
+//
+//   bajarz    16 x 16   picture-book: a plump little man, a mop of curls, dot eyes, a big nose, a brown line
+//   zawadiaka 16 x 16   handheld-RPG: spiky hair, big eyes with a glint, a sword held high, a scarf in the wind
+//   wiking    16 x 20   comic-book ink: a small head on wide shoulders, black shadows, blue sheen on black hair
+//   cien      16 x 16   a silhouette: a hooded cloak to the ground, no face, only two glints, a glow, a red scarf
+//
+// Extra letters:  t T trousers (bajarz)   j the tip of a nose
+
+const BAJARZ: HeroStyle = {
+  id: 'bajarz',
+  name: { pl: 'Domator', en: 'Homebody' },
+  note: { pl: 'szkoła ilustracji dla dzieci: pulchny człowieczek, loki, oczy-kropki, duży nos, tobołek; brązowa kreska', en: 'picture-book school: a plump little man, curls, dot eyes, a big nose, a bundle; a brown line' },
+  fh: 16,
+  upper: {
+    down: rows([
+      '................',
+      '................',
+      '.....hlhhlh.....',
+      '...hlhhlhhlhH...',
+      '...hhlhhhlhhH...',
+      '...HssssssssH...',
+      '...ssessssesS...',
+      '...sjssjjssjS...',
+      '....ssssssSS....',
+      '....vvaaaavV....',
+      '..svvvaaaavvVS..',
+      '...vvvayaavvV...',
+      '....vvaaaavV....',
+    ]),
+    up: rows([
+      '................',
+      '................',
+      '.....hlhhlh.....',
+      '...hlhhlhhlhH...',
+      '...hhlhhhlhhH...',
+      '...hlhhhhhlhH...',
+      '...hhhlhhhhHH...',
+      '...HhhhhlhhHH...',
+      '....HHhhhhHH....',
+      '....vvvvvvVV....',
+      '..svvvvvvvvVVS..',
+      '...vvvvvvvVVV...',
+      '....vvvvvvVV....',
+    ]),
+    side: rows([
+      '................',
+      '................',
+      '.....hlhhlh.....',
+      '...hlhhlhhlh....',
+      '...hhlhhhlhhh...',
+      '...Hhhlhsssss...',
+      '...hhhhhssses...',
+      '...Hhhhhsjssjj..',
+      '....HHhhssss....',
+      '....vvvaaa......',
+      '...vvvvaaas.....',
+      '...vvvvayaa.....',
+      '....vvvaaa......',
+    ]),
+  },
+  legsAt: 13,
+  legs: {
+    down: [
+      rows(['....ttttttTT....', '....nnn..nnn....', '................']),
+      rows(['....ttttttTT....', '...nnnn...nn....', '................']),
+      rows(['....ttttttTT....', '....nn...nnnn...', '................']),
+    ],
+    up: [
+      rows(['....ttttttTT....', '....nnn..nnn....', '................']),
+      rows(['....ttttttTT....', '...nnnn...nn....', '................']),
+      rows(['....ttttttTT....', '....nn...nnnn...', '................']),
+    ],
+    side: [
+      rows(['....tttttT......', '....nnn.nnn.....', '................']),
+      rows(['....tttttT......', '...nnn...nnnn...', '................']),
+      rows(['....tttttT......', '.....nnnn.......', '................']),
+    ],
+  },
+  shield: {
+    down: { rows: ['.rr', '.wr', '.rr', '..k', '..k', '..k', '..k'], x: 0, y: 3 },
+    up: { rows: ['rr.', 'rw.', 'rr.', 'k..', 'k..', 'k..', 'k..'], x: 13, y: 3 },
+    side: { rows: ['.rr.', '.wr.', '.rrk', '...k'], x: 0, y: 5, behind: true },
+  },
+  pal: hex({
+    o: 0x4a2f2a, e: 0x4a2f2a, h: 0x9a6436, H: 0x6e4426, l: 0xc08a52, s: 0xfbd6b0, S: 0xe9a98a, j: 0xf09a86,
+    a: 0xfaf3df, v: 0x5f8f52, V: 0x3f6a3c, y: 0xf2cf6a, t: 0x8a5a3a, T: 0x6a4028, n: 0x6a4028, r: 0xe2574c, w: 0xfaf3df, k: 0xc08a52,
+  }),
+  ink: 'tinted',
+};
+
+const ZAWADIAKA: HeroStyle = {
+  id: 'zawadiaka',
+  name: { pl: 'Śmiałek', en: 'Daredevil' },
+  note: { pl: 'szkoła przenośnych RPG: nastroszone włosy, duże oczy z błyskiem, miecz w górze, szal na wietrze; żywe barwy', en: 'handheld-RPG school: spiky hair, big eyes with a glint, a sword held high, a scarf in the wind; bright colours' },
+  fh: 16,
+  upper: {
+    down: rows([
+      '................',
+      '....hh.hhh.h....',
+      '...hhlhhhhhhH...',
+      '...hllhhhhhhH...',
+      '...rrrrrrrrrR...',
+      '...hhhshhsshH...',
+      '...hswesswesH...',
+      '...ssiessiesS...',
+      '...ssssSSsssS...',
+      '....sssssssS....',
+      '....rrrrrrRR....',
+      '...sbaaaaaAAs...',
+    ]),
+    up: rows([
+      '................',
+      '....hh.hhh.h....',
+      '...hhlhhhhhhH...',
+      '...hllhhhhhhH...',
+      '...rrrrrrrrrR...',
+      '...hhhhrhhhhH...',
+      '...hhhhRhhhHH...',
+      '...hhhhhhhhHH...',
+      '...HhHhhHhHHH...',
+      '....HhHHhHH.....',
+      '....rrrrrrRR....',
+      '...sbaaaaaAAs...',
+    ]),
+    side: rows([
+      '................',
+      '....hh.hhh.h....',
+      '...hhlhhhhhh....',
+      '...hllhhhhhhh...',
+      '.rrrrrrrrrrrR...',
+      'rR.hhhhhhshss...',
+      '...hhhhhhsswe...',
+      '...Hhhhhhssies..',
+      '...HHhhhhsssS...',
+      '....HHHhssss....',
+      '....rrrrrrR.....',
+      '....bbaaaaAs....',
+    ]),
+  },
+  legsAt: 12,
+  legs: {
+    down: [
+      rows(['....kkkyykkk....', '....ppp..ppp....', '....nnn..nnN....', '................']),
+      rows(['....kkkyykkk....', '....ppp..nnN....', '....nnn.........', '................']),
+      rows(['....kkkyykkk....', '....nnn..ppp....', '.........nnN....', '................']),
+    ],
+    up: [
+      rows(['....kkkkkkkk....', '....ppp..ppp....', '....nnn..nnN....', '................']),
+      rows(['....kkkkkkkk....', '....ppp..nnN....', '....nnn.........', '................']),
+      rows(['....kkkkkkkk....', '....nnn..ppp....', '.........nnN....', '................']),
+    ],
+    side: [
+      rows(['....Aakkky......', '.....pp.pp......', '.....nn.nnN.....', '................']),
+      rows(['....Aakkky......', '....pp...pp.....', '...nn....nnN....', '................']),
+      rows(['....Aakkky......', '......ppp.......', '......nnN.......', '................']),
+    ],
+  },
+  shield: {
+    down: [
+      { rows: ['.w', '.w', '.w', '.w', '.w', '.w', 'yy'], x: 1, y: 4 },
+      { rows: ['rr.', '..R'], x: 12, y: 10 },
+    ],
+    up: [
+      { rows: ['w.', 'w.', 'w.', 'w.', 'w.', 'w.', 'yy'], x: 13, y: 4 },
+      { rows: ['.rr', 'R..'], x: 1, y: 10 },
+    ],
+    side: { rows: ['..w', '..w', '.w.', '.w.', 'yy.'], x: 12, y: 5 },
+  },
+  pal: hex({
+    o: 0x1f1d36, e: 0x1f1d36, h: 0xffd24a, H: 0xe09a2c, l: 0xfff0a0, r: 0xe8384a, R: 0xa8243c, s: 0xffe6cf, S: 0xf2b596,
+    i: 0x3a7bd5, w: 0xffffff, a: 0x2f6fd0, A: 0x1f4a9a, b: 0x5a94ea, k: 0x7a4a34, y: 0xffd24a, p: 0xffffff, n: 0x7a4a34, N: 0x4a2c26,
+  }),
+  ink: 'tinted',
+};
+
+const WIKING: HeroStyle = {
+  id: 'wiking',
+  name: { pl: 'Północny', en: 'Northman' },
+  note: { pl: 'szkoła komiksu: mała głowa na szerokich barach, czarne plamy cienia, granatowy połysk na czarnych włosach, łuk', en: 'comic-book school: a small head on wide shoulders, black spot shadows, a blue sheen on black hair, a bow' },
+  fh: 20,
+  upper: {
+    down: rows([
+      '................',
+      '......hhhh......',
+      '.....hlhhhh.....',
+      '.....rrrrrr.....',
+      '.....hksskh.....',
+      '.....hssSSh.....',
+      '....hhssSShh....',
+      '..uuUuhsshuUuu..',
+      '..sUuuUuuUuuUs..',
+      '..ss.aaaaaa.ss..',
+      '..sS.aaaaaA.sS..',
+      '..kk.aaaaaA.kk..',
+      '..ss.kkyykk.sS..',
+      '.....aaaaaA.....',
+    ]),
+    up: rows([
+      '................',
+      '......hhhh......',
+      '.....hlhhhh.....',
+      '.....rrrrrr.....',
+      '.....hhlhhh.....',
+      '.....hhhhhh.....',
+      '....hhhlhhhh....',
+      '..uuUhhhhhhUuu..',
+      '..sUuhhlhhhuUs..',
+      '..ss.ahhhha.ss..',
+      '..sS.aahhaA.sS..',
+      '..kk.aaaaaA.kk..',
+      '..ss.kkkkkk.sS..',
+      '.....aaaaaA.....',
+    ]),
+    side: rows([
+      '................',
+      '......hhhh......',
+      '.....hlhhhh.....',
+      '.....rrrrrr.....',
+      '.....hhhsks.....',
+      '.....hhhssss....',
+      '....hhhhsSS.....',
+      '....hhuuUuu.....',
+      '....hhuUuuUu....',
+      '.....aasSa......',
+      '.....aasSa......',
+      '.....aakka......',
+      '.....kkssky.....',
+      '.....aaaaA......',
+    ]),
+  },
+  legsAt: 14,
+  legs: {
+    down: [
+      rows(['.....pp..pP.....', '.....pp..pP.....', '.....pp..pP.....', '.....uu..uU.....', '....uuu..uuU....', '................']),
+      rows(['.....pp..pP.....', '.....pp..pP.....', '.....pp..uU.....', '.....uu..uU.....', '....uuu.........', '................']),
+      rows(['.....pp..pP.....', '.....pp..pP.....', '.....uu..pP.....', '.....uu..uU.....', '.........uuU....', '................']),
+    ],
+    up: [
+      rows(['.....pp..pP.....', '.....pp..pP.....', '.....pp..pP.....', '.....uu..uU.....', '.....uu..uU.....', '................']),
+      rows(['.....pp..pP.....', '.....pp..pP.....', '.....pp..uU.....', '.....uu..uU.....', '.....uu.........', '................']),
+      rows(['.....pp..pP.....', '.....pp..pP.....', '.....uu..pP.....', '.....uu..uU.....', '.........uU.....', '................']),
+    ],
+    side: [
+      rows(['......ppP.......', '......ppP.......', '......ppP.......', '......uuU.......', '......uuuU......', '................']),
+      rows(['......ppP.......', '.....pp.pP......', '....pp...pP.....', '....uu...uU.....', '...uuu...uuU....', '................']),
+      rows(['......ppP.......', '......pPp.......', '.......pp.......', '.......uu.......', '.......uuu......', '................']),
+    ],
+  },
+  shield: {
+    down: {
+      rows: ['.............q..', '..............q.', '..............q.', '................', '................', '................', '................', '................', '................', '................', '.q..............', '.q..............', '..q.............'],
+      x: 0, y: 3, behind: true,
+    },
+    up: { rows: ['.......q', '......q.', '.....q..', '....q...', '....q...', '...q....', '..q.....', '.q......', 'q.......'], x: 4, y: 6 },
+    side: { rows: ['..q', '.q.', '.q.', 'q..', 'q..', 'q..', 'q..', '.q.', '.q.', '..q'], x: 1, y: 4, behind: true },
+  },
+  pal: hex({
+    o: 0x0d0c12, e: 0x0d0c12, k: 0x0d0c12, h: 0x1c1a26, l: 0x4a66a8, s: 0xe8b48c, S: 0xb9805e, r: 0xc2343a,
+    u: 0xa8926e, U: 0x6e5c44, a: 0x7a4a2c, A: 0x4e2e1c, y: 0xd8b04a, p: 0x3d4c6e, P: 0x26304a, q: 0xd8b04a,
+  }),
+  ink: 'tinted',
+};
+
+const CIEN: HeroStyle = {
+  id: 'cien',
+  name: { pl: 'Łowca', en: 'Hunter' },
+  note: { pl: 'szkoła sylwetki: kaptur i płaszcz do ziemi, bez twarzy, tylko dwa błyski oczu, kamień i czerwony szal; bez konturu', en: 'silhouette school: a hood and a cloak to the ground, no face, only two glints, the stone and a red scarf; no line' },
+  fh: 16,
+  upper: {
+    down: rows([
+      '................',
+      '.......dd.......',
+      '......dccc......',
+      '.....dccccC.....',
+      '....dccccccC....',
+      '....cckkkkcC....',
+      '....ckekkekC....',
+      '....chkkkkCC....',
+      '....crrrrrrC....',
+      '...dccczcccCC...',
+      '...dcccccccCC...',
+      '...dccccCccCC...',
+      '..dccccCcccCCC..',
+    ]),
+    up: rows([
+      '................',
+      '.......dd.......',
+      '......dccc......',
+      '.....dccccC.....',
+      '....dccccccC....',
+      '....dccccccC....',
+      '....dcccccCC....',
+      '....ccccccCC....',
+      '....dcccccCC....',
+      '...dccccccCCC...',
+      '...dcccccCcCC...',
+      '...dccccCccCC...',
+      '..dccccCcccCCC..',
+    ]),
+    side: rows([
+      '................',
+      '......dd........',
+      '.....dccc.......',
+      '....dccccc......',
+      '...dccccccC.....',
+      '...ccccckkkC....',
+      '...cccchkekC....',
+      '....ccckkkC.....',
+      '....cccrrrr.....',
+      '...dccccccC.....',
+      '...dccccccC.....',
+      '...dcccCccC.....',
+      '..dccccCcccC....',
+    ]),
+  },
+  legsAt: 13,
+  legs: {
+    down: [
+      rows(['..dcccCccCccCC..', '..CnnCCCCCCnnC..', '................']),
+      rows(['..dcccCccCccCC..', '..CnnnCCCCCnCC..', '................']),
+      rows(['..dcccCccCccCC..', '..CCnCCCCCnnnC..', '................']),
+    ],
+    up: [
+      rows(['..dcccCccCccCC..', '..CCCCCCCCCCCC..', '................']),
+      rows(['..dcccCccCccCC..', '.CCCCCCCCCCCC...', '................']),
+      rows(['..dcccCccCccCC..', '...CCCCCCCCCCCC.', '................']),
+    ],
+    side: [
+      rows(['..dcccCccCcC....', '..CCCCCCCnnn....', '................']),
+      rows(['..dcccCccCcC....', '..CCnnCCCCnnn...', '................']),
+      rows(['..dcccCccCcC....', '...CCCCCnnn.....', '................']),
+    ],
+  },
+  shield: {
+    down: { rows: ['y..', '.m.', '..m'], x: 1, y: 3, behind: true },
+    up: { rows: ['.......y', '......n.', '....yyy.', '....n...', '...n....', '..n.....', '.n......', 'n.......'], x: 5, y: 3 },
+    side: { rows: ['y.', '.m'], x: 1, y: 2, behind: true },
+  },
+  pal: hex({
+    c: 0x34323f, C: 0x24222e, d: 0x55536a, k: 0x0e0d14, e: 0xd8f4ff, h: 0xb9bcb8, r: 0xa8323a, z: 0x7af0ff,
+    n: 0x4a3428, y: 0xc2a85c, m: 0xc9d2da, o: 0x0e0d14,
+  }),
+  ink: 'drawn',
+};
+
+/** The archetypes again, each from a different school of drawing. */
+export const HERO_SCHOOLS: HeroStyle[] = [BAJARZ, ZAWADIAKA, WIKING, CIEN];
+
 /** The same hero as five different artists would draw him. */
 export const HERO_HANDS: HeroStyle[] = [BAJKA, KLOCEK, KIESZONKOWY, LUDOWY, SUROWY];
 
