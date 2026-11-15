@@ -2,7 +2,26 @@
 
 Plac prób to osobna scena, w której nic się nie dzieje poza tym, że bohater chodzi. Służy do jednego: żeby postawić obok siebie
 warianty bohatera, mieszkańców, potworów i scenerii, obejrzeć je w ruchu i wskazać, co zostaje. Nic stąd nie jest jeszcze
-użyte w grze. To, co zostanie wybrane, przenosi się do gry; reszta znika.
+użyte w grze. To, co zostanie wybrane, przenosi się do gry. **Dopóki trwa wybieranie, nic stąd nie znika**: wcześniejsze
+wersje stoją w rzędach archiwum.
+
+## Teraz wybieramy: manierę rysunku bohatera
+
+Bohater jest jeden: ten, który jest dziś w grze (jasne włosy, czerwona krajka z końcami na wietrze, jasna koszula, czerwony
+płaszcz, okrągła tarcza). Stoi na placu jako **G1**. Obok niego jest ten sam bohater narysowany na cztery sposoby:
+
+![Od lewej: bohater z gry (G1), potem S1 Kreska, S2 16 bitów, S3 Malowany, S4 Wysoki 16x20](img/hero-styles.png)
+
+| Kod | Maniera | Rozmiar | Na czym polega |
+|---|---|---|---|
+| **S1** | Kreska | 16×16 | płaskie plamy w czarnym konturze, 7 kolorów: maniera późnych 8 bitów |
+| **S2** | 16 bitów | 16×16 | trzy tony na materiał, połysk na włosach, kontur w ciemnym odcieniu tego, co obrysowuje; 15 kolorów |
+| **S3** | Malowany | 16×16 | bez konturu od strony światła, ciemny brzeg tylko w cieniu (z prawej i u dołu); miękkie, przesunięte barwy |
+| **S4** | Wysoki 16x20 | 16×20 | maniera 16 bitów na 1,25 kafla: rękawy, pas, płaszcz po bokach, nogi z cholewami |
+| **G1** | (z gry) | 16×16 | punkt odniesienia: dwa tony, miękki kontur mieszany z tłem (ponad 200 odcieni na arkuszu) |
+
+Wszystkie cztery trzymają miary bohatera z gry: głowa szeroka na 8 pikseli, tułów nie szerszy, oczy wysokie na dwa piksele.
+Są w `src/art/heroStyles.ts`.
 
 | Pięć pomysłów na bohatera, w dwóch wysokościach | Potwory według wielkości | Dwa kafle: bies i leszy |
 |---|---|---|
@@ -33,8 +52,8 @@ Przy każdym eksponacie plac pokazuje, ile kolorów faktycznie zużywa. Dziś ws
 
 - z ekranu tytułowego: strzałka w dół na **Plac prób**, potem Shift albo Z,
 - albo wprost: `http://localhost:5173/?lab`,
-- albo od razu na wybranym zestawie: `?lab&size=small&hero=lowca&mood=zmierzch`
-  (`size`: `small`, `tall`; `hero`: `wojak`, `druzynnik`, `lowca`, `wilczy`, `kolpak`;
+- albo od razu na wybranym zestawie: `?lab&hero=S2&mood=zmierzch`
+  (`hero`: kod eksponatu, np. `S2`, `G1`, `A3`, `B5`; `size`: `small`, `tall` (wzrost mieszkańców);
   `mood`: `poranek`, `zmierzch`, `jesien`, `ponuro`, `noc`; `ink`: `tinted`, `dark`, `none`).
 
 ## Klawisze
@@ -42,9 +61,9 @@ Przy każdym eksponacie plac pokazuje, ile kolorów faktycznie zużywa. Dziś ws
 | Klawisz | Co zmienia |
 |---|---|
 | WASD / strzałki | bohater chodzi |
-| **1 / 2** | wysokość bohatera, którym się chodzi: 16×16 albo 16×24 (razem z nim zmieniają się mieszkańcy) |
-| **Q / E** | pomysł na bohatera, którym się chodzi |
-| **O** | kontur ludzi: barwny / ciemny / bez konturu |
+| **Q / E** | poprzedni / następny bohater, którym się chodzi: po kolei wszyscy, od S1 do archiwum |
+| **1 / 2** | wzrost mieszkańców: 16×16 albo 16×24 |
+| **O** | kontur lalek (A, B, mieszkańcy): barwny / ciemny / bez konturu |
 | **N** | nastrój scenerii (pora dnia, pora roku) |
 | **Shift** | świat: Jawia / Nawia |
 | **G** | siatka kafli 16 px |
@@ -61,12 +80,17 @@ Każdy eksponat ma kod. Wystarczy napisać „bohater B1, strzyga P9, zjawa P12,
 
 | Kody | Co | Zachowanie |
 |---|---|---|
-| **A1–A5** | bohater na jeden kafel (16×16), pięć pomysłów | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **S1–S4** | jeden bohater w czterech manierach (patrz wyżej) | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **G1** | bohater, który jest dziś w grze | jak wyżej |
+| **A1–A5** | lalki na jeden kafel (16×16): pięć pomysłów na postać | jak wyżej |
 | **B1–B5** | te same pomysły na półtora kafla (16×24) | jak wyżej |
+| **G2–G4** | archiwum: pozostałe wyglądy z gry (klawisz H): Pastuszek, Góral, Wędrowiec | jak wyżej |
+| **X1–X6** | archiwum: postacie ze „szkieletu” (głowa szersza od tułowia), 16×16 i 16×24 | jak wyżej |
+| **Z1–Z4** | archiwum: pierwsze ręcznie rysowane zwierzęta (żmija, wilki, dzik) | chodzą tam i z powrotem |
 | **N1–N4** | mieszkańcy: zielarka, starzec, gospodyni, dziecko (w wysokości wybranej klawiszem 1 / 2; dziecko ma zawsze jeden kafel) | stoją w zagrodach i obracają się |
 | **P1–P16** | potwory, pogrupowane według wysokości | chodzą tam i z powrotem; ognik i morownik stoją |
 
-Pomysły na bohatera (ten sam numer w obu wysokościach):
+Pomysły na postać z poprzedniej iteracji (lalki; ten sam numer w obu wysokościach):
 
 | Nr | Kto | Pomysł |
 |---|---|---|
@@ -131,7 +155,9 @@ Czego jeszcze nie ma: zamachu mieczem, gardy, obrażeń, ataków potworów. Post
 |---|---|
 | scena | `src/scenes/PlaygroundScene.ts` (miejsca eksponatów to tabele `*_SPOTS`) |
 | mapa łąki | `src/lab/playground.room.txt` (zwykły plik pokoju; nie należy do świata gry) |
-| ludzie | `src/art/dolls.ts`: ciała `TALL_SHIRT`, `SMALL_SHIRT`, `*_ROBE`; głowy `HEAD_*`; rzeczy (`SHIELD`, `CLOAK_*`, `BOW_*`...); `HERO_LOOKS`, `FOLK_LOOKS`; `dollFrame`, `dollSheet` |
+| maniery bohatera | `src/art/heroStyles.ts`: `HERO_STYLES` (głowa z tułowiem, trzy układy nóg, tarcza, paleta, sposób obrysowania), `styleFrame`, `styleSheet` |
+| ludzie (lalki) | `src/art/dolls.ts`: ciała `TALL_SHIRT`, `SMALL_SHIRT`, `*_ROBE`; głowy `HEAD_*`; rzeczy (`SHIELD`, `CLOAK_*`, `BOW_*`...); `HERO_LOOKS`, `FOLK_LOOKS`; `dollFrame`, `dollSheet` |
+| archiwum | `src/art/archive.ts`: wcześniejsze postacie ze szkieletu i pierwsze zwierzęta, bez zmian |
 | szkielet potworów | `src/art/rig.ts`: `Figure`, `figureFrame`, `figureSheet` |
 | potwory | `src/art/cast.ts`: `CREATURES`, rysunki zwierząt |
 | nastroje | `MOODS` w `src/art/surface.ts` |
@@ -140,7 +166,12 @@ Litery w rysunkach ludzi znaczą wszędzie to samo (`h H l` włosy, `s S t` skó
 `f F` buty, `c C d` płaszcz albo kaptur, `m n M` metal...; pełna lista jest na górze `dolls.ts`), więc pod ten sam rysunek
 można podłożyć inną paletę.
 
-- **Nowy pomysł na bohatera**: wpis w `HERO_LOOKS`: `head` (głowa: po trzy rysunki dla `tall` i `small`; 10 i 8 wierszy,
+- **Nowa maniera bohatera**: wpis w `HERO_STYLES`: `upper` (głowa i tułów, od góry komórki), `legs` (stoi, krok, drugi krok),
+  `shield` (rysunek i miejsce w każdym widoku), `pal`, `ink` (`drawn`: kontur jest w rysunku jako litera `o`; `tinted`: dorysowany
+  dookoła; `rim`: dorysowany tylko z prawej i u dołu) i `line` (kolor dorysowanej kreski przy danej literze). Wysokość komórki to `fh`.
+- **Wszyscy bohaterowie, którymi da się chodzić**, to jedna lista: `listCandidates()` w scenie. Kto na niej jest, ten stoi
+  na łące i jest pod Q / E.
+- **Nowy pomysł na postać (lalka)**: wpis w `HERO_LOOKS`: `head` (głowa: po trzy rysunki dla `tall` i `small`; 10 i 8 wierszy,
   ostatni to podbródek), `pal` (kolor każdej litery), `line` (które litery biorą ciepły kontur; reszta dostaje `pal.o`),
   `gear` (rzeczy i to, czy w danym widoku leżą pod ciałem, na nim, czy na wierzchu). `stillArm` wyłącza machanie ręką
   z tarczą w widoku z boku, `weave` zmienia literę zależnie od miejsca (oczka kolczugi).
@@ -161,4 +192,4 @@ można podłożyć inną paletę.
    Przy 16×24 trzeba sprawdzić zasięg miecza i to, jak głowa zachodzi na ściany i drzewa.
 2. Wybrane potwory dostają klatki ataku i wchodzą do tabeli wrogów (`SPECS` w `src/entities/Enemy.ts`).
 3. Wybrany nastrój staje się paletą gry albo jej części (np. poranek przy wsi, ponuro przy kurhanie).
-4. To, co odpadło, jest usuwane z `dolls.ts` i `cast.ts`, a plac prób zostaje jako narzędzie.
+4. To, co odpadło, przechodzi do `archive.ts` (nie jest kasowane, dopóki styl nie jest zamknięty), a plac prób zostaje jako narzędzie.

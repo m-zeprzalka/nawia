@@ -1,19 +1,23 @@
 // The playground: a place to compare looks, not to play.
 //
 // The hero walks around a meadow that has a bit of everything in it. Along the roads stand exhibits:
-// every idea for the hero in both heights, the villagers, and the monsters grouped by how tall they
-// stand (one tile, one and a half, two). Every exhibit has a code (A2, B1, P7...) so a choice can be
+// the hero in every manner and look tried so far, the villagers, and the monsters grouped by how tall they
+// stand (one tile, one and a half, two). Every exhibit has a code (S2, A1, P7...) so a choice can be
 // named in one word; standing next to one shows what it is, its size and how many colours it uses.
 //
-// Nothing here is used by the game itself. What is chosen here gets built into the game; see docs/PLAYGROUND.md.
+// Nothing is removed from here while the choosing goes on: what was drawn earlier stands in the archive rows.
+// What is chosen gets built into the game; see docs/PLAYGROUND.md.
 //
-//   1 / 2  hero height (16x16, 16x24)     Q / E  hero look          O  line round people    N  scenery mood
-//   SHIFT  world                          G      tile grid          T  labels               ESC  back to the title
+//   Q / E  walk as the previous / next hero     1 / 2  villagers' height     O  line round the dolls    N  scenery mood
+//   SHIFT  world                                G      tile grid             T  labels                  ESC  back to the title
 
 import Phaser from 'phaser';
 import { DEPTH, GAME_H, GAME_W, TILE, TUNE, otherWorld, type World } from '../config.ts';
+import { HERO as GAME_HERO, HERO_LOOKS as GAME_LOOKS } from '../art/actors.ts';
+import { BUILDS as OLD_BUILDS, HEROES as OLD_HEROES, OLD_BEASTS } from '../art/archive.ts';
 import { CREATURES } from '../art/cast.ts';
 import { FOLK_LOOKS, HERO_LOOKS, dollSheet, type Ink, type Size } from '../art/dolls.ts';
+import { HERO_STYLES, styleSheet } from '../art/heroStyles.ts';
 import { RIG, figureSheet, type FigureStyle } from '../art/rig.ts';
 import { MOODS, SURF } from '../art/surface.ts';
 import { ART, addBufferTexture } from '../art/textures.ts';
@@ -43,11 +47,20 @@ interface Sprites {
   frame: (view: View, phase: number) => number;
 }
 
-/** The two heights the hero is being tried in. */
+/** The two heights the dolls come in. */
 const SIZES: { id: Size; name: Bilingual; short: string }[] = [
-  { id: 'small', name: { pl: 'bohater 16x16 (jeden kafel)', en: 'hero 16x16 (one tile)' }, short: '16x16' },
-  { id: 'tall', name: { pl: 'bohater 16x24 (półtora kafla)', en: 'hero 16x24 (a tile and a half)' }, short: '16x24' },
+  { id: 'small', name: { pl: 'lalki 16x16: pięć pomysłów na postać', en: 'dolls 16x16: five ideas for the character' }, short: '16x16' },
+  { id: 'tall', name: { pl: 'lalki 16x24: te same pomysły, półtora kafla', en: 'dolls 16x24: the same ideas, a tile and a half' }, short: '16x24' },
 ];
+
+/** The hero as he can be walked: one of these is picked with Q / E, and every one stands in the meadow. */
+interface Candidate {
+  code: string;
+  name: Bilingual;
+  note: Bilingual | null;
+  spot: [number, number];
+  sprites: () => Sprites;
+}
 
 /** Monsters are inked one way: a single dark line, the way a 16-bit sprite spends one colour on its outline. */
 const INK: FigureStyle = { outline: 'dark', sat: 1, val: 1 };
@@ -62,8 +75,19 @@ const INKS: { id: Ink; name: Bilingual }[] = [
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
 
 /** Where the exhibits stand, in tiles. */
-const SMALL_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13], [11, 13], [14, 13]];
-const TALL_SPOTS: [number, number][] = [[2, 18], [5, 18], [8, 18], [11, 18], [14, 18]];
+const STYLE_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13], [11, 13], [14, 13]];
+const SMALL_SPOTS: [number, number][] = [[2, 18], [5, 18], [8, 18], [11, 18], [14, 18]];
+const TALL_SPOTS: [number, number][] = [[2, 23], [5, 23], [8, 23], [11, 23], [14, 23]];
+const OLD_LOOK_SPOTS: [number, number][] = [[2, 28], [5, 28], [8, 28]];
+const OLD_RIG_SPOTS: [number, number][] = [[11, 28], [13, 28], [15, 28], [17, 28], [19, 28], [21, 28]];
+const OLD_BEAST_SPOTS: [number, number][] = [[25, 23], [29, 23], [33, 23], [38, 23]];
+const HEADINGS: { spot: [number, number]; name: Bilingual }[] = [
+  { spot: STYLE_SPOTS[0], name: { pl: 'jeden bohater, cztery maniery (G1: ten z gry)', en: 'one hero, four manners (G1: the one in the game)' } },
+  { spot: SMALL_SPOTS[0], name: SIZES[0].name },
+  { spot: TALL_SPOTS[0], name: SIZES[1].name },
+  { spot: OLD_LOOK_SPOTS[0], name: { pl: 'archiwum: wyglądy z gry (G) i postacie ze szkieletu (X)', en: 'archive: looks from the game (G) and rig figures (X)' } },
+  { spot: OLD_BEAST_SPOTS[0], name: { pl: 'archiwum: pierwsze zwierzęta', en: 'archive: the first animals' } },
+];
 const FOLK_SPOTS: [number, number][] = [[3, 8], [7, 8], [12, 8], [16, 8]];
 const CLASS_SPOTS: Record<string, [number, number][]> = {
   '1': [[22, 13], [25, 13], [28, 13], [33, 13], [37, 13], [41, 13]],
@@ -159,8 +183,9 @@ export class PlaygroundScene extends Phaser.Scene {
   private info!: PixelText;
   private infoBox!: Phaser.GameObjects.Rectangle;
   private keys!: PixelText;
-  private size: Size = 'tall';
-  private costume = 0;
+  private size: Size = 'small';
+  private candidates: Candidate[] = [];
+  private picked = 0;
   private mood = 0;
   private ink = 0;
   private labels = true;
@@ -184,16 +209,18 @@ export class PlaygroundScene extends Phaser.Scene {
     this.vx = 0;
     this.vy = 0;
 
-    // ?size=small&hero=lowca&mood=noc opens the playground on a particular combination
+    // ?hero=S2&size=tall&mood=noc&ink=dark opens the playground on a particular combination
     const q = new URLSearchParams(location.search);
     const pick = (list: { id: string }[], id: string | null, fallback: number): number => {
       const i = list.findIndex((e) => e.id === id);
       return i >= 0 ? i : fallback;
     };
-    if (q.get('size') === 'small') this.size = 'small';
-    this.costume = pick(HERO_LOOKS, q.get('hero'), this.costume);
+    if (q.get('size') === 'tall') this.size = 'tall';
     this.mood = pick(MOODS, q.get('mood'), this.mood);
     this.ink = pick(INKS, q.get('ink'), this.ink);
+    this.candidates = this.listCandidates();
+    const wanted = this.candidates.findIndex((c) => c.code.toLowerCase() === (q.get('hero') ?? '').toLowerCase());
+    if (wanted >= 0) this.picked = wanted;
 
     this.cameras.main.setBackgroundColor(0x05050b);
     this.paint();
@@ -206,7 +233,7 @@ export class PlaygroundScene extends Phaser.Scene {
     addBufferTexture(this, 'lab:grid', grid);
     this.grid = this.add.tileSprite(0, 0, this.painter.w, this.painter.h, 'lab:grid').setOrigin(0, 0).setDepth(DEPTH.floorDecor).setVisible(false);
 
-    this.hero = new Figure(this, 10 * TILE + 8, 11 * TILE + 8, this.heroSprites(this.size, this.costume));
+    this.hero = new Figure(this, 10 * TILE + 8, 11 * TILE + 8, this.candidates[this.picked].sprites());
     this.buildExhibits();
     this.light();
 
@@ -230,8 +257,8 @@ export class PlaygroundScene extends Phaser.Scene {
     };
     on('ONE', () => this.setSize('small'));
     on('TWO', () => this.setSize('tall'));
-    on('Q', () => this.setCostume(this.costume - 1));
-    on('E', () => this.setCostume(this.costume + 1));
+    on('Q', () => this.pick(this.picked - 1));
+    on('E', () => this.pick(this.picked + 1));
     on('N', () => {
       this.mood = (this.mood + 1) % MOODS.length;
       this.paint();
@@ -307,6 +334,38 @@ export class PlaygroundScene extends Phaser.Scene {
     return this.sheet(`hero:${look.id}:${size}:${ink}`, () => dollSheet(look, size, ink));
   }
 
+  /** A sheet of the game itself (it is already a texture): its rows are the views, its first three columns stand and walk. */
+  private gameSprites(key: string): Sprites {
+    const col = [GAME_HERO.STAND, GAME_HERO.WALK_A, GAME_HERO.STAND, GAME_HERO.WALK_B, GAME_HERO.STAND];
+    const row: Record<View, number> = { down: GAME_HERO.DOWN, up: GAME_HERO.UP, side: GAME_HERO.SIDE };
+    return { key, fw: GAME_HERO.fw, fh: GAME_HERO.fh, colors: 0, frame: (view, phase) => row[view] * GAME_HERO.cols + col[phase] };
+  }
+
+  /** Every hero there is to compare, in the order Q / E walks through them: the newest first, the archive last. */
+  private listCandidates(): Candidate[] {
+    const out: Candidate[] = [];
+    HERO_STYLES.forEach((s, i) => out.push({ code: `S${i + 1}`, name: s.name, note: s.note, spot: STYLE_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
+    const game = (i: number, spot: [number, number], note: Bilingual): void => {
+      out.push({ code: `G${i + 1}`, name: GAME_LOOKS[i].name, note, spot, sprites: () => this.gameSprites(GAME_LOOKS[i].key) });
+    };
+    game(0, STYLE_SPOTS[4], { pl: 'bohater, który jest dziś w grze: punkt odniesienia dla S1-S4', en: 'the hero the game has today: what S1-S4 are measured against' });
+    HERO_LOOKS.forEach((c, i) => out.push({ code: `A${i + 1}`, name: c.name, note: c.note, spot: SMALL_SPOTS[i], sprites: () => this.heroSprites('small', i) }));
+    HERO_LOOKS.forEach((c, i) => out.push({ code: `B${i + 1}`, name: c.name, note: c.note, spot: TALL_SPOTS[i], sprites: () => this.heroSprites('tall', i) }));
+    for (let i = 1; i < GAME_LOOKS.length; i++) game(i, OLD_LOOK_SPOTS[i - 1], { pl: 'wygląd z gry (klawisz H): to samo ciało, inna głowa i barwy', en: 'a look from the game (the H key): the same body, another head and colours' });
+    (['small', 'tall'] as const).forEach((size, k) =>
+      OLD_HEROES.forEach((c, i) =>
+        out.push({
+          code: `X${k * OLD_HEROES.length + i + 1}`,
+          name: c.name,
+          note: { pl: `postać ze szkieletu, ${size === 'small' ? '16x16' : '16x24'}: głowa szersza od tułowia („żarówka”)`, en: `a rig figure, ${size === 'small' ? '16x16' : '16x24'}: the head wider than the trunk` },
+          spot: OLD_RIG_SPOTS[k * OLD_HEROES.length + i],
+          sprites: () => this.sheet(`old:${c.id}:${size}`, () => figureSheet('', c.make(OLD_BUILDS[size]), INK)),
+        }),
+      ),
+    );
+    return out;
+  }
+
   private folkSprites(i: number): Sprites {
     const look = FOLK_LOOKS[i];
     const ink = INKS[this.ink].id;
@@ -343,10 +402,18 @@ export class PlaygroundScene extends Phaser.Scene {
       label.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
       this.exhibits.push({ code, title, name, note, lift, figure, label, does, homeX: x, t: Math.random() * 3, sprites });
     };
-    // the hero's looks walk on the spot, so every one of them shows its stride; villagers only turn
-    HERO_LOOKS.forEach((c, i) => add(`A${i + 1}`, c.name, c.name, c.note, SMALL_SPOTS[i], 'show', () => this.heroSprites('small', i)));
-    HERO_LOOKS.forEach((c, i) => add(`B${i + 1}`, c.name, c.name, c.note, TALL_SPOTS[i], 'show', () => this.heroSprites('tall', i)));
+    // every hero walks on the spot, so each shows its stride; villagers only turn
+    for (const c of this.candidates) add(c.code, c.name, c.name, c.note, c.spot, 'show', c.sprites);
     FOLK_LOOKS.forEach((c, i) => add(`N${i + 1}`, c.name, c.name, c.note, FOLK_SPOTS[i], 'turn', () => this.folkSprites(i)));
+    OLD_BEASTS.forEach((c, i) =>
+      add(`Z${i + 1}`, c.name, c.name, null, OLD_BEAST_SPOTS[i], 'pace', () =>
+        this.sheet(`old:${c.id}`, () => {
+          const buf = new PixelBuffer(c.frames[0].w * c.frames.length, c.frames[0].h);
+          c.frames.forEach((f, k) => buf.copy(f, k * f.w, 0));
+          return { buf, fw: c.frames[0].w, fh: c.frames[0].h };
+        }),
+      ),
+    );
 
     const used: Record<string, number> = { '1': 0, '1.5': 0, '2': 0 };
     CREATURES.forEach((c, i) => {
@@ -362,8 +429,8 @@ export class PlaygroundScene extends Phaser.Scene {
       text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
       this.titles.push({ text, name: CLASS_NAME[cls] });
     }
-    for (const [spots, name] of [[SMALL_SPOTS, SIZES[0].name], [TALL_SPOTS, SIZES[1].name]] as const) {
-      const text = new PixelText(this, spots[0][0] * TILE - 8, spots[0][1] * TILE - 52, { width: 180, height: 13, color: 0x9af4ff });
+    for (const { spot, name } of HEADINGS) {
+      const text = new PixelText(this, spot[0] * TILE - 8, spot[1] * TILE - 52, { width: 300, height: 13, color: 0x9af4ff });
       text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
       this.titles.push({ text, name });
     }
@@ -376,9 +443,9 @@ export class PlaygroundScene extends Phaser.Scene {
     for (const f of [this.hero, ...this.exhibits.map((e) => e.figure)]) f.sprite.setTint(tint);
   }
 
-  /** The hero's height or the line changed: everybody drawn as a doll gets a new sheet. */
+  /** The villagers' height or the line changed: everybody drawn as a doll gets a new sheet. */
   private restyle(): void {
-    this.hero.use(this.heroSprites(this.size, this.costume));
+    this.hero.use(this.candidates[this.picked].sprites());
     for (const e of this.exhibits) {
       e.figure.use(e.sprites());
       e.label.image.setY(Math.round(e.figure.y) - e.figure.set.fh - e.lift);
@@ -397,16 +464,19 @@ export class PlaygroundScene extends Phaser.Scene {
     this.refresh();
   }
 
-  private setCostume(i: number): void {
-    this.costume = (i + HERO_LOOKS.length) % HERO_LOOKS.length;
-    this.hero.use(this.heroSprites(this.size, this.costume));
+  /** Walk as another hero. */
+  private pick(i: number): void {
+    this.picked = (i + this.candidates.length) % this.candidates.length;
+    this.hero.use(this.candidates[this.picked].sprites());
     this.light();
     this.refresh();
   }
 
   private refresh(): void {
-    this.status[0].setText(`[1/2] ${SIZES[this.size === 'small' ? 0 : 1].short}   [Q/E] ${t(HERO_LOOKS[this.costume].name)}`);
-    this.status[1].setText(`[O] ${t(INKS[this.ink].name)}   [N] ${t(MOODS[this.mood].name)}`);
+    const c = this.candidates[this.picked];
+    const s = this.hero.set;
+    this.status[0].setText(`[Q/E] ${c.code} ${t(c.name)} (${s.fw}x${s.fh})   [N] ${t(MOODS[this.mood].name)}`);
+    this.status[1].setText(t({ pl: `[1/2] mieszkańcy ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] lalki: ${INKS[this.ink].name.pl}`, en: `[1/2] villagers ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] dolls: ${INKS[this.ink].name.en}` }));
     this.keys.setText(t({ pl: '[SHIFT] świat  [G] siatka  [T] podpisy  [ESC] menu', en: '[SHIFT] world  [G] grid  [T] labels  [ESC] menu' }));
   }
 
