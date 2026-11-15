@@ -27,6 +27,8 @@ export class Lighting {
   readonly image: Phaser.GameObjects.Image;
   /** Colour of unlit space (0..1). */
   ambient: RGB = [0.5, 0.5, 0.6];
+  /** How much the corners of the screen darken, 0..1. Under the open sky they barely do. */
+  vignetteK = 1;
 
   private readonly tex: Phaser.Textures.CanvasTexture;
   private readonly ctx: CanvasRenderingContext2D;
@@ -66,8 +68,9 @@ export class Lighting {
   render(camX: number, camY: number, lights: readonly LightSource[], time: number): void {
     const { r, g, b, vignette, dither, out } = this;
     const [ar, ag, ab] = this.ambient;
+    const vk = this.vignetteK;
     for (let i = 0; i < N; i++) {
-      const v = vignette[i];
+      const v = 1 - (1 - vignette[i]) * vk;
       r[i] = ar * v;
       g[i] = ag * v;
       b[i] = ab * v;

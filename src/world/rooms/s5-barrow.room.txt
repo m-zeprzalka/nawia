@@ -1,0 +1,24 @@
+// The way down. The gate (G) in the ring of boulders opens when both sides are quiet:
+// a drowned one in Jawia, a wraith in Nawia. Thorns (J) and remembered trees (N, stumps in Jawia)
+// make the clearing a different shape on each side.
+room: barrow
+biome: forest
+at: 0,-1
+name: Kurhan | The Barrow
+
+map:
+###########.########
+####t....t.,.t..####
+##....N....,....."##
+#..J......,,...N...#
+#..J..z.R.,,.R.....#
+#........,,,,....u.#
+#..N...1R.,,.R...~~#
+#....,,,,,,.....~~~#
+#RRRRGRRRRRRt...~~##
+###RR^RR############
+####R^R#############
+
+sign 1:
+  jawia: Kurhan. Wejście otworzy się, gdy po obu stronach zapadnie cisza. | The barrow. The way in opens when both sides fall silent.
+  nawia: ...zejdź do nas. Rozkołysz dzwon... | ...come down to us. Make the bell swing...

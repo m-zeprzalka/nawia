@@ -1,18 +1,19 @@
-// The first room. Teaches the shift in both directions, and what happens if you turn the stone in a bad place.
+// The first room of the stronghold, right under the barrow (the steps in the north wall lead back up to the forest).
+// Repeats the lesson of the surface in stone: the shift in both directions, and what happens if you turn the stone in a bad place.
 // The ornamental path (,) runs straight under the rubble: the way goes on, just not in this world.
 room: threshold
 at: 0,0
 name: Przedsionek | The Threshold
 
 map:
-####################
-####!###!###########
+#####.##############
+####!.##!###########
 ###o.....###!##!####
 ##.......###....####
 ##.1.I...###.2..s###
 ##...,,,,JJJ,,,,.NN.
 ##..,,...###....o###
-##T.,@..T###....####
+##T.,...T###....####
 ###o.....###########
 ####################
 ####################

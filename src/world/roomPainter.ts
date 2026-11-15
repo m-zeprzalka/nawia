@@ -7,6 +7,7 @@ import { PixelBuffer } from '../core/PixelBuffer.ts';
 import { hash2 } from '../core/rng.ts';
 import { TILESET_COLS, TILE_INDEX, type TileName } from '../art/tiles.ts';
 import { TERRAIN, isWalkable, type Dungeon, type RoomDef } from './roomFormat.ts';
+import type { RoomPicture } from './painter.ts';
 
 const { VOID, FLOOR, WALL, WATER, BRIDGE, RUBBLE } = TERRAIN;
 
@@ -18,13 +19,15 @@ const FACES: TileName[] = [
 const TOPS = ['top0', 'top1', 'top2', 'top3'] as const;
 const WATERS = ['water0', 'water1', 'water2', 'water3'] as const;
 
-export class RoomPainter {
+export class RoomPainter implements RoomPicture {
   readonly room: RoomDef;
   readonly w: number;
   readonly h: number;
   readonly buffers: Record<World, PixelBuffer>;
   /** What you cannot stand on in the *other* world, drawn over cells you can stand on here. */
   readonly echo: Record<World, PixelBuffer>;
+  /** Nothing in the stronghold is drawn above the hero. */
+  readonly overhead = null;
   /** Cells that animate (water, and the starry void of Nawia), per world. */
   readonly animated: Record<World, number[]> = { jawia: [], nawia: [] };
 

@@ -25,7 +25,7 @@ for (const r of dungeon.rooms)
     const gy = r.gy * SCREEN_ROWS + o.ty;
     const k = `${gx},${gy}`;
     // urns can be smashed; souls, torches, hearts and everything alive are not in the way
-    if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell' || o.kind === 'idol' || o.kind === 'pillar' || o.kind === 'switch') blocked.add(k);
+    if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell' || o.kind === 'idol' || o.kind === 'pillar' || o.kind === 'switch' || o.kind === 'npc') blocked.add(k);
     if (o.kind === 'greatbell') for (const dx of [-1, 0, 1]) blocked.add(`${gx + dx},${gy}`);
     if (o.kind === 'switch') switches.add(k);
     if (o.kind === 'post') posts.set(k, o.moon);

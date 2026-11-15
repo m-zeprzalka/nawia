@@ -1,0 +1,32 @@
+// Where the game starts. Nothing here can hurt you: walk, talk, turn the stone and look around.
+// The garden in the corner is fenced (J): what the living built is not there in Nawia.
+// Under the old linden (O) the dead of the village stand, and only show on the other side.
+room: village
+biome: village
+at: -1,-3
+name: Wieś | The Village
+
+map:
+####################
+##t.HHHH......HHH.##
+#...HHHH..O...HHH..#
+#.o.HDHH.s.s.oHDH.t#
+#....,....".1..,...#
+#.@..,,,,,,,,,,,,,,,
+#..."..W3.,........#
+#t2.......,.JJJJJJJ#
+##...b....,,J"h"".##
+###.t...."..J.""..##
+####################
+
+sign 1:
+  look: herbalist
+  jawia: Kurzy bóg siedzi już w rękojeści twojego miecza. Przekręć go, a zobaczysz to, co ja widzę co noc. | The hag stone sits in the hilt of your sword now. Turn it, and you will see what I see every night.
+
+sign 2:
+  look: child
+  jawia: Idziesz do lasu? Dziadek mówi, że pod kurhanem jest zejście do zatopionego grodu. | Are you going to the forest? Grandpa says there is a way down to the drowned stronghold under the barrow.
+
+sign 3:
+  look: elder
+  jawia: Odkąd dzwon milczy, umarli nie odchodzą. Stoją pod starą lipą. Tyle że my ich nie widzimy. | Since the bell fell silent, the dead do not leave. They stand under the old linden. We just cannot see them.

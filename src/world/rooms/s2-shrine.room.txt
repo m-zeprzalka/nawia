@@ -1,0 +1,25 @@
+// The first shift that is needed: the footbridge is gone in Jawia, the old bridge (:) still stands in Nawia.
+// Turning the stone back while standing on it is the first taste of the border's penalty.
+// A fire (T) burns before the carved god (I) of the village; in Nawia one of the dead keeps it company.
+// The palisade gate (G) is open: nothing guards the edge of the village.
+room: shrine
+biome: village
+at: 0,-3
+name: Skraj wsi | The Edge of the Village
+
+map:
+####################
+######~~############
+#t...~~~...t..."..##
+#..."~~~.....I.s"..#
+#....~~~.....T....t#
+,,,,,:::,,,,,,,....#
+#....~~~....,......#
+#.1..~~~....,..b...#
+#t...~~~~...,....t.#
+#FFFF~~~~FFFGFFFFFF#
+#####~~~~###.#######
+
+sign 1:
+  jawia: Kładkę zabrała wiosenna woda. Starego mostu nie ma od stu lat. | The spring flood took the footbridge. The old bridge has been gone for a hundred years.
+  nawia: ...most stoi. Tylko nie przekręcaj kamienia nad wodą... | ...the bridge stands. Just do not turn the stone above the water...

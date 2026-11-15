@@ -1,0 +1,23 @@
+// Optional. A place to learn the shield: the gate (G) opens when both wisps are gone,
+// and steel cannot reach them over the water. Behind it the old bridge (:) leads to the island, in Nawia only.
+room: forest-pond
+biome: forest
+at: 1,-2
+name: Uroczysko | The Hallowed Pool
+
+map:
+####################
+#####t....t#########
+##...."........#####
+,,,,,,,,..."....t###
+#.1....,,,,FGF....##
+#t..~~~~~~~~:~~~~..#
+#..~~~w~~~~~:~~~w~.#
+~~~~~~~~~~~.h.~~~~~#
+~~~~~~~~~~~s.I~~~~t#
+####t~~~~~~~~~~~.###
+####################
+
+sign 1:
+  jawia: Uroczysko. Błędne ognie pilnują wody. Stal ich nie sięgnie, ale tarcza odeśle im ich własny ogień. | The hallowed pool. Wisps guard the water. Steel cannot reach them, but a shield sends their own fire back.
+  nawia: ...na wyspę prowadził most. Prowadzi do dziś... | ...a bridge led to the island. It still does...

@@ -7,7 +7,7 @@ import { makeSheets, makeFog, makeGlow } from '../src/art/sprites.ts';
 import { rgb } from '../src/core/PixelBuffer.ts';
 import { renderText } from '../src/art/font.ts';
 import { makeTitle } from '../src/art/title.ts';
-import { RoomPainter } from '../src/world/roomPainter.ts';
+import { paintRoom } from '../src/world/painter.ts';
 import { loadDungeon } from './rooms.ts';
 import { writePng } from './png.ts';
 
@@ -50,11 +50,18 @@ writePng(join(out, 'title_jawia.png'), makeTitle('jawia').scaled(3));
 writePng(join(out, 'title_nawia.png'), makeTitle('nawia').scaled(3));
 
 const dungeon = loadDungeon();
+const only = process.argv[4];
 for (const room of dungeon.rooms) {
-  const p = new RoomPainter(room, dungeon, tilesets);
+  if (only && !room.id.includes(only)) continue;
+  const p = paintRoom(room, dungeon, tilesets);
   const both = new PixelBuffer(p.w, p.h * 2 + 4);
   both.copy(p.buffers.jawia, 0, 0);
   both.copy(p.buffers.nawia, 0, p.h + 4);
+  // what hangs over the hero's head (tree crowns, roof ridges) goes on top
+  if (p.overhead) {
+    both.blit(p.overhead.jawia, 0, 0);
+    both.blit(p.overhead.nawia, 0, p.h + 4);
+  }
   writePng(join(out, `room_${room.id}.png`), both.scaled(scale));
 }
 console.log(`previews written to ${out}`);

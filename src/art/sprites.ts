@@ -3,6 +3,7 @@
 //
 // Characters live in actors.ts; this file holds everything that stands still.
 
+import { surfacePropSheet } from './surfaceProps.ts';
 import { type World } from '../config.ts';
 import { PixelBuffer, bayer, fromAscii, mix, rgb, type Color } from '../core/PixelBuffer.ts';
 import { makeActorSheets } from './actors.ts';
@@ -590,5 +591,5 @@ export function makeGlow(size = 48): PixelBuffer {
 }
 
 export function makeSheets(): Sheet[] {
-  return [...makeActorSheets(), objectSheet(), greatBellSheet(), slashSheet(), particleSheet(), uiSheet()];
+  return [...makeActorSheets(), objectSheet(), surfacePropSheet(), greatBellSheet(), slashSheet(), particleSheet(), uiSheet()];
 }

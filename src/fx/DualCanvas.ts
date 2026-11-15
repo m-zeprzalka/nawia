@@ -33,9 +33,12 @@ export class DualCanvas {
   private t = -1;
   private maxR = 0;
   private dirty = true;
+  /** A layer with holes in it (tree crowns over the hero): the ring only shows where there is something to show it on. */
+  private readonly transparent: boolean;
 
-  constructor(scene: Phaser.Scene, buffers: Record<World, PixelBuffer>, world: World) {
+  constructor(scene: Phaser.Scene, buffers: Record<World, PixelBuffer>, world: World, transparent = false) {
     this.scene = scene;
+    this.transparent = transparent;
     this.buffers = buffers;
     this.world = world;
     this.w = buffers.jawia.w;
@@ -124,16 +127,22 @@ export class DualCanvas {
       const er = edge & 255, eg = (edge >> 8) & 255, eb = (edge >> 16) & 255;
       const glow = 9; // px of afterglow behind the ring
       const n = out.length;
+      const holes = this.transparent;
       for (let i = 0; i < n; i++) {
         const d = dist[i];
         if (d > r + 1.5) {
           out[i] = prev[i];
         } else if (d > r - 0.6) {
-          out[i] = d > r + 0.4 ? edge : edgeHot;
+          if (holes && prev[i] >>> 24 === 0 && next[i] >>> 24 === 0) out[i] = 0;
+          else out[i] = d > r + 0.4 ? edge : edgeHot;
         } else if (d > r - glow) {
           // freshly revealed: still glowing in the new world's colour
           const k = (1 - (r - d) / glow) * 0.55;
           const c = next[i];
+          if (holes && c >>> 24 === 0) {
+            out[i] = 0;
+            continue;
+          }
           const cr = c & 255, cg = (c >> 8) & 255, cb = (c >> 16) & 255;
           out[i] = (0xff000000 | ((cb + (eb - cb) * k) << 16) | ((cg + (eg - cg) * k) << 8) | (cr + (er - cr) * k)) >>> 0;
         } else {

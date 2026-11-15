@@ -66,18 +66,22 @@ export class Fx {
       .setDepth(DEPTH.fxWorld);
   }
 
-  /** Ambient specks for the current room: dust in Jawia, rising wisps in Nawia. */
-  setAmbience(world: World, x: number, y: number, w: number, h: number): void {
+  /**
+   * Ambient specks for the current room: dust in Jawia, rising wisps in Nawia.
+   * Under the open sky the living world has pollen drifting on the wind instead.
+   */
+  setAmbience(world: World, x: number, y: number, w: number, h: number, outdoors = false): void {
     this.motes?.destroy();
     const nawia = world === 'nawia';
+    const pollen = outdoors && !nawia;
     this.motes = this.scene.add
       .particles(0, 0, 'px', {
         frame: nawia ? [PX.DOT, PX.DOT, PX.PLUS] : [PX.DOT],
         lifespan: { min: 2600, max: 5200 },
-        speedX: { min: -5, max: 5 },
-        speedY: nawia ? { min: -16, max: -5 } : { min: -3, max: 4 },
-        alpha: { start: nawia ? 0.75 : 0.5, end: 0 },
-        tint: nawia ? [0x9af4ff, 0xb9c8ff, 0xffffff] : [0xd8c8a8, 0xa8a090],
+        speedX: pollen ? { min: 5, max: 16 } : { min: -5, max: 5 },
+        speedY: nawia ? { min: -16, max: -5 } : pollen ? { min: -2, max: 7 } : { min: -3, max: 4 },
+        alpha: { start: nawia ? 0.75 : pollen ? 0.8 : 0.5, end: 0 },
+        tint: nawia ? [0x9af4ff, 0xb9c8ff, 0xffffff] : pollen ? [0xfff6c8, 0xe4f4a8, 0xffffff] : [0xd8c8a8, 0xa8a090],
         // the same density of specks whatever the size of the room
         frequency: (nawia ? 90 : 220) * Math.min(1, (320 * 176) / (w * h)),
         emitZone: {

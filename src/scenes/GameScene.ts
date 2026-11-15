@@ -21,8 +21,8 @@ import { STR, t } from '../i18n/strings.ts';
 import { Hud } from '../ui/Hud.ts';
 import { loadDungeon } from '../world/dungeonData.ts';
 import { BLOCK_FLY, Level, overlap, roomOriginX, roomOriginY } from '../world/Level.ts';
-import type { RoomDef } from '../world/roomFormat.ts';
-import { RoomPainter } from '../world/roomPainter.ts';
+import { paintRoom, type RoomPicture } from '../world/painter.ts';
+import { isSurface, type RoomDef } from '../world/roomFormat.ts';
 
 type State = 'play' | 'slide' | 'rejected' | 'dying' | 'ending' | 'paused';
 
@@ -41,8 +41,12 @@ interface ActiveRoom {
   oy: number;
   w: number;
   h: number;
-  painter: RoomPainter;
+  painter: RoomPicture;
   view: DualCanvas;
+  /** What hangs over the hero's head (tree crowns, roof ridges): drawn above everyone. Surface rooms only. */
+  top: DualCanvas | null;
+  /** Under the open sky (village, forest) rather than in the stronghold. */
+  outdoors: boolean;
   /** Afterimage of the other world's solids, one per world you can be standing in. */
   echo: Record<World, Phaser.GameObjects.Image>;
   echoKeys: string[];
@@ -59,13 +63,28 @@ interface ActiveRoom {
 }
 
 const ACCENT: Record<World, number> = { jawia: 0xffcf6a, nawia: 0x9af4ff };
-// Jawia is dark and lit by fire. Nawia has no darkness to speak of: it glows by itself.
-const AMBIENT: Record<World, RGB> = { jawia: [0.45, 0.46, 0.6], nawia: [0.7, 0.76, 0.98] };
-const HERO_LIGHT: Record<World, RGB> = { jawia: [0.95, 0.8, 0.6], nawia: [0.5, 0.8, 1.0] };
-const HERO_GLOW: Record<World, number> = { jawia: 0.56, nawia: 0.3 };
-const FOG: Record<World, { tint: RGB; alpha: number }> = {
-  jawia: { tint: [0.6, 0.72, 0.66], alpha: 0.13 },
-  nawia: { tint: [0.62, 0.8, 1.0], alpha: 0.24 },
+
+/** The air of a place: how dark it is, what the hero's own light looks like, the mist. */
+interface Dressing {
+  ambient: RGB;
+  heroLight: RGB;
+  heroGlow: number;
+  fog: RGB;
+  fogAlpha: number;
+  /** how much the corners of the screen darken */
+  vignette: number;
+}
+const DRESS: Record<'crypt' | 'surface', Record<World, Dressing>> = {
+  // The stronghold: Jawia is dark and lit by fire. Nawia has no darkness to speak of: it glows by itself.
+  crypt: {
+    jawia: { ambient: [0.45, 0.46, 0.6], heroLight: [0.95, 0.8, 0.6], heroGlow: 0.56, fog: [0.6, 0.72, 0.66], fogAlpha: 0.13, vignette: 1 },
+    nawia: { ambient: [0.7, 0.76, 0.98], heroLight: [0.5, 0.8, 1.0], heroGlow: 0.3, fog: [0.62, 0.8, 1.0], fogAlpha: 0.24, vignette: 1 },
+  },
+  // Under the open sky: a bright morning in Jawia, a moonless night that glows in Nawia.
+  surface: {
+    jawia: { ambient: [1.0, 0.97, 0.9], heroLight: [1.0, 0.9, 0.7], heroGlow: 0, fog: [1.0, 0.96, 0.84], fogAlpha: 0.05, vignette: 0.3 },
+    nawia: { ambient: [0.88, 0.92, 1.0], heroLight: [0.5, 0.8, 1.0], heroGlow: 0.12, fog: [0.62, 0.8, 1.0], fogAlpha: 0.18, vignette: 0.4 },
+  },
 };
 const WATER_FRAME_TIME = 0.22;
 
@@ -100,11 +119,12 @@ export class GameScene extends Phaser.Scene {
   /** Where (and in which world) he came into this room: the place the border throws him back to. */
   private entry = { x: 0, y: 0, world: 'jawia' as World, facing: 'down' as Dir };
   private cleared = new Set<string>();
-  private ambient: RGB = [...AMBIENT.jawia];
-  private heroLight: RGB = [...HERO_LIGHT.jawia];
-  private heroGlow = HERO_GLOW.jawia;
-  private fogTint: RGB = [...FOG.jawia.tint];
-  private fogAlpha = FOG.jawia.alpha;
+  private ambient: RGB = [...DRESS.crypt.jawia.ambient];
+  private heroLight: RGB = [...DRESS.crypt.jawia.heroLight];
+  private heroGlow = DRESS.crypt.jawia.heroGlow;
+  private fogTint: RGB = [...DRESS.crypt.jawia.fog];
+  private fogAlpha = DRESS.crypt.jawia.fogAlpha;
+  private vignette = 1;
   private hasShifted = false;
   private hasAttacked = false;
   private hasGuarded = false;
@@ -168,11 +188,13 @@ export class GameScene extends Phaser.Scene {
       y: oy + spawn.ty * TILE + 8,
     };
 
-    this.ambient = [...AMBIENT[this.world]];
-    this.heroLight = [...HERO_LIGHT[this.world]];
-    this.heroGlow = HERO_GLOW[this.world];
-    this.fogTint = [...FOG[this.world].tint];
-    this.fogAlpha = FOG[this.world].alpha;
+    const dress = DRESS[isSurface(start.biome) ? 'surface' : 'crypt'][this.world];
+    this.ambient = [...dress.ambient];
+    this.heroLight = [...dress.heroLight];
+    this.heroGlow = dress.heroGlow;
+    this.fogTint = [...dress.fog];
+    this.fogAlpha = dress.fogAlpha;
+    this.vignette = dress.vignette;
 
     this.player = new Player(this, free.x, free.y);
     this.player.slash.setTint(ACCENT[this.world]);
@@ -187,6 +209,10 @@ export class GameScene extends Phaser.Scene {
 
     this.room = this.buildRoom(start);
     this.entry = { x: this.player.x, y: this.player.y, world: this.world, facing: this.player.facing };
+    // Painting a surface room takes a few frames until the browser has optimised that code, and one frame after.
+    // Do the slow runs now, while the screen is still black, so walking into the next room does not hitch.
+    const outdoors = dungeon.rooms.filter((r) => isSurface(r.biome)).slice(0, 3);
+    for (let i = 0; i < 2; i++) for (const r of outdoors) paintRoom(r, dungeon, ART.tilesets);
     const cam = this.cameraTarget(this.room, this.player.x, this.player.y);
     this.camX = cam.x;
     this.camY = cam.y;
@@ -212,9 +238,12 @@ export class GameScene extends Phaser.Scene {
   private buildRoom(def: RoomDef): ActiveRoom {
     const ox = roomOriginX(def);
     const oy = roomOriginY(def);
-    const painter = new RoomPainter(def, this.level.dungeon, ART.tilesets);
+    const outdoors = isSurface(def.biome);
+    const painter = paintRoom(def, this.level.dungeon, ART.tilesets);
     const view = new DualCanvas(this, painter.buffers, this.world);
     view.image.setPosition(ox, oy).setDepth(DEPTH.room);
+    const top = painter.overhead ? new DualCanvas(this, painter.overhead, this.world, true) : null;
+    top?.image.setPosition(ox, oy).setDepth(DEPTH.overhead);
 
     const id = roomUid++;
     const echoKeys = [`echo:${id}:jawia`, `echo:${id}:nawia`];
@@ -229,7 +258,7 @@ export class GameScene extends Phaser.Scene {
     // a room is settled once its bell has rung or, if it has none, once nothing in it is left standing
     const cleared = this.cleared.has(def.id) || (!hasFoes && !hasBell);
     const room: ActiveRoom = {
-      def, ox, oy, w: painter.w, h: painter.h, painter, view, echo, echoKeys,
+      def, ox, oy, w: painter.w, h: painter.h, painter, view, top, outdoors, echo, echoKeys,
       props: [], enemies: [], pickups: [], shots: [], boss: null, pips: [], moon: false, bellRung: cleared,
     };
     const bounds = { x: ox, y: oy, w: painter.w, h: painter.h };
@@ -256,7 +285,7 @@ export class GameScene extends Phaser.Scene {
         const key = `${def.id}:${o.tx},${o.ty}`;
         if (!this.taken.has(key)) this.dropHeart(room, cx, cy, key);
       } else {
-        const p = new Prop(this, o, ox, oy, this.world);
+        const p = new Prop(this, o, ox, oy, this.world, outdoors);
         if (p.kind === 'gate') p.setOpen(cleared);
         // the turning stone starts sun side up: sun posts stand, moon posts lie flush with the floor
         if (p.kind === 'post') p.setOpen(p.moon);
@@ -281,6 +310,7 @@ export class GameScene extends Phaser.Scene {
 
   private destroyRoom(r: ActiveRoom): void {
     r.view.destroy();
+    r.top?.destroy();
     r.echo.jawia.destroy();
     r.echo.nawia.destroy();
     for (const key of r.echoKeys) if (this.textures.exists(key)) this.textures.remove(key);
@@ -296,7 +326,13 @@ export class GameScene extends Phaser.Scene {
     this.timeInRoom = 0;
     this.echoT = 0;
     this.hud.showRoomName(t(this.room.def.name));
-    this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h);
+    this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h, this.room.outdoors);
+  }
+
+  /** Starts the ring in a room: on the ground and on whatever hangs overhead. (cx, cy) are global px. */
+  private reveal(room: ActiveRoom, to: World, cx: number, cy: number): void {
+    room.view.reveal(to, cx - room.ox, cy - room.oy);
+    room.top?.reveal(to, cx - room.ox, cy - room.oy);
   }
 
   /** Where the camera sits for a room: locked to it, following only if the room is bigger than the screen. */
@@ -403,7 +439,7 @@ export class GameScene extends Phaser.Scene {
     // inscriptions read themselves when you stand next to them, in the words of the world you are in
     let near: Prop | null = null;
     for (const p of room.props)
-      if (p.kind === 'sign' && Math.abs(p.x - player.x) < 21 && Math.abs(p.y - player.y) < 21) near = p;
+      if ((p.kind === 'sign' || p.kind === 'npc') && Math.abs(p.x - player.x) < 21 && Math.abs(p.y - player.y) < 21) near = p;
     const text = near?.text?.[this.world];
     this.hud.setDialog(text ? t(text) : null);
 
@@ -476,7 +512,7 @@ export class GameScene extends Phaser.Scene {
     this.shiftCd = TUNE.shift.cooldown;
 
     // ...and this is what sells it.
-    room.view.reveal(to, player.x - room.ox, player.y - 6 - room.oy);
+    this.reveal(room, to, player.x, player.y - 6);
     player.flash = 0.07;
     this.applyWorldDressing(to, true);
     this.fx.shiftBurst(player.x, player.y - 6, to);
@@ -491,7 +527,7 @@ export class GameScene extends Phaser.Scene {
   private applyWorldDressing(world: World, announce: boolean): void {
     const { room } = this;
     this.player.slash.setTint(ACCENT[world]);
-    this.fx.setAmbience(world, room.ox, room.oy, room.w, room.h);
+    this.fx.setAmbience(world, room.ox, room.oy, room.w, room.h, room.outdoors);
     this.hud.setWorld(world, announce);
     audio.setWorld(world);
   }
@@ -555,7 +591,7 @@ export class GameScene extends Phaser.Scene {
     player.invuln = 1.2;
     if (this.world !== this.entry.world) {
       this.world = this.entry.world;
-      room.view.reveal(this.world, player.x - room.ox, player.y - 6 - room.oy);
+      this.reveal(room, this.world, player.x, player.y - 6);
       this.applyWorldDressing(this.world, false);
     }
     this.echoT = 0;
@@ -993,7 +1029,7 @@ export class GameScene extends Phaser.Scene {
     if (bell && this.endStep < beats.length && this.stateT >= beats[this.endStep]) {
       this.endStep++;
       this.world = otherWorld(this.world);
-      room.view.reveal(this.world, bell.x - room.ox, bell.y - 14 - room.oy);
+      this.reveal(room, this.world, bell.x, bell.y - 14);
       this.fx.shiftBurst(bell.x, bell.y - 14, this.world);
       this.hud.setWorld(this.world, false);
       audio.setWorld(this.world);
@@ -1020,7 +1056,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
     room.view.update(dt);
+    room.top?.update(dt);
     this.leaving?.view.update(dt);
+    this.leaving?.top?.update(dt);
 
     // things change sides as the ring passes over them
     const r = room.view.radius;
@@ -1039,13 +1077,15 @@ export class GameScene extends Phaser.Scene {
 
     // colours of the air ease towards the current world
     const k = 1 - Math.exp(-rawDt * 9);
+    const dress = DRESS[room.outdoors ? 'surface' : 'crypt'][world];
     for (let i = 0; i < 3; i++) {
-      this.ambient[i] = lerp(this.ambient[i], AMBIENT[world][i], k);
-      this.heroLight[i] = lerp(this.heroLight[i], HERO_LIGHT[world][i], k);
-      this.fogTint[i] = lerp(this.fogTint[i], FOG[world].tint[i], k);
+      this.ambient[i] = lerp(this.ambient[i], dress.ambient[i], k);
+      this.heroLight[i] = lerp(this.heroLight[i], dress.heroLight[i], k);
+      this.fogTint[i] = lerp(this.fogTint[i], dress.fog[i], k);
     }
-    this.heroGlow = lerp(this.heroGlow, HERO_GLOW[world], k);
-    this.fogAlpha = lerp(this.fogAlpha, FOG[world].alpha, k);
+    this.heroGlow = lerp(this.heroGlow, dress.heroGlow, k);
+    this.fogAlpha = lerp(this.fogAlpha, dress.fogAlpha, k);
+    this.vignette = lerp(this.vignette, dress.vignette, k);
 
     this.trauma = Math.max(0, this.trauma - rawDt * 2.2);
     this.kick *= Math.exp(-rawDt * 22);
@@ -1075,6 +1115,7 @@ export class GameScene extends Phaser.Scene {
     const bossLight = this.room.boss?.light(this.world);
     if (bossLight) lights.push(bossLight);
     this.lighting.ambient = this.ambient;
+    this.lighting.vignetteK = this.vignette;
     this.lighting.render(scrollX, scrollY, lights, this.clock);
 
     const tint = rgbToHex(this.fogTint);

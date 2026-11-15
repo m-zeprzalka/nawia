@@ -21,10 +21,19 @@ export type Bilingual = { pl: string; en: string };
 
 export type EnemyKind = 'utopiec' | 'zjawa' | 'ognik' | 'strzyga';
 
+/** What a room is made of: the surface (village, forest) is painted differently from the stronghold below. */
+export type Biome = 'village' | 'forest' | 'crypt';
+export const isSurface = (b: Biome): boolean => b !== 'crypt';
+
+/** Villagers you can talk to (a `sign` block with a `look:` line). */
+export type NpcLook = 'herbalist' | 'elder' | 'woman' | 'child';
+const NPC_LOOKS: readonly string[] = ['herbalist', 'elder', 'woman', 'child'];
+
 export type ObjectDef =
   | { kind: 'brazier'; tx: number; ty: number }
   | { kind: 'torch'; tx: number; ty: number }
   | { kind: 'sign'; tx: number; ty: number; text: Record<World, Bilingual | null> }
+  | { kind: 'npc'; tx: number; ty: number; look: NpcLook; text: Record<World, Bilingual | null> }
   | { kind: 'gate'; tx: number; ty: number }
   | { kind: 'bell'; tx: number; ty: number }
   | { kind: 'urn'; tx: number; ty: number }
@@ -41,6 +50,7 @@ export type ObjectDef =
 export interface RoomDef {
   id: string;
   name: Bilingual;
+  biome: Biome;
   /** Position in the dungeon grid, in screens. */
   gx: number;
   gy: number;
@@ -90,6 +100,17 @@ export const LEGEND: Record<string, [Terrain, Terrain]> = {
   a: [TERRAIN.FLOOR, TERRAIN.FLOOR], // sun post
   m: [TERRAIN.FLOOR, TERRAIN.FLOOR], // moon post
   h: [TERRAIN.FLOOR, TERRAIN.FLOOR], // a heart lying on the floor
+  // ---- the surface (biome: village / forest). These are scenery: the same in both worlds.
+  t: [TERRAIN.WALL, TERRAIN.WALL], // a tree standing on its own
+  O: [TERRAIN.WALL, TERRAIN.WALL], // a great old tree
+  H: [TERRAIN.WALL, TERRAIN.WALL], // a house (a rectangle of H, with one D in its bottom row)
+  D: [TERRAIN.WALL, TERRAIN.WALL], // the door of a house
+  R: [TERRAIN.WALL, TERRAIN.WALL], // a boulder
+  F: [TERRAIN.WALL, TERRAIN.WALL], // palisade
+  W: [TERRAIN.WALL, TERRAIN.WALL], // a well
+  b: [TERRAIN.WALL, TERRAIN.WALL], // a bush
+  '"': [TERRAIN.FLOOR, TERRAIN.FLOOR], // meadow flowers
+  '^': [TERRAIN.FLOOR, TERRAIN.FLOOR], // steps going down
 };
 for (let d = 1; d <= 9; d++) LEGEND[String(d)] = [TERRAIN.FLOOR, TERRAIN.FLOOR];
 
@@ -107,6 +128,8 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
   const meta: Record<string, string> = {};
   const map: string[] = [];
   const signs = new Map<number, Record<World, Bilingual | null>>();
+  const looks = new Map<number, NpcLook>();
+  let currentSign = 0;
 
   let i = 0;
   // header
@@ -131,7 +154,14 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
     const s = /^sign\s+([1-9]):$/.exec(line);
     if (s) {
       current = { jawia: null, nawia: null };
-      signs.set(Number(s[1]), current);
+      currentSign = Number(s[1]);
+      signs.set(currentSign, current);
+      continue;
+    }
+    const l = /^look:\s*(\S+)$/.exec(line);
+    if (l && current) {
+      if (!NPC_LOOKS.includes(l[1])) fail(`line ${i + 1}: unknown look "${l[1]}" (expected one of: ${NPC_LOOKS.join(', ')})`);
+      looks.set(currentSign, l[1] as NpcLook);
       continue;
     }
     const t = /^(jawia|nawia|both):\s*(.+)$/.exec(line);
@@ -149,6 +179,8 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
   const [gx, gy] = meta.at.split(',').map((n) => parseInt(n.trim(), 10));
   if (Number.isNaN(gx) || Number.isNaN(gy)) fail(`bad "at: ${meta.at}"`);
   if (map.length === 0) fail('empty map');
+  const biome = (meta.biome ?? 'crypt') as Biome;
+  if (biome !== 'village' && biome !== 'forest' && biome !== 'crypt') fail(`bad "biome: ${meta.biome}" (village, forest or crypt)`);
 
   const cols = Math.max(...map.map((r) => r.length));
   const rows = map.length;
@@ -158,6 +190,7 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
   const room: RoomDef = {
     id: meta.room,
     name: bilingual(meta.name ?? meta.room),
+    biome,
     gx, gy, cols, rows,
     terrain: { jawia: new Uint8Array(cols * rows), nawia: new Uint8Array(cols * rows) },
     debris: new Uint8Array(cols * rows),
@@ -199,7 +232,9 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
       else if (ch === 'h') room.objects.push({ kind: 'heart', tx: x, ty: y });
       else if (ch >= '1' && ch <= '9') {
         const text = signs.get(Number(ch));
+        const look = looks.get(Number(ch));
         if (!text) fail(`sign '${ch}' is on the map but has no "sign ${ch}:" block`);
+        else if (look) room.objects.push({ kind: 'npc', tx: x, ty: y, look, text });
         else room.objects.push({ kind: 'sign', tx: x, ty: y, text });
       }
     }
@@ -242,6 +277,13 @@ export class Dungeon {
   /** Room containing a global tile coordinate. */
   roomAtTile(gtx: number, gty: number): RoomDef | null {
     return this.byCell.get(`${Math.floor(gtx / SCREEN_COLS)},${Math.floor(gty / SCREEN_ROWS)}`) ?? null;
+  }
+
+  /** The map character at a global tile coordinate, or null outside every room. */
+  charAt(gtx: number, gty: number): string | null {
+    const r = this.roomAtTile(gtx, gty);
+    if (!r) return null;
+    return r.source[gty - r.gy * SCREEN_ROWS]?.[gtx - r.gx * SCREEN_COLS] ?? ' ';
   }
 
   /** Terrain at a global tile coordinate (VOID outside every room). */

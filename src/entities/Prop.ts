@@ -3,12 +3,14 @@
 
 import Phaser from 'phaser';
 import { DEPTH, TILE, type World } from '../config.ts';
+import { FOLK } from '../art/actors.ts';
 import { OBJ } from '../art/sprites.ts';
+import { SOBJ } from '../art/surfaceProps.ts';
 import { hash2 } from '../core/rng.ts';
 import type { LightSource, RGB } from '../fx/Lighting.ts';
 import type { Bilingual, ObjectDef } from '../world/roomFormat.ts';
 
-export type PropKind = 'brazier' | 'torch' | 'sign' | 'gate' | 'bell' | 'urn' | 'idol' | 'pillar' | 'soul' | 'switch' | 'post' | 'greatbell';
+export type PropKind = 'brazier' | 'torch' | 'sign' | 'npc' | 'gate' | 'bell' | 'urn' | 'idol' | 'pillar' | 'soul' | 'switch' | 'post' | 'greatbell';
 export type PropDef = Exclude<ObjectDef, { kind: 'enemy' | 'boss' | 'heart' }>;
 
 const SUN: RGB = [1.0, 0.8, 0.42];
@@ -33,6 +35,10 @@ export class Prop {
   private moonUp = false;
   /** Urns only: is there a heart inside? Fixed per urn, so players can learn which ones to break. */
   readonly holdsHeart: boolean;
+  /** Stands under the open sky (village, forest): it is then drawn from the `surface` sheet. */
+  readonly outdoors: boolean;
+  /** Villagers only: which frames of the `folk` sheet. */
+  private readonly look: number;
 
   readonly sprite: Phaser.GameObjects.Sprite;
   private readonly glow: Phaser.GameObjects.Image | null = null;
@@ -44,21 +50,24 @@ export class Prop {
   private swing = -1;
   private near = 0;
 
-  constructor(scene: Phaser.Scene, def: PropDef, ox: number, oy: number, world: World) {
+  constructor(scene: Phaser.Scene, def: PropDef, ox: number, oy: number, world: World, outdoors = false) {
     this.kind = def.kind;
     this.tx = def.tx;
     this.ty = def.ty;
     this.x = ox + def.tx * TILE + TILE / 2;
     this.y = oy + def.ty * TILE + TILE / 2;
     this.world = world;
-    this.text = def.kind === 'sign' ? def.text : null;
+    this.outdoors = outdoors;
+    this.look = def.kind === 'npc' ? FOLK[def.look] : 0;
+    this.text = def.kind === 'sign' || def.kind === 'npc' ? def.text : null;
     this.moon = def.kind === 'post' && def.moon;
     const h = hash2(Math.round(this.x), Math.round(this.y), 5);
     this.variant = h % 3;
     this.holdsHeart = def.kind === 'urn' && (h >>> 4) % 5 < 2;
 
     this.bottom = oy + (def.ty + 1) * TILE;
-    this.sprite = scene.add.sprite(this.x, this.bottom, def.kind === 'greatbell' ? 'greatbell' : 'objects', 0).setOrigin(0.5, 1);
+    const sheet = def.kind === 'greatbell' ? 'greatbell' : def.kind === 'npc' ? 'folk' : 'objects';
+    this.sprite = scene.add.sprite(this.x, this.bottom, sheet, 0).setOrigin(0.5, 1);
     // floor props sort with characters; wall torches and gates are part of the architecture
     if (def.kind === 'torch') this.sprite.setDepth(DEPTH.floorDecor).setY(this.bottom - 1);
     else if (def.kind === 'gate') this.sprite.setDepth(DEPTH.entities + (this.bottom - 12) / 1000);
@@ -66,7 +75,7 @@ export class Prop {
 
     if (def.kind === 'brazier' || def.kind === 'torch' || def.kind === 'soul') {
       this.glow = scene.add
-        .image(this.x, this.bottom - (def.kind === 'brazier' ? 17 : def.kind === 'torch' ? 15 : 12), 'glow')
+        .image(this.x, this.bottom - (def.kind === 'brazier' ? (outdoors ? 9 : 17) : def.kind === 'torch' ? 15 : 12), 'glow')
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(DEPTH.fog + 1)
         .setAlpha(0.35);
@@ -85,6 +94,7 @@ export class Prop {
     const w = this.world;
     switch (this.kind) {
       case 'brazier':
+        if (this.outdoors) return { x: this.x, y: this.y, radius: 64, color: FIRE[w], intensity: 0.6, flicker: 1, phase: this.phase };
         return { x: this.x, y: this.y - 8, radius: 88, color: FIRE[w], intensity: 0.8, flicker: 1, phase: this.phase };
       case 'torch':
         return { x: this.x, y: this.y + 6, radius: 68, color: FIRE[w], intensity: 0.72, flicker: 1, phase: this.phase };
@@ -149,7 +159,20 @@ export class Prop {
     const row = nawia ? OBJ.ROW_NAWIA : 0;
     const f = Math.floor(this.t * 9) % 4;
     const s = this.sprite;
+    if (this.outdoors && this.applyOutdoors(nawia, f)) {
+      if (this.glow) {
+        if (this.kind === 'soul') this.glow.setTint(0xa050e0).setAlpha(nawia ? 0.22 * (1 - this.near * 0.6) : 0);
+        else this.glow.setTint(FIRE_TINT[this.world]).setAlpha(0.3 + 0.06 * Math.sin(this.t * 13 + this.phase));
+      }
+      return;
+    }
     switch (this.kind) {
+      case 'npc':
+        // the living are only an echo when seen from the other side
+        s.setFrame(this.look + (Math.floor(this.t * 1.6 + this.phase) % 2)).setAlpha(nawia ? 0.3 : 1);
+        if (nawia) s.setTint(0x9fb0d8);
+        else s.clearTint();
+        break;
       case 'brazier':
         s.setFrame(row + OBJ.BRAZIER + f);
         break;
@@ -210,6 +233,40 @@ export class Prop {
     if (this.glow) {
       if (this.kind === 'soul') this.glow.setTint(0xa050e0).setAlpha(nawia ? 0.22 * (1 - this.near * 0.6) : 0);
       else this.glow.setTint(FIRE_TINT[this.world]).setAlpha(0.3 + 0.06 * Math.sin(this.t * 13 + this.phase));
+    }
+  }
+
+  /** The same things as they look under the open sky. Returns false for kinds that look the same everywhere. */
+  private applyOutdoors(nawia: boolean, f: number): boolean {
+    const s = this.sprite;
+    const row = nawia ? SOBJ.ROW_NAWIA : 0;
+    switch (this.kind) {
+      case 'sign':
+        s.setTexture('surface', row + SOBJ.SIGN);
+        return true;
+      case 'brazier':
+        s.setTexture('surface', row + SOBJ.FIRE + f);
+        return true;
+      case 'urn':
+        s.setTexture('surface', row + SOBJ.POT).setVisible(!this.open);
+        return true;
+      case 'idol':
+        s.setTexture('surface', row + SOBJ.IDOL);
+        return true;
+      case 'gate':
+        s.setTexture('surface', (nawia ? SOBJ.GATE_N : SOBJ.GATE) + (this.open ? 1 : 0));
+        return true;
+      case 'soul':
+        if (nawia) {
+          const bob = Math.round(Math.sin(this.t * 1.7 + this.phase) * 1.2);
+          const a = (0.5 + 0.1 * Math.sin(this.t * 3.1 + this.phase)) * (1 - this.near * 0.6);
+          s.setTexture('objects', OBJ.SOUL + this.variant).setAlpha(a).setY(this.bottom - 2 + bob).setDepth(DEPTH.entities + (this.bottom - 3) / 1000);
+        } else {
+          s.setTexture('surface', SOBJ.OFFERING).setAlpha(1).setY(this.bottom).setDepth(DEPTH.floorDecor);
+        }
+        return true;
+      default:
+        return false;
     }
   }
 

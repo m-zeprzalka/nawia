@@ -1,0 +1,25 @@
+// The first fight (a drowned one by the brook), then a two-layer barrier:
+// thorns (J) block the road in Jawia, and the planks over the brook (=) only exist in Jawia.
+// So: Nawia to get past the thorns, back to Jawia to cross the brook. A wraith waits in between.
+// East leads to the hallowed pool (optional).
+room: forest-road
+biome: forest
+at: 0,-2
+name: Stary gościniec | The Old Road
+
+map:
+#####~~~~###.#######
+###~~~~~###.,.t.####
+##~~~~u...,,.1....##
+#~~~~..."..,,,,,,,,,
+#~~~t......,.....t.#
+#~~JJJJJJJJJJJJJJJ##
+#~~~.."....,..t....#
+#~~~~~z....,....~~~~
+##~~~~~~~~~=~~~~~~~~
+####t......,..t#####
+###########.########
+
+sign 1:
+  jawia: Gościniec zarósł cierniem. Żywi nie chodzą tędy od lat. | The road is overgrown with thorns. The living have not walked it for years.
+  nawia: ...tu nigdy nie było cierni. Ale kładki na strudze też nie... | ...there were never thorns here. But no planks over the brook either...

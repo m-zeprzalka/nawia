@@ -1,12 +1,49 @@
 // Everyone who walks, drawn on the grid: one 16x16 tile each, the way the 8- and 16-bit classics did it.
 // The guardian is 2x2 tiles. The sword is its own sprite, laid next to the hero when he swings.
 //
+// House style:
+//  - light falls from the upper left, like on everything else in the game;
+//  - sprites are drawn with one dark outline colour ('o'), which `softOutline` then tints with whatever
+//    it borders: hair gets a brown edge, cloth a wine one. Softer than a black line, still readable on grass;
+//  - heads are about half the figure, eyes two pixels apart: a young man, not a baby.
+//
 // The hero is assembled from parts (upper body, legs, shield) so every pose stays consistent
 // and new poses (a bow, later) are a few lines, not a redraw.
 
-import { PixelBuffer, fromAscii, rgb, type Color } from '../core/PixelBuffer.ts';
+import { PixelBuffer, fromAscii, mix, rgb, type Color } from '../core/PixelBuffer.ts';
+import { hash2 } from '../core/rng.ts';
 import { INK, PAL } from './palette.ts';
-import { art, flame, grid, type Sheet } from './sheet.ts';
+import { art, grid, type Sheet } from './sheet.ts';
+
+/** Tints every outline pixel with the colours it touches. */
+function softOutline(b: PixelBuffer, outline: Color = INK.outline, k = 0.72): PixelBuffer {
+  const out = b.clone();
+  for (let y = 0; y < b.h; y++)
+    for (let x = 0; x < b.w; x++) {
+      if (b.get(x, y) !== outline) continue;
+      let r = 0;
+      let g = 0;
+      let bl = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const c = b.get(x + dx, y + dy);
+          if (c >>> 24 === 0 || c === outline) continue;
+          r += c & 255;
+          g += (c >> 8) & 255;
+          bl += (c >> 16) & 255;
+          n++;
+        }
+      if (n) out.set(x, y, mix((0xff000000 | ((bl / n) << 16) | ((g / n) << 8) | (r / n)) >>> 0, outline, k));
+    }
+  return out;
+}
+
+/** A breathing frame for free: everything above the feet sinks by one pixel. */
+function squash(rows: string[]): string[] {
+  const n = rows.length;
+  return ['.'.repeat(rows[0].length), ...rows.slice(0, n - 3), rows[n - 2], rows[n - 1]];
+}
 
 // =============================================================== the hero
 // 16x16 cells. Rows: facing down, up, side (right; left is a flip).
@@ -38,72 +75,72 @@ type Pose = 'stand' | 'walkA' | 'walkB' | 'atk0' | 'atk1' | 'guard';
 /** Head and torso: rows 0-11 of the cell. */
 const UPPER: Record<Dir3, string[]> = {
   down: art(16, [
-    '....oooooooo....',
-    '...ohhhhhhhho...',
-    '..ohhlhhhhhhho..',
-    '..orrrrrrrrrro..',
-    '..ohssssssssho..',
-    '..ohsessssesho..',
-    '..ossessssesso..',
-    '...osSssssSso...',
+    '.....oooooo.....',
+    '....olllhhho....',
+    '...olhhhhhhHo...',
+    '...orrrrrrrRo...',
+    '...ohhsssshHo...',
+    '...ohsessesHo...',
+    '...oSsessesSo...',
+    '....ossSSsso....',
     '...octtttttco...',
-    '..oscttttttcso..',
+    '..osttttttttso..',
     '..oobbbyybbboo..',
-    '...octttttTco...',
+    '...ottttttTTo...',
   ]),
   up: art(16, [
-    '....oooooooo....',
-    '...ohhhhhhhho...',
-    '..ohhhhhhhlhho..',
-    '..orrrrrrrrrro..',
-    '..ohhhhhhhhhho..',
-    '..oHhhhhhhhhHo..',
-    '..oHHhhhhhhHHo..',
-    '...oHHHHHHHHo...',
-    '...occcccccco...',
-    '..osckccccccso..',
-    '..ooCkcccccCoo..',
-    '...ocCccccCCo...',
+    '.....oooooo.....',
+    '....olllhhho....',
+    '...olhhhhhhHo...',
+    '...orrrrrrrRo...',
+    '...ohhhhhhhHo...',
+    '...ohhhhhhHHo...',
+    '...oHhhhhhHHo...',
+    '....oHHHHHHo....',
+    '...ockcccccCo...',
+    '..osckccccCCso..',
+    '..oockccccCCoo..',
+    '...ockcccCCCo...',
   ]),
   side: art(16, [
-    '....ooooooo.....',
-    '...ohhhhhhho....',
-    '..ohhhhhhhlho...',
+    '.....oooooo.....',
+    '....olllhhho....',
+    '...olhhhhhhho...',
     '.oorrrrrrrrro...',
-    'oRRohhhssseso...',
-    '.ooHhhsssseso...',
-    '..oHhhssssssso..',
-    '...oHssssssso...',
-    '...occtttto.....',
-    '..occcttttso....',
-    '..oCccbbbyo.....',
-    '..oCCctttTo.....',
+    'oRRohhhhsssso...',
+    '.ooRoHhhsseso...',
+    '...ooHhhssesso..',
+    '.....oHsssSso...',
+    '....occtttto....',
+    '...occcttttso...',
+    '...oCccbbbyo....',
+    '...oCCcttTTo....',
   ]),
 };
 
-/** Hips and boots: rows 12-15 of the cell. */
+/** Hem, hips and boots: rows 12-15 of the cell. */
 const LEGS: Record<Dir3, Record<'stand' | 'a' | 'b', string[]>> = {
   down: {
-    stand: art(16, ['...opppPpppo....', '...onnnonnno....', '...onNNonNNo....', '....ooo.ooo.....']),
-    a: art(16, ['...opppPpppo....', '...onnnonnno....', '...onNNoooo.....', '....ooo.........']),
-    b: art(16, ['...opppPpppo....', '...onnnonnno....', '....oooonNNo....', '........ooo.....']),
+    stand: art(16, ['...orRrrrrRro...', '...opppoopppo...', '...onnNoonnNo...', '....ooo..ooo....']),
+    a: art(16, ['...orRrrrrRro...', '...opppoonnNo...', '...onnNo.ooo....', '....ooo.........']),
+    b: art(16, ['...orRrrrrRro...', '...onnNoopppo...', '....ooo.onnNo...', '.........ooo....']),
   },
   up: {
-    stand: art(16, ['...oCcCCcCcCo...', '...onnnonnno....', '...onNNonNNo....', '....ooo.ooo.....']),
-    a: art(16, ['...oCcCCcCcCo...', '...onnnonnno....', '...onNNoooo.....', '....ooo.........']),
-    b: art(16, ['...oCcCCcCcCo...', '...onnnonnno....', '....oooonNNo....', '........ooo.....']),
+    stand: art(16, ['...oCcCccCcCo...', '...opppoopppo...', '...onnNoonnNo...', '....ooo..ooo....']),
+    a: art(16, ['...oCcCccCcCo...', '...opppoonnNo...', '...onnNo.ooo....', '....ooo.........']),
+    b: art(16, ['...oCcCccCcCo...', '...onnNoopppo...', '....ooo.onnNo...', '.........ooo....']),
   },
   side: {
-    stand: art(16, ['...oCppppo......', '....onnonno.....', '....onNonNNo....', '.....oo.oooo....']),
-    a: art(16, ['...oCppppo......', '...onnoooonno...', '...oNno..onNNo..', '....oo....ooo...']),
-    b: art(16, ['...oCppppo......', '.....onnno......', '.....onNNo......', '......ooo.......']),
+    stand: art(16, ['...oCcrrrro.....', '....oppoppo.....', '....onnonnNo....', '....ooo.oooo....']),
+    a: art(16, ['...oCcrrrro.....', '...oppoooppo....', '..onnNo..onnNo..', '..oooo....oooo..']),
+    b: art(16, ['...oCcrrrro.....', '.....opppo......', '.....onnNo......', '......ooo.......']),
   },
 };
 
 /** The round shield as it hangs on his arm... */
-const SHIELD_ROUND = fromAscii(art(6, ['.oooo.', 'owddwo', 'odmido', 'owdDwo', '.oooo.']), HP);
+const SHIELD_ROUND = fromAscii(art(6, ['.oooo.', 'owddwo', 'odmmdo', 'odmiDo', 'owdDwo', '.oooo.']), HP);
 /** ...held out in front of him, seen from the front... */
-const SHIELD_FRONT = fromAscii(art(8, ['.oooooo.', 'owwddwwo', 'owdmmDwo', 'odmiiMDo', 'owdmMDwo', 'owwDDwwo', '.oooooo.']), HP);
+const SHIELD_FRONT = fromAscii(art(8, ['..oooo..', '.owddwo.', 'owdmmdwo', 'odmiimDo', 'odmiiMDo', 'owdmMDwo', '.owDDwo.', '..oooo..']), HP);
 /** ...and edge-on. */
 const SHIELD_EDGE = fromAscii(art(4, ['.oo.', 'owwo', 'owdo', 'omdo', 'omdo', 'owDo', 'owWo', '.oo.']), HP);
 
@@ -122,24 +159,21 @@ function heroFrame(dir: Dir3, pose: Pose): PixelBuffer {
 
   if (dir === 'up') {
     // seen from behind, his shield is on the far side of him
-    if (pose === 'guard') {
-      b.blit(SHIELD_ROUND, 0, 6);
-      b.blit(SHIELD_ROUND, 10, 6);
-    } else b.blit(SHIELD_ROUND, 0, 8 + dy);
+    b.blit(SHIELD_ROUND, pose === 'guard' ? 2 : 0, pose === 'guard' ? 4 : 7 + dy);
     b.blit(legs, 0, 12);
     b.blit(upper, dx, dy);
   } else if (dir === 'down') {
     b.blit(legs, 0, 12);
     b.blit(upper, dx, dy);
-    if (pose === 'guard') b.blit(SHIELD_FRONT, 4, 8);
-    else b.blit(SHIELD_ROUND, 9, 8 + dy);
+    if (pose === 'guard') b.blit(SHIELD_FRONT, 4, 7);
+    else b.blit(SHIELD_ROUND, 9, 7 + dy);
   } else {
     b.blit(legs, 0, 12);
     b.blit(upper, dx, dy);
-    if (pose === 'guard') b.blit(SHIELD_EDGE, 11, 6);
-    else b.blit(SHIELD_ROUND, striking ? 5 : 8, 8 + dy);
+    if (pose === 'guard') b.blit(SHIELD_EDGE, 11, 5);
+    else b.blit(SHIELD_ROUND, striking ? 4 : 7, 7 + dy);
   }
-  return b;
+  return softOutline(b);
 }
 
 /**
@@ -183,6 +217,101 @@ function heroSheet(): Sheet {
   const frames: (PixelBuffer | null)[] = [];
   for (const dir of ['down', 'up', 'side'] as Dir3[]) for (const p of poses) frames.push(p ? heroFrame(dir, p) : null);
   return grid('hero', HERO.fw, HERO.fh, HERO.cols, frames);
+}
+
+// =============================================================== the people of the village
+// 16x16 cells, two frames each (they breathe). They only ever face you.
+
+export const FOLK = { fw: 16, fh: 16, cols: 8, herbalist: 0, elder: 2, woman: 4, child: 6 } as const;
+
+const FP: Record<string, Color> = {
+  ...HP,
+  g: rgb(0x3f7f6c), G: rgb(0x2a5548), // the herbalist's scarf
+  w: rgb(0xf2efe6), W: rgb(0xc9c4b8), // white hair, linen
+  d: rgb(0x80573a), D: rgb(0x573826), // brown wool
+  a: rgb(0xe9dfc6), A: rgb(0xbdb198), // apron
+  v: rgb(0x6fae4a), // a sprig of herbs
+  B: rgb(0x8a5c34), // staff
+  q: rgb(0x7a4a2c), Q: rgb(0x55331f), // dark hair
+};
+
+const HERBALIST = art(16, [
+  '.....oooooo.....',
+  '....oggggggo....',
+  '...ogggggggGo...',
+  '...ogwsssswGo...',
+  '...ogsesseSGo...',
+  '...oGssssssGo...',
+  '....oGsSSsGo....',
+  '...oogggggGoo...',
+  '.vodddaaaadddo..',
+  'vvosddaaaaddso..',
+  '.voodDaaaaDdoo..',
+  '...odDaaaaDdo...',
+  '...odDaaaADdo...',
+  '...odDDaaADDo...',
+  '...oDDDDDDDDo...',
+  '....oooooooo....',
+]);
+const ELDER = art(16, [
+  '.....oooooo.....',
+  '....osssssso.oo.',
+  '...owsssssswoBo.',
+  '...owsesseswoBo.',
+  '...owsssssswoBo.',
+  '...owwwSSwwwoBo.',
+  '....owwwwwwooBo.',
+  '...ottwwwwttoBo.',
+  '..otttwwwwtttso.',
+  '..ostttwwtttoBo.',
+  '..oottttttttoBo.',
+  '...otttttttToBo.',
+  '...otttttttToBo.',
+  '...ottttttTToBo.',
+  '...oTTTTTTTToBo.',
+  '....oooooooo.o..',
+]);
+const WOMAN = art(16, [
+  '.....oooooo.....',
+  '....orrrrrro....',
+  '...orrrrrrrRo...',
+  '...oqqssssqqo...',
+  '...oqsessesqo...',
+  '...oqssssssqo...',
+  '..oqoosSSsooqo..',
+  '..oqowwwwwwoqo..',
+  '..oowwrwwrwwoo..',
+  '..oswwwwwwwwso..',
+  '...obbbbbbbbo...',
+  '...orrRrrRrro...',
+  '...orrRrrRrro...',
+  '..orrrRrrRrrro..',
+  '..oRRRRRRRRRRo..',
+  '...oooooooooo...',
+]);
+const CHILD = art(16, [
+  '................',
+  '................',
+  '................',
+  '.....oooooo.....',
+  '....ollhhhho....',
+  '...olhhhhhhHo...',
+  '...ohhsssshHo...',
+  '...ohsessesso...',
+  '...osssssssso...',
+  '....ossSSsso....',
+  '....otttttto....',
+  '...osttttttso...',
+  '...oottttttoo...',
+  '....otTttTto....',
+  '....oppooppo....',
+  '....ooo..ooo....',
+]);
+
+function folkSheet(): Sheet {
+  const frames: PixelBuffer[] = [];
+  for (const rows of [HERBALIST, ELDER, WOMAN, CHILD]) for (const r of [rows, squash(rows)]) frames.push(softOutline(fromAscii(r, FP)));
+  return grid('folk', FOLK.fw, FOLK.fh, FOLK.cols, frames);
 }
 
 // =============================================================== the sword
@@ -241,94 +370,91 @@ function swordSheet(): Sheet {
 
 export const MOB = { fw: 16, fh: 16, cols: 4, UTOPIEC: 0, ZJAWA: 4, OGNIK: 8, STRZYGA: 12, STRZYGA_N: 16, HEART: 20 } as const;
 
-/** A breathing frame for free: everything above the feet sinks by one pixel. */
-function squash(rows: string[]): string[] {
-  const n = rows.length;
-  return ['.'.repeat(rows[0].length), ...rows.slice(0, n - 3), rows[n - 2], rows[n - 1]];
-}
-
+/** Utopiec: the drowned one. Eyes on top of its head like a frog's, a mouth as wide as its face. */
 const UTOPIEC_PAL: Record<string, Color> = {
   o: INK.outline,
-  g: rgb(0x3d7566), G: rgb(0x285248), L: rgb(0x6aa888), b: rgb(0x8cba90), B: rgb(0x5c9078),
-  w: rgb(0x1f3d2c), W: rgb(0x3a6a40),
-  y: rgb(0xf6f2a4), p: rgb(0x2a1420), m: rgb(0x10181e), t: rgb(0xe6dfc8),
+  g: rgb(0x5f9a84), G: rgb(0x3a6a62), L: rgb(0x93cdab), b: rgb(0xbcdcae), B: rgb(0x86b088),
+  y: rgb(0xf4ea6c), Y: rgb(0xc4aa3a), k: rgb(0x1a1423),
+  m: rgb(0x2a1426), w: rgb(0xf0ecd8), a: rgb(0x2f6a3a), A: rgb(0x58a04c),
 };
 const UTOPIEC_A = art(16, [
-  '.....wWw.wW.....',
-  '....oWWWWWWo....',
-  '...oWWgggWWWo...',
-  '..oWgLLggggggo..',
-  '..ogyyggggyygo..',
-  '..ogypggggypgo..',
-  '..oggggmmggggo..',
-  '..oGgmtmmtmgGo..',
-  '.oogGgmmmmgGgoo.',
-  'oLgoGggggggGogLo',
-  'ogGoGgbbbbgGoGgo',
-  '.oo.oGbbbbGo.oo.',
-  '....oGgBBgGo....',
-  '...oogGooGgoo...',
-  '..oLgGo..oLgGo..',
-  '..oooo....oooo..',
+  '..ooo......ooo..',
+  '.oyyyo....oyyyo.',
+  '.oykyooooooykyo.',
+  '.oGYyaALLAgyYGo.',
+  '.ogLggagggggGGo.',
+  '.ogmmmmmmmmmmgo.',
+  '.oGgwmwmmwmwgGo.',
+  '..oGggggggggGo..',
+  '.ooGgbbbbbbgGoo.',
+  'ogGoGbbbbbbGoGgo',
+  'oLgoGbbBBbbGogGo',
+  '.oo.oGbbBBbGo.oo',
+  '....oGgooGgo....',
+  '...oGgGo.oGgGo..',
+  '..oLgGGo.oLgGGo.',
+  '..ooooo..ooooo..',
 ]);
 const UTOPIEC_C = art(16, [
-  '.....wWw.wW.....',
-  '....oWWWWWWo....',
-  '...oWWgggWWWo...',
-  'oo.oWgLgggggo.oo',
-  'oLoogyyggyygooLo',
-  'ogGogypggypgoGgo',
-  '.ogGogmmmmgoGgo.',
-  '..oGgmttttmgGo..',
+  '..ooo......ooo..',
+  '.oyyyo....oyyyo.',
+  '.oykyooooooykyo.',
+  '.oGYyaALLAgyYGo.',
+  'oooggggggggggooo',
+  'oLgommmmmmmmogLo',
+  'ogGomwwwwwwmoGgo',
+  '.oGommmmmmmmoGo.',
+  '..oGmwwwwwwmGo..',
   '..oGgmmmmmmgGo..',
-  '..oGgmttttmgGo..',
-  '..oGggmmmmggGo..',
-  '...oGgbbbbgGo...',
-  '...oGgBBBBgGo...',
-  '...oogGooGgoo...',
-  '..oLgGo..oLgGo..',
-  '..oooo....oooo..',
+  '..oGgbbbbbbgGo..',
+  '...oGbbBBbbGo...',
+  '....oGgooGgo....',
+  '...oGgGo.oGgGo..',
+  '..oLgGGo.oLgGGo.',
+  '..ooooo..ooooo..',
 ]);
 
+/** Zjawa: a woman of mist. Long hair, holes for eyes, a gown that ends in nothing. */
 const ZJAWA_PAL: Record<string, Color> = {
-  o: INK.soul[0],
-  a: rgb(0xf0f4ff), b: rgb(0xc0ccf6), c: rgb(0x8c98dc), d: rgb(0x5c62b0),
-  k: rgb(0x1c1640), e: rgb(0xff7ad8),
+  o: rgb(0x2a1a52),
+  h: rgb(0x5a48a0), H: rgb(0x3a2c70),
+  a: rgb(0xf6f4ff), b: rgb(0xd2cbf4), c: rgb(0x9d92da), d: rgb(0x6c5eb2),
+  k: rgb(0x1c1238), e: rgb(0xff7ad8), m: rgb(0x3a1e5e),
 };
 const ZJAWA_A = art(16, [
-  '.....oooooo.....',
-  '....oaaaaabo....',
-  '...oaabbbbbco...',
-  '..oabkkkkkkbco..',
-  '..oabkekkekbco..',
-  '..oabkkkkkkbco..',
-  '..oaabkkkkbcco..',
-  '.oaabbbbbbbccdo.',
-  'oabobbbbbbcodcdo',
-  'oco.oabbbcco.oco',
-  '.o..oabbbcdo..o.',
+  '......oooo......',
+  '....oohhhhoo....',
+  '...ohhaaaahho...',
+  '...ohakaakaho...',
+  '..ohHaeaaeaHho..',
+  '..ohHaammaaHho..',
+  '..ohHoabbaoHho..',
+  '.ohHoabbbbaoHho.',
+  '.ohoaabbbbbaoho.',
+  '.oo.oabbbbco.oo.',
+  '....oabbbcco....',
   '....oabbccdo....',
   '.....oabcdo.....',
-  '.....obccdo.....',
-  '......ocdo......',
-  '.......oo.......',
+  '.....oabcdo.....',
+  '......oacdo.....',
+  '.......ooo......',
 ]);
 const ZJAWA_B = [
-  ...ZJAWA_A.slice(0, 11),
-  ...art(16, ['....oabbccdo....', '......oabcdo....', '.......obcdo....', '........ocdo....', '.........oo.....']),
+  ...ZJAWA_A.slice(0, 12),
+  ...art(16, ['.....oabcdo.....', '......oabcdo....', '.......oacdo....', '........ooo.....']),
 ];
 const ZJAWA_C = art(16, [
-  '.....oooooo.....',
-  '....oaaaaabo....',
-  '...oaabbbbbco...',
-  '..oabkkkkkkbco..',
-  '..oabeekkeebco..',
-  '..oabkkkkkkbco..',
-  'oo.oabkeekbco.oo',
-  'oaooabbkkbbcoodo',
-  'obaabbbbbbbccddo',
-  '.oo.oabbbcco.oo.',
-  '....oabbbcdo....',
+  '..oo..oooo..oo..',
+  '.ohhoohhhhoohho.',
+  '.ohHhhaaaahhHho.',
+  '..ohhakaakahho..',
+  '..ohHaeaaeaHho..',
+  '...ohammmmaho...',
+  '...ohammmmaho...',
+  '.ooohabbbbahooo.',
+  'oaaoabbbbbbaoaao',
+  '.oo.oabbbbco.oo.',
+  '....oabbbcco....',
   '....oabbccdo....',
   '.....oabcdo.....',
   '....oabcdo......',
@@ -336,58 +462,81 @@ const ZJAWA_C = art(16, [
   '....ooo.........',
 ]);
 
+/** Strzyga: half woman, half owl. Feathered tufts, lamp eyes, a hooked beak, claws. */
 const STRZYGA_ROWS = art(16, [
-  '....oooooooo....',
-  '...oHHHHHHHHo...',
-  '..oHHHHHHHHHHo..',
-  '..oHHssssssHHo..',
-  '.oHHsrssssrsHHo.',
-  '.oHHssssssssHHo.',
-  '.oHHsttttttsHHo.',
-  '.oHHHsmmmmsHHHo.',
-  '.oHHHHssssHHHHo.',
-  'oooHHsSssSsHHooo',
-  'owsoHsssssssHosw',
-  'owSoHHsssssHHoSw',
-  '.oo.oHsSSsHo.oo.',
-  '....osSooSso....',
+  '..oo........oo..',
+  '.ohHo.oooo.oHho.',
+  '.oHHHoHhhHoHHHo.',
+  '..oHHHHhhHHHHo..',
+  '..oHyyyHHyyyHo..',
+  '..oHykyssykyHo..',
+  '..oHyyynnyyyHo..',
+  '..oHHssnnssHHo..',
+  '...oHsmttmsHo...',
+  '.ooHHdssssdHHoo.',
+  'owsoHddddddHoswo',
+  'owSoHdDddDdHoSwo',
+  '.oo.odDddDdo.oo.',
+  '....odDooDdo....',
   '...owso..oswo...',
   '...ooo....ooo...',
 ]);
 const STRZYGA_POUNCE = [
   ...STRZYGA_ROWS.slice(0, 8),
-  ...art(16, ['owoHHHssssHHHowo', 'osoHHsSssSsHHoso', '.ooHHsssssssHoo.', '...oHHsssssHHo..', '....oHsSSsHo....']),
+  ...art(16, ['owoHHsmttmsHHowo', 'osoHHdssssdHHoso', '.ooHHddddddHHoo.', '...oHdDddDdHo...', '....odDddDdo....']),
   ...STRZYGA_ROWS.slice(13),
 ];
+type StrzygaForm = 'body' | 'soul';
 const STRZYGA_PAL: Record<StrzygaForm, Record<string, Color>> = {
   body: {
-    o: INK.outline, H: rgb(0x2c2438), s: rgb(0xbdb6c8), S: rgb(0x837d96),
-    r: rgb(0xf0404e), t: rgb(0xf4efe4), m: rgb(0x2a1420), w: rgb(0xf4efe4),
+    o: INK.outline, H: rgb(0x3d3248), h: rgb(0x64566f), s: rgb(0xcbc4d6), S: rgb(0x9189a6),
+    y: rgb(0xf8d44c), k: rgb(0x1a1423), n: rgb(0xd88c3a), m: rgb(0x2a1426), t: rgb(0xf4efe4),
+    d: rgb(0x5a2e42), D: rgb(0x38192a), w: rgb(0xf4efe4),
   },
   soul: {
-    o: rgb(0x0d102e), H: rgb(0x2e46a0), s: rgb(0xc4e6ff), S: rgb(0x74a4e4),
-    r: rgb(0xff7ad8), t: rgb(0xffffff), m: rgb(0x18225a), w: rgb(0xffffff),
+    o: rgb(0x0d102e), H: rgb(0x2e46a0), h: rgb(0x5d7dd6), s: rgb(0xcfe6ff), S: rgb(0x7ea8e6),
+    y: rgb(0xffffff), k: rgb(0xff7ad8), n: rgb(0xe08ae8), m: rgb(0x18225a), t: rgb(0xffffff),
+    d: rgb(0x3f4fa6), D: rgb(0x26327a), w: rgb(0xffffff),
   },
 };
-type StrzygaForm = 'body' | 'soul';
 
-/** Will-o'-the-wisp: a sickly flame with eyes. */
-const WISP_FIRE = [rgb(0xf6ffd6), rgb(0xcdf266), rgb(0x76c436), rgb(0x2f7a2c), rgb(0x1a4a28)];
+/** Will-o'-the-wisp: marsh light with a face in it. */
+const WISP_FIRE = [rgb(0xf6ffe0), rgb(0xc4f47c), rgb(0x6ccc52), rgb(0x2c8a4c), rgb(0x124a34)];
 
 function ognikFrame(f: number): PixelBuffer {
   const b = new PixelBuffer(16, 16);
-  flame(b, WISP_FIRE, 8, 13, 11, 9, f);
-  // a round belly under the flame, so it reads as a creature and not as a torch
-  for (let y = 10; y <= 14; y++)
-    for (let x = 4; x <= 11; x++) {
-      const d = Math.hypot(x + 0.5 - 8, (y + 0.5 - 11.5) * 1.25);
-      if (d < 3.9) b.set(x, y, d < 1.6 ? WISP_FIRE[0] : d < 2.9 ? WISP_FIRE[1] : WISP_FIRE[2]);
+  const F = WISP_FIRE;
+  const ph = (f * Math.PI) / 2;
+  // three tongues of flame over a ball of light: [root x, height, half width at the root, lean]
+  const tongues = [
+    [-2.5, 4.4 + Math.sin(ph + 1) * 1.3, 2.1, -1.0],
+    [0.1, 8.4 + Math.sin(ph) * 1.1, 2.9, Math.sin(ph) * 1.5],
+    [2.6, 5.2 + Math.sin(ph + 2.4) * 1.4, 2.1, 1.1],
+  ];
+  for (let y = 1; y < 15; y++)
+    for (let x = 1; x < 15; x++) {
+      const X = x + 0.5;
+      const Y = y + 0.5;
+      let d = Math.hypot(X - 8, (Y - 10.5) * 1.12) / 4.3;
+      if (Y < 10.5)
+        for (const [ox, h, w0, lean] of tongues) {
+          const t = (10.5 - Y) / h;
+          if (t > 1) continue;
+          const half = w0 * Math.pow(1 - t, 0.8);
+          if (half < 0.35) continue;
+          d = Math.min(d, Math.max(Math.abs(X - (8 + ox + lean * t * t)) / half, t * 0.92));
+        }
+      if (d >= 1) continue;
+      b.set(x, y, d < 0.3 ? F[0] : d < 0.6 ? F[1] : d < 0.84 ? F[2] : F[3]);
     }
   const blink = f === 3;
-  b.set(6, 11, WISP_FIRE[4]); b.set(9, 11, WISP_FIRE[4]);
-  if (!blink) { b.set(6, 10, WISP_FIRE[4]); b.set(9, 10, WISP_FIRE[4]); }
-  b.set(7, 13, WISP_FIRE[3]); b.set(8, 13, WISP_FIRE[3]);
-  return b.outlined(rgb(0x12301c));
+  for (const ex of [6, 9]) {
+    b.set(ex, 11, F[4]);
+    if (!blink) b.set(ex, 10, F[4]);
+  }
+  b.set(7, 13, F[3]);
+  b.set(8, 13, F[3]);
+  return b.outlined(F[4]);
 }
 
 /** The guardian's heart, as it is seen from Nawia: shelled while the stone stands, bare when it is stunned. */
@@ -424,9 +573,9 @@ function heartFrame(f: number, bare: boolean): PixelBuffer {
 
 function mobSheet(): Sheet {
   const strzyga = (which: StrzygaForm): PixelBuffer[] =>
-    [STRZYGA_ROWS, squash(STRZYGA_ROWS), STRZYGA_POUNCE].map((rows) => fromAscii(rows, STRZYGA_PAL[which]));
+    [STRZYGA_ROWS, squash(STRZYGA_ROWS), STRZYGA_POUNCE].map((rows) => softOutline(fromAscii(rows, STRZYGA_PAL[which]), STRZYGA_PAL[which].o));
   return grid('mobs', MOB.fw, MOB.fh, MOB.cols, [
-    ...[UTOPIEC_A, squash(UTOPIEC_A), UTOPIEC_C].map((rows) => fromAscii(rows, UTOPIEC_PAL)), null,
+    ...[UTOPIEC_A, squash(UTOPIEC_A), UTOPIEC_C].map((rows) => softOutline(fromAscii(rows, UTOPIEC_PAL))), null,
     ...[ZJAWA_A, ZJAWA_B, ZJAWA_C].map((rows) => fromAscii(rows, ZJAWA_PAL)), null,
     ognikFrame(0), ognikFrame(1), ognikFrame(2), ognikFrame(3),
     ...strzyga('body'), null,
@@ -436,68 +585,116 @@ function mobSheet(): Sheet {
 }
 
 // =============================================================== the guardian
-// 32x32 cells (2x2 tiles): idle A, idle B, wind-up, charge, stunned.
-// A four-sided idol that learned to walk. Stone in Jawia; from Nawia only its heart is real.
+// 32x32 cells: idle A, idle B (a step), wind-up, charge, stunned (cracked).
+// A stone idol of the old kind: a standing stone with a face under a flat cap, fists like boulders.
 
 export const BOSS = { fw: 32, fh: 32, cols: 8, IDLE: 0, IDLE_B: 1, WINDUP: 2, CHARGE: 3, STUNNED: 4 } as const;
 
-const IDOL_CORE = art(20, [
-  '......oooooooo......',
-  '....oo55544443oo....',
-  '...o554444443333o...',
-  '..o55444444433332o..',
-  '.o5544444444333322o.',
-  'oooooooooooooooooooo',
-  '.o44kkkk3443kkkk32o.',
-  '.o44kEEk3443kEEk32o.',
-  '.o44keek3443keek32o.',
-  '.o444kk434433kk332o.',
-  '.o4444443443333332o.',
-  '.o4443333443322222o.',
-  '.o44kkkkkkkkkkkk32o.',
-  '.o4433333333333322o.',
-  'oooooooooooooooooooo',
-  '.o5444444444333332o.',
-  '.o44m4443kk3443322o.',
-  '.o4mMm43k33k343322o.',
-  '.o44m443k33k343322o.',
-  '.o4444433kk3333322o.',
-  '.o3333333333322222o.',
-  '..oooooooooooooooo..',
-]);
-const IDOL_FIST = art(6, ['.oooo.', 'o5443o', 'o4433o', 'o4332o', 'o4332o', 'o3322o', 'o3222o', '.oooo.']);
-const IDOL_FOOT = art(7, ['ooooooo', 'o44332o', 'o33222o', 'ooooooo']);
-
 type BossPose = 'idle' | 'idleB' | 'windup' | 'charge' | 'stunned';
+
+/** Warm weathered stone, dark -> light. */
+const BS = [0x221c2a, 0x3c3341, 0x5c5056, 0x827467, 0xaa997f, 0xd0c09c].map((h) => rgb(h));
+const MOSS = [rgb(0x3f6d38), rgb(0x6aa04a)];
+
+/** A rounded block of stone, lit from the upper left. */
+function stoneBlock(b: PixelBuffer, x0: number, y0: number, w: number, h: number, seed: number, power = 3): void {
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const nx = (x + 0.5 - w / 2) / (w / 2);
+      const ny = (y + 0.5 - h / 2) / (h / 2);
+      if (Math.pow(Math.abs(nx), power) + Math.pow(Math.abs(ny), power) >= 1) continue;
+      const grain = ((hash2(x0 + x, y0 + y, seed) % 100) / 100 - 0.5) * 0.22;
+      const lum = -nx * 0.55 - ny * 0.7 + grain;
+      b.set(x0 + x, y0 + y, lum > 0.55 ? BS[4] : lum > 0.05 ? BS[3] : lum > -0.5 ? BS[2] : BS[1]);
+    }
+}
 
 function bossFrame(pose: BossPose): PixelBuffer {
   const b = new PixelBuffer(32, 32);
-  const R = PAL.jawia.rock;
-  const G = PAL.jawia.growth;
-  const hot = pose === 'windup' || pose === 'charge';
-  const eyes = pose === 'stunned' ? [R[0], R[0]] : hot ? [rgb(0xfff4b8), PAL.jawia.accent] : [PAL.jawia.accent, PAL.jawia.accentSoft];
-  const pal: Record<string, Color> = {
-    o: INK.outline, k: R[0], '1': R[1], '2': R[2], '3': R[3], '4': R[4], '5': R[5],
-    m: G[2], M: G[1], E: eyes[0], e: eyes[1],
+  const by = 4 + (pose === 'charge' ? 2 : pose === 'windup' ? -1 : pose === 'idleB' ? 1 : 0);
+  // feet
+  stoneBlock(b, 8, pose === 'idleB' ? 26 : 27, 7, 4, 5, 2.4);
+  stoneBlock(b, 17, 27, 7, 4, 6, 2.4);
+  // body and the flat cap
+  stoneBlock(b, 6, by, 20, 25, 1, 3.6);
+  stoneBlock(b, 5, by - 2, 22, 8, 2, 2.6);
+  for (let x = 6; x < 26; x++) {
+    b.set(x, by + 5, BS[1]);
+    b.set(x, by + 6, x < 16 ? BS[4] : BS[3]);
+  }
+  // moss on the crown
+  for (let x = 6; x < 26; x++) {
+    const hs = hash2(x, 3, 77);
+    if (hs % 3 === 0) continue;
+    for (let y = by - 2; y < by + 2; y++)
+      if (b.get(x, y) >>> 24 && !(b.get(x, y - 1) >>> 24)) {
+        b.set(x, y, MOSS[hs & 1]);
+        if (hs % 4 === 1) b.set(x, y + 1, MOSS[0]);
+      }
+  }
+  // the face: a heavy brow, deep sockets, a long nose, a slit of a mouth
+  const eyes: Record<BossPose, [number, number]> = {
+    idle: [0xffb84a, 0xffe9a0], idleB: [0xffb84a, 0xffe9a0], windup: [0xfff2c0, 0xffffff],
+    charge: [0xff5a3a, 0xffd070], stunned: [0x3c3341, 0x3c3341],
   };
-  const cy = 5 + (pose === 'idleB' ? 1 : pose === 'windup' || pose === 'stunned' ? 2 : 0);
-  const fistY = pose === 'windup' ? cy + 5 : pose === 'charge' ? cy + 13 : pose === 'stunned' ? Math.min(22, cy + 15) : cy + 11;
-  const foot = fromAscii(IDOL_FOOT, pal);
-  b.blit(foot, 8, 26);
-  b.blit(foot, 17, 26);
-  b.blit(fromAscii(IDOL_CORE, pal), 6, cy);
-  const fist = fromAscii(IDOL_FIST, pal);
-  b.blit(fist, 1, fistY);
-  b.blit(fist, 25, fistY);
+  const fy = by + 8;
+  for (const ex of [9, 18]) {
+    for (let x = 0; x < 5; x++) {
+      b.set(ex + x, fy, BS[1]);
+      b.set(ex + x, fy + 1, BS[0]);
+      b.set(ex + x, fy + 2, BS[0]);
+      b.set(ex + x, fy + 3, x > 0 && x < 4 ? BS[0] : BS[2]);
+    }
+    const [core, hot] = eyes[pose];
+    const wide = pose === 'windup' || pose === 'charge';
+    b.set(ex + 1, fy + 2, rgb(core)); b.set(ex + 2, fy + 2, rgb(hot)); b.set(ex + 3, fy + 2, rgb(core));
+    if (wide) { b.set(ex + 1, fy + 1, rgb(core)); b.set(ex + 2, fy + 1, rgb(hot)); b.set(ex + 3, fy + 1, rgb(core)); }
+  }
+  for (let y = fy + 1; y < fy + 7; y++) {
+    b.set(15, y, BS[5]);
+    b.set(16, y, BS[2]);
+  }
+  b.set(14, fy + 6, BS[4]); b.set(17, fy + 6, BS[1]);
+  const my = fy + 9;
+  if (pose === 'charge') {
+    for (let x = 11; x <= 20; x++) for (let y = my - 1; y <= my + 2; y++) b.set(x, y, BS[0]);
+    for (let x = 12; x <= 19; x += 2) { b.set(x, my - 1, BS[5]); b.set(x + 1, my + 2, BS[4]); }
+  } else {
+    for (let x = 11; x <= 20; x++) { b.set(x, my, BS[0]); b.set(x, my + 1, BS[4]); }
+    b.set(10, my + 1, BS[0]); b.set(21, my + 1, BS[0]);
+  }
+  // a belt of carved marks
+  for (let x = 8; x < 24; x++) {
+    b.set(x, by + 20, BS[1]);
+    if (x % 3 === 0) b.set(x, by + 21, BS[1]);
+    b.set(x, by + 19, x < 15 ? BS[4] : BS[3]);
+  }
+  // old cracks
+  b.set(22, by + 12, BS[1]); b.set(23, by + 13, BS[1]); b.set(23, by + 14, BS[1]); b.set(8, by + 15, BS[1]); b.set(9, by + 16, BS[1]);
+  // fists
+  const fists: Record<BossPose, [number, number, number, number]> = {
+    idle: [0, 15, 26, 15], idleB: [0, 16, 26, 14], windup: [0, 4, 26, 4], charge: [1, 17, 25, 17], stunned: [0, 20, 26, 20],
+  };
+  const [lx, ly, rx, ry] = fists[pose];
+  const fw = pose === 'charge' ? 7 : 6;
+  stoneBlock(b, lx, ly, fw, 9, 3, 2.6);
+  stoneBlock(b, rx - (fw - 6), ry, fw, 9, 4, 2.6);
+  for (const [x, y] of [[lx, ly], [rx - (fw - 6), ry]]) for (let i = 1; i < fw - 1; i += 2) b.set(x + i, y + 6, BS[1]);
+
+  const out = b.outlined(INK.outline);
   if (pose === 'stunned') {
-    // cracked open: the light of the other side shows through
-    const crack: [number, number][] = [[15, 1], [16, 2], [16, 3], [15, 4], [14, 6], [15, 7], [15, 8], [16, 9], [17, 10], [16, 11], [16, 13], [15, 15], [14, 16], [15, 17], [16, 18], [16, 19]];
-    for (const [x, y] of crack) {
-      b.set(x, cy + y, PAL.nawia.accent);
-      if (b.get(x - 1, cy + y) !== 0 && (y & 1) === 0) b.set(x - 1, cy + y, PAL.nawia.accentDeep);
+    // split from crown to belt, and the other side shines through
+    let cx = 15;
+    for (let y = by - 1; y < by + 22; y++) {
+      const hs = hash2(cx, y, 9);
+      out.set(cx, y, rgb(0xdcffff));
+      out.set(cx + 1, y, PAL.nawia.accent);
+      if (hs % 4 === 0) out.set(cx - 1, y, PAL.nawia.accentSoft);
+      if (hs % 3 === 0) cx += hs % 2 ? 1 : -1;
+      cx = Math.max(13, Math.min(18, cx));
     }
   }
-  return b;
+  return out;
 }
 
 function bossSheet(): Sheet {
@@ -530,5 +727,5 @@ function shotSheet(): Sheet {
 }
 
 export function makeActorSheets(): Sheet[] {
-  return [heroSheet(), swordSheet(), mobSheet(), bossSheet(), shotSheet()];
+  return [heroSheet(), folkSheet(), swordSheet(), mobSheet(), bossSheet(), shotSheet()];
 }
