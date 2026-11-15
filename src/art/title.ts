@@ -6,6 +6,7 @@ import { GAME_H, GAME_W, type World } from '../config.ts';
 import { PixelBuffer, bayer, mix, rgb, shade, withAlpha, type Color } from '../core/PixelBuffer.ts';
 import { mulberry32 } from '../core/rng.ts';
 import { drawText, measure } from './font.ts';
+import { heroFromBehind } from './sprites.ts';
 
 const HORIZON = 104;
 export const TITLE_MOON = { x: 262, y: 36, r: 13 } as const;
@@ -238,9 +239,23 @@ export function makeTitle(world: World): PixelBuffer {
     }
   }
   for (let x = 0; x < GAME_W; x++) {
-    const hump = 3 + Math.round(4 * Math.max(0, Math.sin(x * 0.02 + 0.4)) * (x < 80 || x > 250 ? 1 : 0.2));
-    for (let j = 0; j < hump; j++) b.set(x, GAME_H - 1 - j, reed);
+    const shore = 3 + Math.round(4 * Math.max(0, Math.sin(x * 0.02 + 0.4)) * (x < 80 || x > 250 ? 1 : 0.2));
+    // a low rise on the near shore, where someone stands looking at the lake
+    const rise = Math.round(12 * Math.exp(-Math.pow((x - 104) / 34, 2)));
+    for (let j = 0; j < Math.max(shore, rise); j++) b.set(x, GAME_H - 1 - j, reed);
   }
+
+  // --- the hero, from behind: sword, shield, and the long way down
+  const hero = heroFromBehind();
+  const hx = 104 - 16;
+  const hy = GAME_H - 11 - 30;
+  for (let y = 0; y < hero.h; y++)
+    for (let x = 0; x < hero.w; x++) {
+      if (hero.get(x, y) === 0) continue;
+      // lit from the moon's side: a thin rim on the right and on top
+      const edge = hero.get(x + 1, y) === 0 || hero.get(x, y - 1) === 0;
+      b.set(hx + x, hy + y, edge ? rgb(p.mist) : reed);
+    }
   return b;
 }
 

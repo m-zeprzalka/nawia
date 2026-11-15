@@ -1,4 +1,5 @@
-// The heroine. All the "feel" numbers live in TUNE.player (src/config.ts).
+// The hero: sword in the right hand, round shield on the left arm.
+// All the "feel" numbers live in TUNE.player (src/config.ts).
 
 import Phaser from 'phaser';
 import { DEPTH, TUNE, type World } from '../config.ts';
@@ -8,7 +9,7 @@ import type { Box, Level } from '../world/Level.ts';
 
 export const DIR_VEC: Record<Dir, [number, number]> = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] };
 const SLASH_ROW: Record<Dir, number> = { right: SLASH.RIGHT, down: SLASH.DOWN, left: SLASH.LEFT, up: SLASH.UP };
-const WALK_CYCLE = [HERO.STEP_A, HERO.STAND, HERO.STEP_B, HERO.STAND];
+const WALK_CYCLE = [HERO.WALK_A, HERO.STAND, HERO.WALK_B, HERO.STAND];
 const STRIDE = 7; // px travelled per animation frame: feet stay planted at any speed
 
 const approach = (v: number, target: number, step: number): number =>
@@ -23,15 +24,20 @@ export class Player {
   kx = 0;
   ky = 0;
   facing: Dir = 'down';
+  /** Health in half hearts. */
   hp: number = TUNE.player.maxHp;
   invuln = 0;
   dead = false;
+  /** Shield raised: stops blows from the front, slows him down, locks his facing. */
+  guarding = false;
   /** Increases with every swing, so a target is only hit once per swing. */
   swingId = 0;
   /** Seconds since the current swing started, or -1. */
   attackT = -1;
   /** Brief white flash (used when the stone turns). */
   flash = 0;
+  /** 0..1 fade used when the border throws him back. */
+  fade = 1;
 
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly shadow: Phaser.GameObjects.Image;
@@ -46,7 +52,7 @@ export class Player {
     this.x = x;
     this.y = y;
     this.shadow = scene.add.image(x, y, 'shadow');
-    this.sprite = scene.add.sprite(x, y, 'hero', 0).setOrigin(0.5, 1);
+    this.sprite = scene.add.sprite(x, y, 'hero', 0).setOrigin(0.5, HERO.FEET / HERO.fh);
     this.slash = scene.add.sprite(x, y, 'slash', 0).setVisible(false);
     this.sync();
   }
@@ -64,15 +70,23 @@ export class Player {
     return { x: this.x, y: this.y, hw: TUNE.player.hitW / 2, hh: TUNE.player.hitH / 2 };
   }
 
-  /** The area the blade sweeps, in front of the heroine. */
+  /** The area the blade sweeps, in front of him. */
   attackBox(): Box {
     const [dx, dy] = DIR_VEC[this.facing];
     const side = dx !== 0;
     return { x: this.x + dx * 13, y: this.y - 5 + dy * 13, hw: side ? 10 : 13, hh: side ? 13 : 10 };
   }
 
+  /** Would the raised shield stop something coming from (fromX, fromY)? */
+  blocks(fromX: number, fromY: number): boolean {
+    if (!this.guarding) return false;
+    const [fx, fy] = DIR_VEC[this.facing];
+    const d = Math.hypot(fromX - this.x, fromY - this.y) || 1;
+    return ((fromX - this.x) / d) * fx + ((fromY - this.y) / d) * fy > TUNE.player.guardArc;
+  }
+
   /**
-   * @param control false while the game drives her (room slides, cutscenes)
+   * @param control false while the game drives him (room slides, cutscenes)
    * @returns true if a new swing started this frame
    */
   update(dt: number, level: Level, world: World, control: boolean): boolean {
@@ -91,18 +105,20 @@ export class Player {
         this.attackT = -1;
         this.attackCd = P.attackCooldown;
       }
-    } else {
-      if (control && input.wantDir) this.facing = input.wantDir;
-      if (control && this.attackCd <= 0 && input.consume('attack', TUNE.inputBuffer)) {
-        this.attackT = 0;
-        this.swingId++;
-        this.lunge = P.attackLunge;
-        swung = true;
-      }
+    } else if (control && this.attackCd <= 0 && input.consume('attack', TUNE.inputBuffer)) {
+      // a strike always wins over the shield: lower it, swing
+      if (input.wantDir && !this.guarding) this.facing = input.wantDir;
+      this.attackT = 0;
+      this.swingId++;
+      this.lunge = P.attackLunge;
+      swung = true;
     }
+    this.guarding = control && !this.attacking && input.isDown('shield');
+    // he turns freely, unless he is busy: a raised shield keeps facing the threat (so he can back away)
+    if (control && !this.attacking && !this.guarding && input.wantDir) this.facing = input.wantDir;
 
-    // velocity: quick to start, quicker to stop; a swing plants her feet
-    const speed = P.speed * (this.attacking ? 0.2 : 1);
+    // velocity: quick to start, quicker to stop; a swing plants his feet, a raised shield slows him
+    const speed = P.speed * (this.attacking ? 0.2 : this.guarding ? P.guardSpeed : 1);
     const tx = mx * speed;
     const ty = my * speed;
     this.vx = approach(this.vx, tx, (tx !== 0 ? P.accel : P.decel) * dt);
@@ -157,30 +173,47 @@ export class Player {
       }
   }
 
-  /** Moves her along a scripted path (room slides) with the walk animation running. */
+  /** Moves him along a scripted path (room slides) with the walk animation running. */
   drive(x: number, y: number): void {
     const d = Math.hypot(x - this.x, y - this.y);
     this.x = x;
     this.y = y;
     this.vx = 0;
     this.vy = 0;
+    this.guarding = false;
     if (!this.wasMoving) this.walkPhase = 0;
     this.walkPhase += d / STRIDE;
     this.wasMoving = d > 0.01;
     this.sync();
   }
 
-  /** Takes one heart of damage and gets shoved away from (fromX, fromY). */
-  hurt(fromX: number, fromY: number): boolean {
+  /** Loses `amount` half hearts and gets shoved away from (fromX, fromY). */
+  hurt(fromX: number, fromY: number, amount: number): boolean {
     if (this.invuln > 0 || this.dead) return false;
-    this.hp--;
-    this.invuln = TUNE.player.hurtInvuln;
     const d = Math.hypot(this.x - fromX, this.y - fromY) || 1;
     this.kx = ((this.x - fromX) / d) * TUNE.player.knockback;
     this.ky = ((this.y - fromY) / d) * TUNE.player.knockback;
     this.attackT = -1;
-    if (this.hp <= 0) this.dead = true;
+    this.drain(amount);
+    this.invuln = TUNE.player.hurtInvuln;
     return true;
+  }
+
+  /** Loses health without being pushed (the border's toll). */
+  drain(amount: number): void {
+    this.hp = Math.max(0, this.hp - amount);
+    if (this.hp <= 0) this.dead = true;
+  }
+
+  heal(amount: number): void {
+    this.hp = Math.min(TUNE.player.maxHp, this.hp + amount);
+  }
+
+  /** A blow caught on the shield still pushes him back a little. */
+  absorb(fromX: number, fromY: number): void {
+    const d = Math.hypot(this.x - fromX, this.y - fromY) || 1;
+    this.kx = ((this.x - fromX) / d) * 55;
+    this.ky = ((this.y - fromY) / d) * 55;
   }
 
   /** Puts sprites where the logic says they are (rounded: no sub-pixel shimmer). */
@@ -188,18 +221,21 @@ export class Player {
     const px = Math.round(this.x);
     const py = Math.round(this.y);
     const row = this.facing === 'down' ? HERO.DOWN : this.facing === 'up' ? HERO.UP : HERO.SIDE;
-    const col = this.attacking ? HERO.LUNGE : this.wasMoving ? WALK_CYCLE[Math.floor(this.walkPhase) % 4] : HERO.STAND;
+    let col: number = HERO.STAND;
+    if (this.attacking) col = this.attackT < 0.05 ? HERO.ATK0 : this.attackT < 0.15 ? HERO.ATK1 : HERO.ATK2;
+    else if (this.guarding) col = HERO.GUARD;
+    else if (this.wasMoving) col = WALK_CYCLE[Math.floor(this.walkPhase) % 4];
     const depth = DEPTH.entities + (this.y + 4) / 1000;
 
     this.sprite.setFrame(row * HERO.cols + col);
     this.sprite.setFlipX(this.facing === 'left');
     this.sprite.setPosition(px, py + 5);
     this.sprite.setDepth(depth);
-    this.shadow.setPosition(px, py + 3).setDepth(depth - 0.0005);
+    this.shadow.setPosition(px, py + 3).setDepth(depth - 0.0005).setAlpha(this.fade);
 
     // hurt: blink. stone turned: one bright frame.
     const blink = this.invuln > 0 && Math.floor(this.invuln * 16) % 2 === 0;
-    this.sprite.setAlpha(blink ? 0.3 : 1);
+    this.sprite.setAlpha((blink ? 0.3 : 1) * this.fade);
     if (this.flash > 0) this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     else this.sprite.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xffffff);
 
@@ -212,11 +248,5 @@ export class Player {
       this.slash.setPosition(px + fx * 5, py - 5 + fy * 5);
       this.slash.setDepth(this.facing === 'up' ? depth - 0.0002 : depth + 0.0002);
     }
-  }
-
-  setVisible(v: boolean): void {
-    this.sprite.setVisible(v);
-    this.shadow.setVisible(v);
-    if (!v) this.slash.setVisible(false);
   }
 }

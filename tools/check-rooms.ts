@@ -19,7 +19,8 @@ for (const r of dungeon.rooms)
   for (const o of r.objects) {
     const gx = r.gx * SCREEN_COLS + o.tx;
     const gy = r.gy * SCREEN_ROWS + o.ty;
-    if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell') blocked.add(`${gx},${gy}`);
+    // urns can be smashed, souls and torches are not in the way; everything else blocks
+    if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell' || o.kind === 'idol' || o.kind === 'pillar') blocked.add(`${gx},${gy}`);
     if (o.kind === 'bell') goals.push({ x: gx, y: gy, room: r.id });
   }
 

@@ -32,13 +32,24 @@ export const TUNE = {
     attackLunge: 46, // px/s burst at the start of a swing
     hurtInvuln: 1.1,
     knockback: 150,
-    maxHp: 3,
+    /** Health is counted in half hearts. */
+    maxHp: 6,
+    /** What a blow from an enemy costs (half hearts). */
+    enemyDamage: 2,
+    guardSpeed: 0.45, // walking speed behind the raised shield
+    guardArc: 0.2, // how squarely he must face a blow to stop it (dot product)
   },
   shift: {
     cooldown: 0.22,
     revealTime: 0.42, // how long the ring takes to sweep the screen
     nudge: 5, // px the hero may be pushed to make room when shifting next to a wall
     buffer: 0.12, // input buffer (s)
+    /** Turning the stone where something stands on the other side costs this (half hearts)... */
+    rejectDamage: 1,
+    /** ...and throws him back to where he entered the room, after this long. */
+    rejectTime: 0.55,
+    /** How long the afterimage of the world he just left stays visible. */
+    afterimage: 2.6,
   },
   camera: {
     slideTime: 0.55,

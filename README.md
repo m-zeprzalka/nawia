@@ -4,22 +4,27 @@ A small top-down action adventure made for **GitHub Game Off 2026** (theme: **SH
 
 A village at the edge of the marshes. The bell of the drowned stronghold has been silent for years,
 and the border between **Jawia** (the world of the living) and **Nawia** (the world of spirits) is cracking.
-You carry a hag stone set in the hilt of your sword. Turn it, and the world turns with it.
+You carry a sword, a shield, and a hag stone set in the hilt. Turn it, and the world turns with it.
 
 One button switches between two worlds laid over each other. The same room exists in both, but not the same way:
 where rubble blocks the living, the dead remember an open corridor. A bridge stands only on one side.
 Some things can only be hurt in the world they belong to.
 
-> Status: playable base. Five rooms, both worlds, sword, two enemies, a gate, a bell. All art and sound are
-> generated in code as placeholders.
+The border forgives no mistakes: turn the stone where something stands on the other side and it throws you back
+to where you entered the room, half a heart lighter. For a moment after each turn you still see an afterimage of
+the side you left. Learn the room, then turn the stone.
+
+> Status: playable demo. Five rooms (one of them two screens wide), both worlds, sword and shield, two enemies,
+> urns to smash, a gate, a bell. All art and sound are generated in code.
 
 ## Controls
 
 | | Keyboard | Gamepad |
 |---|---|---|
 | Move | WASD / arrows | left stick / d-pad |
-| Shift between worlds | **Shift**, Space, X or K | B, Y, bumpers, triggers |
+| Turn the stone (shift worlds) | **Shift** or Space | Y, left bumper, left trigger |
 | Strike | Z, J or Enter | A, X |
+| Hold the shield | X or K | B, right bumper, right trigger |
 | Pause | Esc / P | Start |
 | Mute / Fullscreen / Language | M / F / L (title screen) | |
 

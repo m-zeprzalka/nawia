@@ -50,7 +50,7 @@ export class TitleScene extends Phaser.Scene {
     this.jam = new PixelText(this, GAME_W - 186, GAME_H - 14, { width: 180, height: 13, align: 'right', color: 0x9a94a6 });
 
     this.veil = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x05050b).setOrigin(0, 0).setAlpha(1).setDepth(10);
-    this.story = new PixelText(this, 24, 44, { width: GAME_W - 48, height: 100, align: 'center', lineHeight: 14 });
+    this.story = new PixelText(this, 16, 30, { width: GAME_W - 32, height: 126, align: 'center', lineHeight: 14 });
     this.story.image.setDepth(11).setVisible(false);
     this.next = new PixelText(this, 0, GAME_H - 18, { width: GAME_W, height: 13, align: 'center', color: 0x9a94a6 });
     this.next.image.setDepth(11).setVisible(false);

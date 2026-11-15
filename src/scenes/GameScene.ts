@@ -4,7 +4,8 @@ import Phaser from 'phaser';
 import {
   DEPTH, GAME_H, GAME_W, TILE, TUNE, VIEW_PAD_Y, otherWorld, type World,
 } from '../config.ts';
-import { ART } from '../art/textures.ts';
+import { OBJ } from '../art/sprites.ts';
+import { ART, addBufferTexture } from '../art/textures.ts';
 import { audio } from '../audio/audio.ts';
 import { globalKeys } from '../core/globalKeys.ts';
 import { input, type Dir } from '../core/input.ts';
@@ -21,7 +22,14 @@ import { BLOCK_FLY, Level, overlap, roomOriginX, roomOriginY } from '../world/Le
 import type { RoomDef } from '../world/roomFormat.ts';
 import { RoomPainter } from '../world/roomPainter.ts';
 
-type State = 'play' | 'slide' | 'dying' | 'ending' | 'paused';
+type State = 'play' | 'slide' | 'rejected' | 'dying' | 'ending' | 'paused';
+
+interface Pickup {
+  x: number;
+  y: number;
+  t: number;
+  sprite: Phaser.GameObjects.Image;
+}
 
 interface ActiveRoom {
   def: RoomDef;
@@ -31,21 +39,28 @@ interface ActiveRoom {
   h: number;
   painter: RoomPainter;
   view: DualCanvas;
+  /** Afterimage of the other world's solids, one per world you can be standing in. */
+  echo: Record<World, Phaser.GameObjects.Image>;
+  echoKeys: string[];
   props: Prop[];
   enemies: Enemy[];
+  pickups: Pickup[];
 }
 
 const ACCENT: Record<World, number> = { jawia: 0xffcf6a, nawia: 0x9af4ff };
-const AMBIENT: Record<World, RGB> = { jawia: [0.4, 0.42, 0.58], nawia: [0.44, 0.5, 0.78] };
-const HERO_LIGHT: Record<World, RGB> = { jawia: [0.95, 0.8, 0.6], nawia: [0.55, 0.85, 1.0] };
+// Jawia is dark and lit by fire. Nawia has no darkness to speak of: it glows by itself.
+const AMBIENT: Record<World, RGB> = { jawia: [0.42, 0.43, 0.58], nawia: [0.7, 0.76, 0.98] };
+const HERO_LIGHT: Record<World, RGB> = { jawia: [0.95, 0.8, 0.6], nawia: [0.5, 0.8, 1.0] };
+const HERO_GLOW: Record<World, number> = { jawia: 0.56, nawia: 0.3 };
 const FOG: Record<World, { tint: RGB; alpha: number }> = {
-  jawia: { tint: [0.6, 0.72, 0.66], alpha: 0.16 },
-  nawia: { tint: [0.62, 0.86, 1.0], alpha: 0.3 },
+  jawia: { tint: [0.6, 0.72, 0.66], alpha: 0.13 },
+  nawia: { tint: [0.62, 0.8, 1.0], alpha: 0.24 },
 };
 const WATER_FRAME_TIME = 0.22;
 
 const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
 const rgbToHex = (c: RGB): number => (Math.round(c[0] * 255) << 16) | (Math.round(c[1] * 255) << 8) | Math.round(c[2] * 255);
+let roomUid = 0;
 
 export class GameScene extends Phaser.Scene {
   private level!: Level;
@@ -69,16 +84,20 @@ export class GameScene extends Phaser.Scene {
   private shiftCd = 0;
   private animT = 0;
   private animFrame = 0;
+  private echoT = 0;
   private slide = { t: 0, fromX: 0, fromY: 0, toX: 0, toY: 0, pFromX: 0, pFromY: 0, pToX: 0, pToY: 0 };
-  private entry = { x: 0, y: 0, world: 'jawia' as World };
+  /** Where (and in which world) he came into this room: the place the border throws him back to. */
+  private entry = { x: 0, y: 0, world: 'jawia' as World, facing: 'down' as Dir };
   private cleared = new Set<string>();
   private ambient: RGB = [...AMBIENT.jawia];
   private heroLight: RGB = [...HERO_LIGHT.jawia];
+  private heroGlow = HERO_GLOW.jawia;
   private fogTint: RGB = [...FOG.jawia.tint];
   private fogAlpha = FOG.jawia.alpha;
   private hasShifted = false;
   private hasAttacked = false;
-  private blockedHintT = 0;
+  private hasGuarded = false;
+  private rejectHintT = 0;
   private timeInRoom = 0;
   private bellSwing = -1;
   private clinkSwing = -1;
@@ -96,13 +115,16 @@ export class GameScene extends Phaser.Scene {
     this.stateT = 0;
     this.clock = 0;
     this.trauma = 0;
+    this.kick = 0;
     this.hitstop = 0;
     this.shiftCd = 0;
+    this.echoT = 0;
     this.leaving = null;
     this.cleared = new Set();
     this.hasShifted = false;
     this.hasAttacked = false;
-    this.blockedHintT = 0;
+    this.hasGuarded = false;
+    this.rejectHintT = 0;
     this.bellSwing = -1;
     this.clinkSwing = -1;
     this.endStep = 0;
@@ -114,7 +136,7 @@ export class GameScene extends Phaser.Scene {
     if (wanted && dungeon.has(wanted)) start = dungeon.get(wanted);
     if (params.get('world') === 'nawia') this.world = 'nawia';
 
-    this.cameras.main.setBackgroundColor(0x07060b);
+    this.cameras.main.setBackgroundColor(0x05050b);
     const ox = roomOriginX(start);
     const oy = roomOriginY(start);
     const spawn = start.spawn && start === dungeon.startRoom() ? start.spawn : { tx: 2, ty: Math.floor(start.rows / 2) };
@@ -125,6 +147,7 @@ export class GameScene extends Phaser.Scene {
 
     this.ambient = [...AMBIENT[this.world]];
     this.heroLight = [...HERO_LIGHT[this.world]];
+    this.heroGlow = HERO_GLOW[this.world];
     this.fogTint = [...FOG[this.world].tint];
     this.fogAlpha = FOG[this.world].alpha;
 
@@ -140,7 +163,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.setWorld(this.world, false);
 
     this.room = this.buildRoom(start);
-    this.entry = { x: this.player.x, y: this.player.y, world: this.world };
+    this.entry = { x: this.player.x, y: this.player.y, world: this.world, facing: this.player.facing };
     const cam = this.cameraTarget(this.room, this.player.x, this.player.y);
     this.camX = cam.x;
     this.camY = cam.y;
@@ -170,33 +193,46 @@ export class GameScene extends Phaser.Scene {
     const view = new DualCanvas(this, painter.buffers, this.world);
     view.image.setPosition(ox, oy).setDepth(DEPTH.room);
 
+    const id = roomUid++;
+    const echoKeys = [`echo:${id}:jawia`, `echo:${id}:nawia`];
+    addBufferTexture(this, echoKeys[0], painter.echo.jawia);
+    addBufferTexture(this, echoKeys[1], painter.echo.nawia);
+    const echoImage = (key: string): Phaser.GameObjects.Image =>
+      this.add.image(ox, oy, key).setOrigin(0, 0).setDepth(DEPTH.fog + 0.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+    const echo = { jawia: echoImage(echoKeys[0]), nawia: echoImage(echoKeys[1]) };
+
     const hasEnemies = def.objects.some((o) => o.kind === 'enemy');
     const cleared = this.cleared.has(def.id) || !hasEnemies;
     const props: Prop[] = [];
     const enemies: Enemy[] = [];
+    const bounds = { x: ox, y: oy, w: painter.w, h: painter.h };
     for (const o of def.objects) {
       if (o.kind === 'enemy') {
-        if (!cleared) enemies.push(new Enemy(this, o.type, ox + o.tx * TILE + 8, oy + o.ty * TILE + 8, this.world, { x: ox, y: oy, w: painter.w, h: painter.h }));
+        if (!cleared) enemies.push(new Enemy(this, o.type, ox + o.tx * TILE + 8, oy + o.ty * TILE + 8, this.world, bounds));
       } else {
         const p = new Prop(this, o, ox, oy, this.world);
-        if (p.kind === 'gate') {
-          p.setOpen(cleared);
-          this.level.setBlocked(def, o.tx, o.ty, !cleared);
-        }
+        if (p.kind === 'gate') p.setOpen(cleared);
+        // urns come back whole every time the room is entered, like pots should
+        this.level.setBlocked(def, o.tx, o.ty, p.solid);
         props.push(p);
       }
     }
-    return { def, ox, oy, w: painter.w, h: painter.h, painter, view, props, enemies };
+    return { def, ox, oy, w: painter.w, h: painter.h, painter, view, echo, echoKeys, props, enemies, pickups: [] };
   }
 
   private destroyRoom(r: ActiveRoom): void {
     r.view.destroy();
+    r.echo.jawia.destroy();
+    r.echo.nawia.destroy();
+    for (const key of r.echoKeys) if (this.textures.exists(key)) this.textures.remove(key);
     r.props.forEach((p) => p.destroy());
     r.enemies.forEach((e) => e.destroy());
+    r.pickups.forEach((p) => p.sprite.destroy());
   }
 
   private onEnterRoom(): void {
     this.timeInRoom = 0;
+    this.echoT = 0;
     this.hud.showRoomName(t(this.room.def.name));
     this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h);
   }
@@ -240,6 +276,9 @@ export class GameScene extends Phaser.Scene {
       case 'slide':
         this.updateSlide(dt);
         break;
+      case 'rejected':
+        this.updateRejected(dt);
+        break;
       case 'dying':
         this.updateDying(dt);
         break;
@@ -258,19 +297,32 @@ export class GameScene extends Phaser.Scene {
     const { player, room, level } = this;
     this.timeInRoom += dt;
     this.shiftCd = Math.max(0, this.shiftCd - dt);
-    this.blockedHintT = Math.max(0, this.blockedHintT - dt);
+    this.rejectHintT = Math.max(0, this.rejectHintT - dt);
 
-    if (this.shiftCd <= 0 && input.consume('shift', TUNE.shift.buffer)) this.tryShift();
+    if (this.shiftCd <= 0 && input.consume('shift', TUNE.shift.buffer)) {
+      this.tryShift();
+      if (this.state !== 'play') return;
+    }
 
     if (player.update(dt, level, this.world, true)) {
       audio.sfx('swing');
       this.hasAttacked = true;
     }
+    if (player.guarding) this.hasGuarded = true;
     if (player.attackActive) this.resolveAttack();
 
     for (const e of room.enemies) {
       e.update(dt, level, this.world, player.x, player.y, !player.dead);
-      if (e.home === this.world && overlap(e.box, player.box) && player.hurt(e.x, e.y)) {
+      if (e.home !== this.world || !overlap(e.box, player.box)) continue;
+      if (player.blocks(e.x, e.y)) {
+        // caught on the shield: it staggers back, and that is the opening
+        e.bash(player.x, player.y);
+        player.absorb(e.x, e.y);
+        audio.sfx('block');
+        this.fx.block((e.x + player.x) / 2, (e.y + player.y) / 2 - 5);
+        this.trauma = Math.max(this.trauma, 0.3);
+        this.hitstop = 0.05;
+      } else if (player.hurt(e.x, e.y, TUNE.player.enemyDamage)) {
         e.recoil(player.x, player.y);
         audio.sfx('hurt');
         this.hud.setHearts(player.hp);
@@ -283,7 +335,8 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
-    for (const p of room.props) p.update(dt);
+    for (const p of room.props) p.update(dt, player.x, player.y);
+    this.updatePickups(dt);
 
     // inscriptions read themselves when you stand next to them, in the words of the world you are in
     let near: Prop | null = null;
@@ -305,12 +358,33 @@ export class GameScene extends Phaser.Scene {
     this.camY = cam.y;
   }
 
+  private updatePickups(dt: number): void {
+    const { player, room } = this;
+    for (let i = room.pickups.length - 1; i >= 0; i--) {
+      const p = room.pickups[i];
+      p.t += dt;
+      const hop = p.t < 0.35 ? -Math.sin((p.t / 0.35) * Math.PI) * 8 : Math.round(Math.sin(p.t * 5) * 1.2);
+      p.sprite.setY(Math.round(p.y + 8 + hop));
+      const wants = player.hp < TUNE.player.maxHp;
+      if (p.t > 0.3 && wants && Math.hypot(p.x - player.x, p.y - player.y) < 11) {
+        player.heal(2);
+        this.hud.setHearts(player.hp);
+        audio.sfx('pickup');
+        this.fx.pickup(p.x, p.y - 4);
+        p.sprite.destroy();
+        room.pickups.splice(i, 1);
+      }
+    }
+  }
+
   private updateHints(): void {
     const pad = input.device === 'gamepad';
+    const threat = this.room.enemies.some((e) => e.home === this.world);
     let hint: string | null = null;
-    if (this.blockedHintT > 0) hint = t(STR.hintBlocked);
+    if (this.rejectHintT > 0) hint = t(STR.hintRejected);
     else if (!this.hasShifted && this.timeInRoom > 1.5) hint = t(pad ? STR.hintShiftPad : STR.hintShift);
-    else if (!this.hasAttacked && this.room.enemies.some((e) => e.home === this.world)) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
+    else if (!this.hasAttacked && threat) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
+    else if (!this.hasGuarded && threat) hint = t(pad ? STR.hintShieldPad : STR.hintShield);
     else if (this.room.props.some((p) => p.kind === 'bell' && Math.hypot(p.x - this.player.x, p.y - this.player.y) < 44)) hint = t(STR.hintBell);
     this.hud.setHint(hint);
   }
@@ -322,22 +396,8 @@ export class GameScene extends Phaser.Scene {
     const to = otherWorld(this.world);
     const b = player.box;
     const spot = level.findFree(to, b.x, b.y, b.hw, b.hh, TUNE.shift.nudge);
-
     if (!spot) {
-      // something stands here on the other side: show exactly what
-      audio.sfx('denied');
-      this.hud.rattle();
-      this.trauma = Math.max(this.trauma, 0.36);
-      this.blockedHintT = 2.2;
-      this.shiftCd = 0.14;
-      for (const [tx, ty] of level.blockingTiles(to, b.x, b.y, b.hw, b.hh)) {
-        const mark = this.add
-          .rectangle(tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2, ACCENT[to], 0.25)
-          .setOrigin(0, 0)
-          .setStrokeStyle(1, ACCENT[to], 0.95)
-          .setDepth(DEPTH.fog + 3);
-        this.tweens.add({ targets: mark, alpha: 0, duration: 420, ease: 'Quad.easeIn', onComplete: () => mark.destroy() });
-      }
+      this.reject(to);
       return;
     }
 
@@ -351,14 +411,95 @@ export class GameScene extends Phaser.Scene {
     // ...and this is what sells it.
     room.view.reveal(to, player.x - room.ox, player.y - 6 - room.oy);
     player.flash = 0.07;
-    player.slash.setTint(ACCENT[to]);
+    this.applyWorldDressing(to, true);
     this.fx.shiftBurst(player.x, player.y - 6, to);
-    this.fx.setAmbience(to, room.ox, room.oy, room.w, room.h);
     this.hud.flash(ACCENT[to], 0.2, 180);
-    this.hud.setWorld(to, true);
     this.kick = 3;
-    audio.setWorld(to);
     audio.sfx(to === 'nawia' ? 'shiftNawia' : 'shiftJawia');
+    // for a moment he still remembers what stood where on the side he just left
+    this.echoT = TUNE.shift.afterimage;
+  }
+
+  /** Everything that follows the current world but is not the room picture itself. */
+  private applyWorldDressing(world: World, announce: boolean): void {
+    const { room } = this;
+    this.player.slash.setTint(ACCENT[world]);
+    this.fx.setAmbience(world, room.ox, room.oy, room.w, room.h);
+    this.hud.setWorld(world, announce);
+    audio.setWorld(world);
+  }
+
+  /**
+   * He turned the stone where something stands on the other side.
+   * The border does not let him through: it takes half a heart and throws him back
+   * to where he entered the room. Learn the room, then turn the stone.
+   */
+  private reject(to: World): void {
+    const { player, level } = this;
+    const b = player.box;
+    audio.sfx('reject');
+    this.hud.rattle();
+    this.hud.flash(0xc9323e, 0.3, 320);
+    this.trauma = Math.max(this.trauma, 0.7);
+    this.hitstop = 0.12;
+    this.shiftCd = 0.3;
+    this.rejectHintT = 4;
+    this.hud.setDialog(null);
+
+    // show exactly what was in the way
+    for (const [tx, ty] of level.blockingTiles(to, b.x, b.y, b.hw, b.hh)) {
+      const mark = this.add
+        .rectangle(tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2, ACCENT[to], 0.35)
+        .setOrigin(0, 0)
+        .setStrokeStyle(1, ACCENT[to], 1)
+        .setDepth(DEPTH.fog + 3);
+      this.tweens.add({ targets: mark, alpha: 0, duration: 900, ease: 'Quad.easeIn', onComplete: () => mark.destroy() });
+    }
+    this.fx.reject(player.x, player.y - 6, to);
+
+    player.attackT = -1;
+    player.guarding = false;
+    player.drain(TUNE.shift.rejectDamage);
+    this.hud.setHearts(player.hp);
+    if (player.dead) {
+      this.startDying();
+      return;
+    }
+    this.state = 'rejected';
+    this.stateT = 0;
+  }
+
+  private updateRejected(dt: number): void {
+    const { player, room } = this;
+    player.fade = Math.max(0, 1 - this.stateT / (TUNE.shift.rejectTime * 0.8));
+    player.sync();
+    for (const p of room.props) p.update(dt, player.x, player.y);
+    if (this.stateT < TUNE.shift.rejectTime) return;
+
+    // back to the doorway he came in through, in the world he came in with
+    player.x = this.entry.x;
+    player.y = this.entry.y;
+    player.facing = this.entry.facing;
+    player.vx = 0;
+    player.vy = 0;
+    player.kx = 0;
+    player.ky = 0;
+    player.fade = 1;
+    player.invuln = 1.2;
+    if (this.world !== this.entry.world) {
+      this.world = this.entry.world;
+      room.view.reveal(this.world, player.x - room.ox, player.y - 6 - room.oy);
+      this.applyWorldDressing(this.world, false);
+    }
+    this.echoT = 0;
+    this.fx.shiftBurst(player.x, player.y - 6, this.world);
+    const cam = this.cameraTarget(room, player.x, player.y);
+    if (Math.abs(cam.x - this.camX) > 8 || Math.abs(cam.y - this.camY) > 8) this.hud.flash(0x05050b, 0.9, 350);
+    this.camX = cam.x;
+    this.camY = cam.y;
+    this.state = 'play';
+    player.sync();
+    input.flush();
   }
 
   // ------------------------------------------------------------------ combat
@@ -387,6 +528,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const p of room.props) {
+      if (p.kind === 'urn' && !p.open && overlap(a, { x: p.x, y: p.y, hw: 7, hh: 7 })) {
+        landed = true;
+        this.smashUrn(p);
+      }
       if (p.kind !== 'bell' || this.bellSwing === player.swingId) continue;
       if (!overlap(a, { x: p.x, y: p.y, hw: 8, hh: 8 })) continue;
       this.bellSwing = player.swingId;
@@ -401,6 +546,21 @@ export class GameScene extends Phaser.Scene {
       audio.sfx('clink');
       this.fx.clink(a.x, a.y);
       this.trauma = Math.max(this.trauma, 0.15);
+    }
+    if (landed) this.clinkSwing = player.swingId;
+  }
+
+  private smashUrn(urn: Prop): void {
+    const { room } = this;
+    urn.setOpen(true);
+    this.level.setBlocked(room.def, urn.tx, urn.ty, false);
+    audio.sfx('smash');
+    this.fx.debris(urn.x, urn.y - 2, this.world === 'jawia' ? 0xc07a48 : 0x9ab6f4, 9);
+    this.trauma = Math.max(this.trauma, 0.25);
+    this.hitstop = 0.03;
+    if (urn.holdsHeart) {
+      const sprite = this.add.image(urn.x, urn.y + 8, 'objects', OBJ.HEART).setOrigin(0.5, 1).setDepth(DEPTH.entities + (urn.y + 6) / 1000);
+      room.pickups.push({ x: urn.x, y: urn.y, t: 0, sprite });
     }
   }
 
@@ -447,6 +607,9 @@ export class GameScene extends Phaser.Scene {
     this.slide = { t: 0, fromX: this.camX, fromY: this.camY, toX: cam.x, toY: cam.y, pFromX: player.x, pFromY: player.y, pToX: tx, pToY: ty };
     player.facing = dir;
     player.attackT = -1;
+    old.echo.jawia.setAlpha(0);
+    old.echo.nawia.setAlpha(0);
+    this.echoT = 0;
     this.hud.setDialog(null);
     this.hud.setHint(null);
     audio.sfx('door');
@@ -454,19 +617,20 @@ export class GameScene extends Phaser.Scene {
 
   private updateSlide(dt: number): void {
     const s = this.slide;
+    const { player } = this;
     s.t = Math.min(1, s.t + dt / TUNE.camera.slideTime);
     const e = s.t * s.t * (3 - 2 * s.t);
     this.camX = Math.round(lerp(s.fromX, s.toX, e));
     this.camY = Math.round(lerp(s.fromY, s.toY, e));
-    this.player.drive(lerp(s.pFromX, s.pToX, s.t), lerp(s.pFromY, s.pToY, s.t));
-    for (const p of this.room.props) p.update(dt);
-    if (this.leaving) for (const p of this.leaving.props) p.update(dt);
+    player.drive(lerp(s.pFromX, s.pToX, s.t), lerp(s.pFromY, s.pToY, s.t));
+    for (const p of this.room.props) p.update(dt, player.x, player.y);
+    if (this.leaving) for (const p of this.leaving.props) p.update(dt, player.x, player.y);
 
     if (s.t >= 1) {
       if (this.leaving) this.destroyRoom(this.leaving);
       this.leaving = null;
       this.state = 'play';
-      this.entry = { x: this.player.x, y: this.player.y, world: this.world };
+      this.entry = { x: player.x, y: player.y, world: this.world, facing: player.facing };
       this.onEnterRoom();
       input.flush();
     }
@@ -486,28 +650,32 @@ export class GameScene extends Phaser.Scene {
     const { player } = this;
     player.update(dt, this.level, this.world, false);
     player.sprite.setAlpha(Math.max(0, 1 - this.stateT / 0.8));
-    for (const p of this.room.props) p.update(dt);
+    for (const p of this.room.props) p.update(dt, player.x, player.y);
     if (this.stateT > 0.7) this.hud.setCenter(t(STR.dead));
     if (this.stateT > 2.4) {
-      // back to where she entered the room; the room resets, the dungeon does not
+      // back to where he entered the room; the room resets, the dungeon does not
       this.hud.setCenter(null);
       const def = this.room.def;
       this.destroyRoom(this.room);
       this.world = this.entry.world;
       player.x = this.entry.x;
       player.y = this.entry.y;
+      player.facing = this.entry.facing;
       player.hp = TUNE.player.maxHp;
       player.dead = false;
       player.invuln = 1;
+      player.fade = 1;
       player.kx = 0;
       player.ky = 0;
-      player.slash.setTint(ACCENT[this.world]);
       this.room = this.buildRoom(def);
+      this.applyWorldDressing(this.world, false);
       this.hud.setHearts(player.hp);
-      this.hud.setWorld(this.world, false);
       this.hud.flash(0x000000, 1, 600);
-      audio.setWorld(this.world);
-      this.fx.setAmbience(this.world, this.room.ox, this.room.oy, this.room.w, this.room.h);
+      this.echoT = 0;
+      this.rejectHintT = 0;
+      const cam = this.cameraTarget(this.room, player.x, player.y);
+      this.camX = cam.x;
+      this.camY = cam.y;
       this.state = 'play';
       player.sync();
       input.flush();
@@ -532,7 +700,7 @@ export class GameScene extends Phaser.Scene {
   private updateEnding(dt: number): void {
     const { player, room } = this;
     player.update(dt, this.level, this.world, false);
-    for (const p of room.props) p.update(dt);
+    for (const p of room.props) p.update(dt, player.x, player.y);
     for (const e of room.enemies) e.update(dt, this.level, this.world, player.x, player.y, false);
     const bell = room.props.find((p) => p.kind === 'bell');
     const beats = [0.15, 0.75, 1.35, 1.95];
@@ -553,7 +721,7 @@ export class GameScene extends Phaser.Scene {
   private updateAtmosphere(dt: number, rawDt: number): void {
     const { room, world } = this;
 
-    // water and stars
+    // water, and the stars beyond the walls of Nawia
     this.animT += dt;
     if (this.animT >= WATER_FRAME_TIME) {
       this.animT -= WATER_FRAME_TIME;
@@ -575,6 +743,13 @@ export class GameScene extends Phaser.Scene {
     for (const p of room.props) if (Math.hypot(p.x - cx, p.y - cy) <= r) p.setWorld(world);
     for (const e of room.enemies) if (Math.hypot(e.x - cx, e.y - cy) <= r) e.setWorldVisual(world);
 
+    // the afterimage of the other side: strong at first, gone in a couple of seconds
+    this.echoT = Math.max(0, this.echoT - dt);
+    const k0 = this.echoT / TUNE.shift.afterimage;
+    const shimmer = 0.85 + 0.15 * Math.sin(this.clock * 18);
+    room.echo[world].setAlpha(k0 * k0 * 0.95 * shimmer);
+    room.echo[otherWorld(world)].setAlpha(0);
+
     // colours of the air ease towards the current world
     const k = 1 - Math.exp(-rawDt * 9);
     for (let i = 0; i < 3; i++) {
@@ -582,6 +757,7 @@ export class GameScene extends Phaser.Scene {
       this.heroLight[i] = lerp(this.heroLight[i], HERO_LIGHT[world][i], k);
       this.fogTint[i] = lerp(this.fogTint[i], FOG[world].tint[i], k);
     }
+    this.heroGlow = lerp(this.heroGlow, HERO_GLOW[world], k);
     this.fogAlpha = lerp(this.fogAlpha, FOG[world].alpha, k);
 
     this.trauma = Math.max(0, this.trauma - rawDt * 2.2);
@@ -598,16 +774,14 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setScroll(scrollX, scrollY);
 
     const lights: LightSource[] = [
-      { x: this.player.x, y: this.player.y - 6, radius: 66, color: this.heroLight, intensity: this.player.dead ? 0.2 : 0.56, flicker: 0.25 },
+      { x: this.player.x, y: this.player.y - 6, radius: 68, color: this.heroLight, intensity: this.player.dead ? 0.15 : this.heroGlow * this.player.fade, flicker: 0.25 },
     ];
-    for (const p of this.room.props) {
-      const l = p.light();
-      if (l) lights.push(l);
-    }
-    if (this.leaving)
-      for (const p of this.leaving.props) {
+    const onScreen = (l: LightSource): boolean =>
+      l.x > scrollX - l.radius && l.x < scrollX + GAME_W + l.radius && l.y > scrollY - l.radius && l.y < scrollY + GAME_H + l.radius;
+    for (const r of this.leaving ? [this.room, this.leaving] : [this.room])
+      for (const p of r.props) {
         const l = p.light();
-        if (l) lights.push(l);
+        if (l && onScreen(l)) lights.push(l);
       }
     this.lighting.ambient = this.ambient;
     this.lighting.render(scrollX, scrollY, lights, this.clock);
@@ -616,6 +790,6 @@ export class GameScene extends Phaser.Scene {
     this.fog[0].setTint(tint).setAlpha(this.fogAlpha);
     this.fog[1].setTint(tint).setAlpha(this.fogAlpha * 0.7);
     this.fog[0].setTilePosition(Math.round(scrollX + this.clock * 5), Math.round(scrollY + this.clock * 1.5));
-    this.fog[1].setTilePosition(Math.round(scrollX * 1.0 - this.clock * 3 + 61), Math.round(scrollY + 37 - this.clock * 2.2));
+    this.fog[1].setTilePosition(Math.round(scrollX - this.clock * 3 + 61), Math.round(scrollY + 37 - this.clock * 2.2));
   }
 }

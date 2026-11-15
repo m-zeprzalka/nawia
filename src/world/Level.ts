@@ -41,7 +41,7 @@ export class Level {
       this.grids.set(room.id, grid);
       // things that stand on the floor block both worlds
       for (const o of room.objects)
-        if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell' || o.kind === 'gate') this.setBlocked(room, o.tx, o.ty, true);
+        if (o.kind !== 'enemy' && o.kind !== 'torch' && o.kind !== 'soul') this.setBlocked(room, o.tx, o.ty, true);
     }
   }
 

@@ -1,22 +1,26 @@
-// The first room: teaches both directions of the shift.
-// Rubble (J) blocks the living. An old wall (N) still stands for the dead.
+// The first room. Teaches the shift in both directions, and what happens if you turn the stone in a bad place.
+// The ornamental path (,) runs straight under the rubble: the way goes on, just not in this world.
 room: threshold
 at: 0,0
 name: Przedsionek | The Threshold
 
 map:
 ####################
-###!####!####!######
-##......####....####
-##......####....####
-##.1....####....####
-##......JJJ.....NN..
-##......####....####
-##..@...####....####
-##......####....####
+####!###!###########
+###o.....###!##!####
+##.......###....####
+##.1.I...###.2..s###
+##...,,,,JJJ,,,,.NN.
+##..,,...###....o###
+##T.,@..T###....####
+###o.....###########
 ####################
 ####################
 
 sign 1:
-  jawia: Tu kończy się droga żywych. Dalej tylko gruz i woda. | Here ends the road of the living. Beyond: only rubble and water.
+  jawia: Kamień w rękojeści obraca świat. Co w Jawi zasypane, w Nawi stoi otworem. | The stone in the hilt turns the world. What lies buried in Jawia stands open in Nawia.
   nawia: ...pamiętamy ten korytarz. Zawsze był otwarty... | ...we remember this corridor. It was always open...
+
+sign 2:
+  jawia: Nie obracaj kamienia tam, gdzie po drugiej stronie coś stoi. Granica odrzuca i bierze krew. | Do not turn the stone where something stands on the other side. The border throws you back, and takes blood.
+  nawia: ...zapamiętaj, gdzie stoją nasze mury. My ich nie zapomnieliśmy... | ...remember where our walls stand. We have not forgotten them...

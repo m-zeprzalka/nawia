@@ -5,7 +5,7 @@
 //  - actions are timestamped, so the game can honour a press that came a few frames early.
 
 export type Dir = 'down' | 'up' | 'left' | 'right';
-export type Action = 'shift' | 'attack' | 'mute' | 'fullscreen' | 'lang' | 'pause';
+export type Action = 'shift' | 'attack' | 'shield' | 'mute' | 'fullscreen' | 'lang' | 'pause';
 
 const DIR_KEYS: Record<string, Dir> = {
   ArrowUp: 'up', KeyW: 'up',
@@ -15,15 +15,17 @@ const DIR_KEYS: Record<string, Dir> = {
 };
 
 const ACTION_KEYS: Record<string, Action> = {
-  ShiftLeft: 'shift', ShiftRight: 'shift', Space: 'shift', KeyX: 'shift', KeyK: 'shift',
+  ShiftLeft: 'shift', ShiftRight: 'shift', Space: 'shift',
   KeyZ: 'attack', KeyJ: 'attack', Enter: 'attack',
+  KeyX: 'shield', KeyK: 'shield',
   KeyM: 'mute', KeyF: 'fullscreen', KeyL: 'lang', Escape: 'pause', KeyP: 'pause',
 };
 
 // Standard gamepad mapping.
 const PAD_ACTIONS: Record<number, Action> = {
   0: 'attack', 2: 'attack', // A / X
-  1: 'shift', 3: 'shift', 4: 'shift', 5: 'shift', 6: 'shift', 7: 'shift', // B / Y / bumpers / triggers
+  1: 'shield', 5: 'shield', 7: 'shield', // B / right bumper / right trigger
+  3: 'shift', 4: 'shift', 6: 'shift', // Y / left bumper / left trigger
   9: 'pause',
 };
 const PAD_DEADZONE = 0.28;
@@ -40,6 +42,8 @@ class InputManager {
   device: 'keyboard' | 'gamepad' = 'keyboard';
 
   private readonly held: Dir[] = []; // press order, most recent last
+  private readonly actionKeys = new Set<string>(); // action keys currently down
+  private readonly padDown = new Set<Action>();
   private readonly pressedAt: Partial<Record<Action, number>> = {};
   private readonly padPrev: boolean[] = [];
   private anyQueued = false;
@@ -62,9 +66,13 @@ class InputManager {
         if (i >= 0) this.held.splice(i, 1);
         this.held.push(dir);
       }
-      if (action) this.pressedAt[action] = this.now;
+      if (action) {
+        this.pressedAt[action] = this.now;
+        this.actionKeys.add(e.code);
+      }
     });
     window.addEventListener('keyup', (e) => {
+      this.actionKeys.delete(e.code);
       const dir = DIR_KEYS[e.code];
       if (!dir) return;
       // two keys can map to one direction (W and ArrowUp): only release when both are up
@@ -74,7 +82,7 @@ class InputManager {
         if (i >= 0) this.held.splice(i, 1);
       }
     });
-    window.addEventListener('blur', () => { this.held.length = 0; this.keysDown.clear(); });
+    window.addEventListener('blur', () => { this.held.length = 0; this.keysDown.clear(); this.actionKeys.clear(); });
   }
 
   private readonly keysDown = new Set<string>();
@@ -98,6 +106,7 @@ class InputManager {
 
     // gamepad
     const pad = this.firstPad();
+    this.padDown.clear();
     if (pad) {
       let px = Math.abs(pad.axes[0] ?? 0) > PAD_DEADZONE ? pad.axes[0] : 0;
       let py = Math.abs(pad.axes[1] ?? 0) > PAD_DEADZONE ? pad.axes[1] : 0;
@@ -120,6 +129,7 @@ class InputManager {
           if (action) this.pressedAt[action] = now;
         }
         this.padPrev[i] = b.pressed;
+        if (b.pressed && PAD_ACTIONS[i]) this.padDown.add(PAD_ACTIONS[i]);
       });
     }
 
@@ -142,6 +152,13 @@ class InputManager {
     if (t === undefined || this.now - t > buffer + 1e-4) return false;
     delete this.pressedAt[action];
     return true;
+  }
+
+  /** Is the action's key or button held right now? (for the shield) */
+  isDown(action: Action): boolean {
+    if (this.padDown.has(action)) return true;
+    for (const code of this.actionKeys) if (ACTION_KEYS[code] === action) return true;
+    return false;
   }
 
   /** Forget everything buffered (use when changing scenes/states). */

@@ -27,6 +27,10 @@ export type ObjectDef =
   | { kind: 'sign'; tx: number; ty: number; text: Record<World, Bilingual | null> }
   | { kind: 'gate'; tx: number; ty: number }
   | { kind: 'bell'; tx: number; ty: number }
+  | { kind: 'urn'; tx: number; ty: number }
+  | { kind: 'idol'; tx: number; ty: number }
+  | { kind: 'pillar'; tx: number; ty: number }
+  | { kind: 'soul'; tx: number; ty: number }
   | { kind: 'enemy'; type: EnemyKind; tx: number; ty: number };
 
 export interface RoomDef {
@@ -41,6 +45,8 @@ export interface RoomDef {
   terrain: Record<World, Uint8Array>;
   /** Jawia only: a wall of Nawia collapsed here, leave debris on the floor. */
   debris: Uint8Array;
+  /** Ornamental paving (',' in the map). */
+  ornament: Uint8Array;
   objects: ObjectDef[];
   spawn: { tx: number; ty: number } | null;
   source: string[];
@@ -51,6 +57,7 @@ export const LEGEND: Record<string, [Terrain, Terrain]> = {
   ' ': [TERRAIN.VOID, TERRAIN.VOID],
   '#': [TERRAIN.WALL, TERRAIN.WALL],
   '.': [TERRAIN.FLOOR, TERRAIN.FLOOR],
+  ',': [TERRAIN.FLOOR, TERRAIN.FLOOR], // ornamental paving: same as floor, prettier
   '~': [TERRAIN.WATER, TERRAIN.WATER],
   J: [TERRAIN.RUBBLE, TERRAIN.FLOOR], // rubble: blocks the living, the dead remember an open passage
   N: [TERRAIN.FLOOR, TERRAIN.WALL], // a wall that only still stands in Nawia
@@ -65,6 +72,10 @@ export const LEGEND: Record<string, [Terrain, Terrain]> = {
   B: [TERRAIN.FLOOR, TERRAIN.FLOOR],
   u: [TERRAIN.FLOOR, TERRAIN.FLOOR],
   z: [TERRAIN.FLOOR, TERRAIN.FLOOR],
+  o: [TERRAIN.FLOOR, TERRAIN.FLOOR],
+  I: [TERRAIN.FLOOR, TERRAIN.FLOOR],
+  P: [TERRAIN.FLOOR, TERRAIN.FLOOR],
+  s: [TERRAIN.FLOOR, TERRAIN.FLOOR],
 };
 for (let d = 1; d <= 9; d++) LEGEND[String(d)] = [TERRAIN.FLOOR, TERRAIN.FLOOR];
 
@@ -136,6 +147,7 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
     gx, gy, cols, rows,
     terrain: { jawia: new Uint8Array(cols * rows), nawia: new Uint8Array(cols * rows) },
     debris: new Uint8Array(cols * rows),
+    ornament: new Uint8Array(cols * rows),
     objects: [],
     spawn: null,
     source: map,
@@ -151,11 +163,16 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
       room.terrain.jawia[k] = def[0];
       room.terrain.nawia[k] = def[1];
       if (ch === 'N') room.debris[k] = 1;
+      if (ch === ',') room.ornament[k] = 1;
       if (ch === '@') room.spawn = { tx: x, ty: y };
       else if (ch === '!') room.objects.push({ kind: 'torch', tx: x, ty: y });
       else if (ch === 'T') room.objects.push({ kind: 'brazier', tx: x, ty: y });
       else if (ch === 'G') room.objects.push({ kind: 'gate', tx: x, ty: y });
       else if (ch === 'B') room.objects.push({ kind: 'bell', tx: x, ty: y });
+      else if (ch === 'o') room.objects.push({ kind: 'urn', tx: x, ty: y });
+      else if (ch === 'I') room.objects.push({ kind: 'idol', tx: x, ty: y });
+      else if (ch === 'P') room.objects.push({ kind: 'pillar', tx: x, ty: y });
+      else if (ch === 's') room.objects.push({ kind: 'soul', tx: x, ty: y });
       else if (ch === 'u') room.objects.push({ kind: 'enemy', type: 'utopiec', tx: x, ty: y });
       else if (ch === 'z') room.objects.push({ kind: 'enemy', type: 'zjawa', tx: x, ty: y });
       else if (ch >= '1' && ch <= '9') {

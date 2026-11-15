@@ -34,7 +34,7 @@ export const t = (b: Bilingual): string => b[lang];
 export const STR = {
   subtitle: { pl: 'Dzwon pod jeziorem milczy.', en: 'The bell beneath the lake is silent.' },
   pressShift: { pl: 'naciśnij  SHIFT', en: 'press  SHIFT' },
-  pressShiftPad: { pl: 'naciśnij  B', en: 'press  B' },
+  pressShiftPad: { pl: 'naciśnij  Y', en: 'press  Y' },
   langHint: { pl: '[L] English', en: '[L] Polski' },
   jam: { pl: 'GitHub Game Off 2026 — demo', en: 'GitHub Game Off 2026 — demo' },
 
@@ -44,12 +44,12 @@ export const STR = {
       en: 'The bell of the drowned stronghold has been silent for years.\nThe border between Jawia and Nawia is cracking.\nAt night, things that should not be walk the village.',
     },
     {
-      pl: 'Stara zielarka dała ci kurzego boga:\nkamień z dziurą, osadzony w rękojeści miecza.\n\nPrzekręć go, a świat obróci się razem z nim.',
-      en: 'The old herbalist gave you a hag stone:\na stone with a hole, set in the hilt of a sword.\n\nTurn it, and the world turns with it.',
+      pl: 'Stara zielarka dała ci kurzego boga:\nkamień z dziurą, osadzony w rękojeści twojego miecza.\n\nPrzekręć go, a świat obróci się razem z nim.',
+      en: 'The old herbalist gave you a hag stone:\na stone with a hole, set in the hilt of your sword.\n\nTurn it, and the world turns with it.',
     },
     {
-      pl: 'Zejdź do grodu.\nRozkołysz dzwon.',
-      en: 'Go down to the stronghold.\nMake the bell swing again.',
+      pl: 'Ale granica nie wybacza pomyłek.\nObrócisz kamień tam, gdzie po drugiej stronie coś stoi,\na odrzuci cię i weźmie swoje.\n\nWeź miecz i tarczę. Zejdź do grodu.\nRozkołysz dzwon.',
+      en: 'But the border forgives no mistakes.\nTurn the stone where something stands on the other side,\nand it will throw you back and take its due.\n\nTake your sword and shield. Go down to the stronghold.\nMake the bell swing again.',
     },
   ] as Bilingual[],
   introNext: { pl: '[SHIFT] dalej', en: '[SHIFT] next' },
@@ -64,10 +64,15 @@ export const STR = {
   },
 
   hintShift: { pl: '[SHIFT] lub [SPACJA] — przekręć kamień', en: '[SHIFT] or [SPACE] — turn the stone' },
-  hintShiftPad: { pl: '(B) — przekręć kamień', en: '(B) — turn the stone' },
+  hintShiftPad: { pl: '(Y) — przekręć kamień', en: '(Y) — turn the stone' },
   hintAttack: { pl: '[Z] lub [J] — cios', en: '[Z] or [J] — strike' },
   hintAttackPad: { pl: '(A) — cios', en: '(A) — strike' },
-  hintBlocked: { pl: 'Po drugiej stronie coś tu stoi.', en: 'Something stands here on the other side.' },
+  hintShield: { pl: '[X] lub [K] — trzymaj tarczę', en: '[X] or [K] — hold the shield' },
+  hintShieldPad: { pl: '(B) — trzymaj tarczę', en: '(B) — hold the shield' },
+  hintRejected: {
+    pl: 'Po drugiej stronie coś tu stoi. Granica cię odrzuciła.',
+    en: 'Something stands here on the other side. The border threw you back.',
+  },
   hintBell: { pl: 'Uderz w dzwon.', en: 'Strike the bell.' },
 
   dead: { pl: 'Nawia cię nie chce. Jeszcze nie.', en: 'Nawia does not want you. Not yet.' },

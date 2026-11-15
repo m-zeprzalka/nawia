@@ -1,4 +1,4 @@
-// First fight. The drowned (u) live in Jawia, wraiths (z) in Nawia.
+// First fight. The drowned (u) live in Jawia, wraiths (z) in Nawia. Raise the shield (X) when they come.
 // The gate (G) opens when both sides fall silent.
 room: crypt
 at: 2,0
@@ -7,16 +7,16 @@ name: Krypta | The Crypt
 map:
 ####################
 #!######!##!######!#
-#..................#
-#..##...u....##....#
-#..##........##..z.#
-...................#
-#..##........##....#
-#..##....z...##.u..#
-#.......3..........#
-#..................#
+#o................o#
+#..##...u...##.....#
+#..##.......##..z..#
+..,,,,,,,,,,,,,....#
+#..##.......##,....#
+#..##...z...##,.u..#
+#s.....1......,....#
+#o...T.....T..,...o#
 ##############G#####
 
-sign 3:
+sign 1:
   jawia: Co żyje w Jawi, w Nawi jest tylko cieniem. Krata ustąpi, gdy ucichnie po obu stronach. | What lives in Jawia is but a shadow in Nawia. The gate yields when both sides fall silent.
-  nawia: ...nie bój się cieni. Bój się tego, co stoi po twojej stronie... | ...do not fear the shadows. Fear what stands on your side...
+  nawia: ...podnieś tarczę, gdy przyjdą. Nie lubią drewna, które pamięta las... | ...raise your shield when they come. They dislike wood that remembers the forest...

@@ -5,7 +5,7 @@ import type { World } from '../config.ts';
 
 export type Sfx =
   | 'shiftNawia' | 'shiftJawia' | 'denied' | 'swing' | 'hit' | 'clink' | 'enemyDie' | 'hurt'
-  | 'door' | 'text' | 'gate' | 'bell' | 'start' | 'die';
+  | 'door' | 'text' | 'gate' | 'bell' | 'start' | 'die' | 'block' | 'smash' | 'pickup' | 'reject';
 
 // A minor pentatonic, the scale of the whole game (the bell is an A).
 const SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
@@ -346,6 +346,28 @@ class AudioEngine {
       case 'die':
         this.tone('sawtooth', 220, 40, 0.9, 0.3, { echo: 0.5 });
         this.hiss('lowpass', 900, 80, 1.0, 0.4);
+        break;
+      case 'block':
+        // wood and iron taking a blow
+        this.tone('square', 320, 180, 0.07, 0.3);
+        this.hiss('bandpass', 1500, 600, 0.09, 0.5, { q: 2 });
+        this.tone('triangle', 1250, 1100, 0.12, 0.12, { echo: 0.3 });
+        break;
+      case 'smash':
+        this.hiss('highpass', 1800, 900, 0.16, 0.5);
+        this.hiss('bandpass', 700, 300, 0.2, 0.4, { at: 0.03 });
+        this.tone('triangle', 900, 300, 0.08, 0.18);
+        break;
+      case 'pickup':
+        this.tone('triangle', 659.25, 659.25, 0.12, 0.16, { echo: 0.4 });
+        this.tone('triangle', 880, 880, 0.2, 0.16, { at: 0.08, echo: 0.5 });
+        break;
+      case 'reject':
+        // the border slamming shut: a crack, a falling groan, a low thud
+        this.hiss('highpass', 3000, 900, 0.1, 0.5);
+        this.tone('sawtooth', 300, 55, 0.45, 0.4, { echo: 0.4 });
+        this.tone('square', 98, 70, 0.3, 0.3, { at: 0.04 });
+        this.tone('sine', 60, 36, 0.4, 0.8, { at: 0.02 });
         break;
       case 'bell': {
         // a struck bell: inharmonic partials, long tail

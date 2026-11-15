@@ -78,7 +78,8 @@ export class Fx {
         speedY: nawia ? { min: -16, max: -5 } : { min: -3, max: 4 },
         alpha: { start: nawia ? 0.75 : 0.5, end: 0 },
         tint: nawia ? [0x9af4ff, 0xb9c8ff, 0xffffff] : [0xd8c8a8, 0xa8a090],
-        frequency: nawia ? 90 : 220,
+        // the same density of specks whatever the size of the room
+        frequency: (nawia ? 90 : 220) * Math.min(1, (320 * 176) / (w * h)),
         emitZone: {
           type: 'random',
           source: {
@@ -113,8 +114,28 @@ export class Fx {
     this.poof.explode(16, x, y);
   }
 
-  debris(x: number, y: number): void {
-    this.shards.setParticleTint(0x8a7a6c);
-    this.shards.explode(6, x, y);
+  debris(x: number, y: number, tint = 0x8a7a6c, count = 6): void {
+    this.shards.setParticleTint(tint);
+    this.shards.explode(count, x, y);
+  }
+
+  /** Steel on the shield rim. */
+  block(x: number, y: number): void {
+    this.sparks.setParticleTint(0xffe8b0);
+    this.sparks.explode(7, x, y);
+  }
+
+  /** A heart taken: a small rising sparkle. */
+  pickup(x: number, y: number): void {
+    this.poof.setParticleTint(0xff8a80);
+    this.poof.explode(8, x, y);
+  }
+
+  /** The border closing on him: light falling inward. */
+  reject(x: number, y: number, world: World): void {
+    this.ring.setParticleTint(ACCENT[world]);
+    this.ring.explode(30, x, y);
+    this.poof.setParticleTint(0xc9323e);
+    this.poof.explode(10, x, y);
   }
 }

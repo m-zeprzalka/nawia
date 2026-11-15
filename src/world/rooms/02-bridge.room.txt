@@ -1,22 +1,22 @@
-// Bridges: the old one (:) stands only in Nawia, the planks (=) only in Jawia.
-// You have to change sides in the middle, on the stretch that exists in both (+).
+// The old bridge (:) stands only in Nawia, the planks (=) only in Jawia.
+// The stone piers (,) exist on both sides: they are the only safe places to turn the stone.
 room: bridge
 at: 1,0
 name: Zerwany most | The Broken Bridge
 
 map:
 ####################
-#!###~~~~~~~~~~###!#
-#....~~~~~~~~~~....#
-#....~~~..~~~~~....#
-#....~~~.2~~~~~....#
-.....::::+~~~~~.....
-#....~~~~+~~~~~....#
-#....~~~~+=====....#
-#....~~~~~~~~~~....#
-#....~~~~~~~~~~....#
+#!##~~~~~~~~~~~~##!#
+#...~~~~~~~~~~~~...#
+#.o.~~~~,,~~~~~~...#
+#...~~~~,1~~~~~~.o.#
+....::::,,~~~~::....
+#...~~~~=~~~~,,~...#
+#...~~~~=====,,~...#
+#.T.~~~~~~~~~,o~.T.#
+#...~~~~~~~~~~~~...#
 ####################
 
-sign 2:
-  jawia: Most runął tej nocy, gdy gród poszedł pod wodę. | The bridge fell the night the stronghold went under.
+sign 1:
+  jawia: Most runął tej nocy, gdy gród poszedł pod wodę. Zostały tylko filary. | The bridge fell the night the stronghold went under. Only the piers remain.
   nawia: Most stoi. Nic tu nie runęło. Nic się tu nie kończy. | The bridge stands. Nothing fell here. Nothing ever ends here.

@@ -58,7 +58,7 @@ export class Hud {
       return o;
     };
 
-    for (let i = 0; i < TUNE.player.maxHp; i++) this.hearts.push(fix(scene.add.image(6 + i * 10, 6, 'ui', UI.HEART).setOrigin(0, 0)));
+    for (let i = 0; i < TUNE.player.maxHp / 2; i++) this.hearts.push(fix(scene.add.image(6 + i * 10, 6, 'ui', UI.HEART).setOrigin(0, 0)));
     this.stone = fix(scene.add.image(GAME_W - 21, 4, 'ui', UI.STONE_J).setOrigin(0, 0));
 
     this.worldLabel = new PixelText(scene, GAME_W - 26 - 120, 3, { width: 120, height: 13, align: 'right' });
@@ -83,8 +83,9 @@ export class Hud {
     this.flashRect = fix(scene.add.rectangle(0, 0, GAME_W, GAME_H, 0xffffff).setOrigin(0, 0), Z - 10).setAlpha(0);
   }
 
+  /** @param hp health in half hearts */
   setHearts(hp: number): void {
-    this.hearts.forEach((h, i) => h.setFrame(i < hp ? UI.HEART : UI.HEART_EMPTY));
+    this.hearts.forEach((h, i) => h.setFrame(hp >= i * 2 + 2 ? UI.HEART : hp === i * 2 + 1 ? UI.HEART_HALF : UI.HEART_EMPTY));
   }
 
   /** Update the stone and (optionally) announce the world by name. */
