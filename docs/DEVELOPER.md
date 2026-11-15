@@ -59,8 +59,9 @@ src/
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
     surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
     surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
-    rig.ts              „szkielet” postaci 16-bitowych: figura z proporcji i materiałów, trzy widoki, klatki chodu
-    cast.ts             obsada placu prób: kostiumy bohatera, mieszkańcy, potwory (jeszcze nie w grze)
+    rig.ts              „szkielet” postaci: figura z proporcji i materiałów, trzy widoki, klatki chodu; głowa może być rysunkiem
+    cast.ts             obsada placu prób: bohater w dwóch wysokościach (głowy rysowane ręcznie), mieszkańcy,
+                        potwory na 1, 1,5 i 2 kafle, zwierzęta rysowane ręcznie (jeszcze nie w grze)
     font.ts, title.ts   czcionka bitmapowa z polskimi znakami, obraz tytułowy
     textures.ts         most między buforami pikseli a teksturami Phasera; podmiana na PNG z /assets
   world/
@@ -334,7 +335,7 @@ Na itch.io projekt ma być typu „HTML”, z oknem 960×540 (albo inną wielokr
 - Gruntu powierzchni nie da się podmienić plikiem PNG; arkusze sprite'ów tak.
 - Wrogowie i mieszkańcy mają jeden kierunek patrzenia (zwierzęta są rysowane z profilu i odbijane); mieszkańcy stoją w miejscu.
 - Dźwięk jest w całości syntezowany. Powierzchnia nie ma tła dźwiękowego (melodie zostały usunięte jako męczące).
-- Styl postaci jest w trakcie wyboru: gra używa sprite'ów 16×16, a nowe figury 16-bitowe istnieją tylko na placu prób.
+- Styl postaci jest w trakcie wyboru: gra używa starych sprite'ów 16×16, a nowe postaci (16×16 i 16×24, w 15 kolorach) istnieją tylko na placu prób.
 - Pamięć rozmów (`flags`) nie wpływa jeszcze na świat gry.
 - Wnętrza chat nie mają warstwy nad głową (bohater nie chowa się za meblami).
 - Brak zapisu stanu gry: po odświeżeniu strony zaczyna się od wioski.

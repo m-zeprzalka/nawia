@@ -1,22 +1,20 @@
 // The playground: a place to compare looks, not to play.
 //
 // The hero walks around a meadow that has a bit of everything in it. Along the roads stand exhibits:
-// the hero in every costume, the villagers, every monster in more than one reading. Keys change the
-// drawing style of the figures, the hero's costume, the hour and season of the scenery, the colour depth
-// and the world. Every exhibit has a code (H2, P7...) so a choice can be named in one word.
+// the hero in both heights and every costume, the villagers, and the monsters grouped by how tall they
+// stand (one tile, one and a half, two). Every exhibit has a code (A2, B1, P7...) so a choice can be
+// named in one word; standing next to one shows what it is, its size and how many colours it uses.
 //
 // Nothing here is used by the game itself. What is chosen here gets built into the game; see docs/PLAYGROUND.md.
 //
-//   1-4   figure style        Q / E   hero costume        N   scenery mood       C   colour depth
-//   SHIFT world               G       tile grid           T   labels             ESC back to the title
+//   1 / 2  hero height (16x16, 16x24)     Q / E  hero costume       N  scenery mood
+//   SHIFT  world                          G      tile grid          T  labels        ESC  back to the title
 
 import Phaser from 'phaser';
 import { DEPTH, GAME_H, GAME_W, TILE, TUNE, otherWorld, type World } from '../config.ts';
-import { FOLK, HERO, HERO_LOOKS, MOB } from '../art/actors.ts';
 import { BUILDS, CREATURES, FOLK_CAST, HEROES } from '../art/cast.ts';
-import { RIG, beastSheet, figureSheet, type FigureStyle } from '../art/rig.ts';
-import type { Sheet } from '../art/sheet.ts';
-import { MOODS, SURF, quantize9 } from '../art/surface.ts';
+import { RIG, figureSheet, type FigureStyle } from '../art/rig.ts';
+import { MOODS, SURF } from '../art/surface.ts';
 import { ART, addBufferTexture } from '../art/textures.ts';
 import { audio } from '../audio/audio.ts';
 import { PixelBuffer, rgb } from '../core/PixelBuffer.ts';
@@ -32,50 +30,44 @@ import type { Bilingual, RoomDef } from '../world/roomFormat.ts';
 import { SurfacePainter } from '../world/surfacePainter.ts';
 
 type View = 'down' | 'up' | 'side';
+type Size = 'small' | 'tall';
 
-/** A sheet and how to find a frame on it: the old 16x16 sheets and the rig's sheets are laid out differently. */
+/** A sheet and how to find a frame on it. */
 interface Sprites {
   key: string;
   fw: number;
   fh: number;
+  /** how many colours the sheet uses (a 16-bit sprite had fifteen to spend) */
+  colors: number;
   /** phase 0 stands, 1-4 walk */
   frame: (view: View, phase: number) => number;
 }
 
-/** How figures are drawn. `build: null` is the hand-drawn 16x16 set the game uses today. */
-const STYLES: { id: string; name: Bilingual; build: 'mid' | 'tall' | null; ink: FigureStyle }[] = [
-  { id: 'nes', name: { pl: '8-bit 16x16 (obecny)', en: '8-bit 16x16 (current)' }, build: null, ink: { outline: 'dark', sat: 0.92, val: 0.96 } },
-  { id: 'snes', name: { pl: 'SNES 16x24', en: 'SNES 16x24' }, build: 'mid', ink: { outline: 'tint', sat: 1.05, val: 1 } },
-  { id: 'sega', name: { pl: 'Mega Drive 24x32', en: 'Mega Drive 24x32' }, build: 'tall', ink: { outline: 'dark', sat: 0.92, val: 0.96 } },
-  { id: 'grim', name: { pl: 'mroczna baśń 24x32', en: 'dark tale 24x32' }, build: 'tall', ink: { outline: 'tint', sat: 0.6, val: 0.82, tint: [0x2a2440, 0.12] } },
+/** The two heights the hero is being tried in. */
+const SIZES: { id: Size; name: Bilingual }[] = [
+  { id: 'small', name: { pl: 'bohater 16x16 (jeden kafel)', en: 'hero 16x16 (one tile)' } },
+  { id: 'tall', name: { pl: 'bohater 16x24 (półtora kafla)', en: 'hero 16x24 (a tile and a half)' } },
 ];
-const DEPTHS: Bilingual[] = [
-  { pl: 'pełne kolory', en: 'full colour' },
-  { pl: '512 kolorów (Mega Drive)', en: '512 colours (Mega Drive)' },
-];
+
+/** One way of inking for everybody: a single dark line, the way a 16-bit sprite spends one colour on its outline. */
+const INK: FigureStyle = { outline: 'dark', sat: 1, val: 1 };
 
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
-const OLD_ROW: Record<View, number> = { down: HERO.DOWN, up: HERO.UP, side: HERO.SIDE };
-const OLD_WALK = [HERO.STAND, HERO.WALK_A, HERO.STAND, HERO.WALK_B, HERO.STAND];
-const OLD_FOLK = [FOLK.herbalist, FOLK.elder, FOLK.woman, FOLK.child];
-const OLD_MOBS: { name: Bilingual; frame: number }[] = [
-  { name: { pl: 'utopiec', en: 'drowned one' }, frame: MOB.UTOPIEC },
-  { name: { pl: 'zjawa', en: 'wraith' }, frame: MOB.ZJAWA },
-  { name: { pl: 'strzyga', en: 'strzyga' }, frame: MOB.STRZYGA },
-  { name: { pl: 'dzik', en: 'boar' }, frame: MOB.DZIK },
-  { name: { pl: 'wilk', en: 'wolf' }, frame: MOB.WILK },
-  { name: { pl: 'morownik', en: 'blight bloom' }, frame: MOB.MOROWNIK },
-  { name: { pl: 'ognik', en: 'wisp' }, frame: MOB.OGNIK },
-];
 
 /** Where the exhibits stand, in tiles. */
-const HERO_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13], [12, 13], [15, 13]];
+const SMALL_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13]];
+const TALL_SPOTS: [number, number][] = [[12, 13], [15, 13], [18, 13]];
 const FOLK_SPOTS: [number, number][] = [[3, 18], [6, 18], [12, 18], [15, 18]];
-const CREATURE_SPOTS: [number, number][] = [
-  [22, 13], [26, 13], [34, 13], [38, 13], [42, 13], [45, 13], [52, 13], [56, 13],
-  [22, 18], [27, 18], [35, 18], [40, 18], [45, 18],
-];
-const OLD_SPOTS: [number, number][] = [[22, 10], [25, 10], [28, 10], [31, 10], [34, 10], [37, 10], [40, 10]];
+const CLASS_SPOTS: Record<string, [number, number][]> = {
+  '1': [[22, 13], [25, 13], [28, 13], [33, 13], [37, 13], [41, 13]],
+  '1.5': [[22, 18], [25, 18], [28, 18], [33, 18], [36, 18], [39, 18], [42, 18], [45, 18]],
+  '2': [[51, 13], [55, 13]],
+};
+const CLASS_NAME: Record<string, Bilingual> = {
+  '1': { pl: 'jeden kafel', en: 'one tile' },
+  '1.5': { pl: 'półtora kafla', en: 'a tile and a half' },
+  '2': { pl: 'dwa kafle', en: 'two tiles' },
+};
 
 /** Something standing in the meadow: the hero, or an exhibit. */
 class Figure {
@@ -102,7 +94,7 @@ class Figure {
     this.set = set;
     // figures stand on the last row but one of their cell (an outline goes underneath)
     this.sprite.setTexture(set.key, 0).setOrigin(0.5, (set.fh - 1) / set.fh);
-    this.shadow.setScale(set.fw > 16 ? 1.35 : 1);
+    this.shadow.setScale(set.fw > 16 ? 1.4 : 1);
     this.draw();
   }
 
@@ -127,16 +119,16 @@ interface Exhibit {
   /** the longer title shown when the hero stands next to it */
   title: Bilingual;
   name: Bilingual;
+  note: Bilingual | null;
   /** px the label floats above the figure's head (neighbours alternate, so names do not run into each other) */
   lift: number;
-  note: Bilingual | null;
   figure: Figure;
   label: PixelText;
-  /** true: walks to and fro. false: stands and turns on the spot, to be seen from every side */
-  paces: boolean;
+  /** 'pace': walks to and fro. 'turn': stands and turns on the spot. 'stay': stands and keeps moving in place (a flame). */
+  does: 'pace' | 'turn' | 'stay';
   homeX: number;
   t: number;
-  /** which set to show: picks the sheet for the current style and colour depth */
+  /** which sheet to show right now */
   sprites: () => Sprites;
 }
 
@@ -151,20 +143,20 @@ export class PlaygroundScene extends Phaser.Scene {
   private vx = 0;
   private vy = 0;
   private exhibits: Exhibit[] = [];
+  private titles: { text: PixelText; name: Bilingual }[] = [];
   private grid!: Phaser.GameObjects.TileSprite;
   private status: PixelText[] = [];
   private info!: PixelText;
   private infoBox!: Phaser.GameObjects.Rectangle;
   private keys!: PixelText;
-  private style = 2;
+  private size: Size = 'tall';
   private costume = 0;
   private mood = 0;
-  private depth = 0;
   private labels = true;
   private animT = 0;
   private animFrame = 0;
   private near: Exhibit | null = null;
-  private readonly made = new Set<string>();
+  private readonly made = new Map<string, Sprites>();
 
   constructor() {
     super('lab');
@@ -176,20 +168,20 @@ export class PlaygroundScene extends Phaser.Scene {
     this.room = dungeon.rooms[0];
     this.world = 'jawia';
     this.exhibits = [];
+    this.titles = [];
     this.near = null;
     this.vx = 0;
     this.vy = 0;
 
-    // ?style=sega&hero=lowca&mood=noc&depth=1 opens the playground on a particular combination
+    // ?size=small&hero=lowca&mood=noc opens the playground on a particular combination
     const q = new URLSearchParams(location.search);
     const pick = (list: { id: string }[], id: string | null, fallback: number): number => {
       const i = list.findIndex((e) => e.id === id);
       return i >= 0 ? i : fallback;
     };
-    this.style = pick(STYLES, q.get('style'), this.style);
+    if (q.get('size') === 'small') this.size = 'small';
     this.costume = pick(HEROES, q.get('hero'), this.costume);
     this.mood = pick(MOODS, q.get('mood'), this.mood);
-    if (q.get('depth') === '1') this.depth = 1;
 
     this.cameras.main.setBackgroundColor(0x05050b);
     this.paint();
@@ -202,14 +194,14 @@ export class PlaygroundScene extends Phaser.Scene {
     addBufferTexture(this, 'lab:grid', grid);
     this.grid = this.add.tileSprite(0, 0, this.painter.w, this.painter.h, 'lab:grid').setOrigin(0, 0).setDepth(DEPTH.floorDecor).setVisible(false);
 
-    this.hero = new Figure(this, 10 * TILE + 8, 11 * TILE + 8, this.heroSprites(this.costume));
+    this.hero = new Figure(this, 10 * TILE + 8, 11 * TILE + 8, this.heroSprites(this.size, this.costume));
     this.buildExhibits();
     this.light();
 
     // ---- what is selected, and how to change it
-    this.add.rectangle(2, 2, 196, 44, 0x05050b, 0.72).setOrigin(0, 0).setScrollFactor(0).setDepth(1000);
+    this.add.rectangle(2, 2, 204, 44, 0x05050b, 0.72).setOrigin(0, 0).setScrollFactor(0).setDepth(1000);
     this.status = [0, 1, 2].map((i) => {
-      const line = new PixelText(this, 6, 4 + i * 13, { width: 190, height: 13, color: 0xf2ede2 });
+      const line = new PixelText(this, 6, 4 + i * 13, { width: 198, height: 13, color: 0xf2ede2 });
       line.image.setScrollFactor(0).setDepth(1001);
       return line;
     });
@@ -224,7 +216,8 @@ export class PlaygroundScene extends Phaser.Scene {
     const on = (key: string, fn: () => void): void => {
       kb?.on(`keydown-${key}`, fn);
     };
-    ['ONE', 'TWO', 'THREE', 'FOUR'].forEach((k, i) => on(k, () => this.setStyle(i)));
+    on('ONE', () => this.setSize('small'));
+    on('TWO', () => this.setSize('tall'));
     on('Q', () => this.setCostume(this.costume - 1));
     on('E', () => this.setCostume(this.costume + 1));
     on('N', () => {
@@ -233,16 +226,11 @@ export class PlaygroundScene extends Phaser.Scene {
       this.light();
       this.refresh();
     });
-    on('C', () => {
-      this.depth = 1 - this.depth;
-      this.paint();
-      this.restyle();
-      this.refresh();
-    });
     on('G', () => this.grid.setVisible(!this.grid.visible));
     on('T', () => {
       this.labels = !this.labels;
       for (const e of this.exhibits) e.label.image.setVisible(this.labels);
+      for (const g of this.titles) g.text.image.setVisible(this.labels);
     });
 
     audio.unlock();
@@ -256,14 +244,14 @@ export class PlaygroundScene extends Phaser.Scene {
       this.view.destroy();
       this.top.destroy();
       for (const e of this.exhibits) e.label.destroy();
-      for (const p of [...this.status, this.keys, this.info]) p.destroy();
+      for (const p of [...this.status, this.keys, this.info, ...this.titles.map((g) => g.text)]) p.destroy();
     });
     if (import.meta.env.DEV) (window as unknown as { __lab: PlaygroundScene }).__lab = this;
   }
 
   // ------------------------------------------------------------------ pictures
 
-  /** (Re)paints the meadow in the current mood and colour depth. */
+  /** (Re)paints the meadow in the current mood. */
   private paint(): void {
     this.view?.destroy();
     this.top?.destroy();
@@ -275,76 +263,94 @@ export class PlaygroundScene extends Phaser.Scene {
       // the blight comes in from the right-hand end of the meadow
       blight: (px) => Math.max(0, Math.min(1, (px / w - 0.68) / 0.22)),
     });
-    if (this.depth) this.painter.eachBuffer(quantize9);
     this.view = new DualCanvas(this, this.painter.buffers, this.world);
     this.view.image.setDepth(DEPTH.room);
     this.top = new DualCanvas(this, this.painter.overhead, this.world, true);
     this.top.image.setDepth(DEPTH.overhead);
   }
 
-  /** Registers a generated sheet as a texture, once per style and colour depth. */
-  private sheet(id: string, make: () => Sheet): Sprites {
-    const key = `lab:${id}:${STYLES[this.style].id}:${this.depth}`;
-    let fw = 0;
-    let fh = 0;
-    if (!this.made.has(key) || !this.textures.exists(key)) {
-      const s = make();
-      if (this.depth) quantize9(s.buf);
-      addBufferTexture(this, key, s.buf, s.fw, s.fh);
-      this.made.add(key);
-    }
-    const tex = this.textures.get(key).get(0);
-    fw = tex.width;
-    fh = tex.height;
-    const rows = Math.round(this.textures.get(key).getSourceImage().height / fh);
-    return { key, fw, fh, frame: (view, phase) => (rows > 1 ? VIEW_ROW[view] : 0) * RIG.cols + phase };
+  /** Registers a generated sheet as a texture (once) and says how to read it. */
+  private sheet(id: string, make: () => { buf: PixelBuffer; fw: number; fh: number }): Sprites {
+    const key = `lab:${id}`;
+    const made = this.made.get(key);
+    if (made && this.textures.exists(key)) return made;
+    const s = make();
+    addBufferTexture(this, key, s.buf, s.fw, s.fh);
+    const seen = new Set<number>();
+    for (const c of s.buf.u32) if (c >>> 24) seen.add(c & 0xffffff);
+    const rows = Math.round(s.buf.h / s.fh);
+    const sprites: Sprites = { key, fw: s.fw, fh: s.fh, colors: seen.size, frame: (view, phase) => (rows > 1 ? VIEW_ROW[view] : 0) * RIG.cols + phase };
+    this.made.set(key, sprites);
+    return sprites;
   }
 
-  private heroSprites(i: number): Sprites {
-    const style = STYLES[this.style];
-    if (!style.build) {
-      const look = HERO_LOOKS[i % HERO_LOOKS.length];
-      return { key: look.key, fw: 16, fh: 16, frame: (view, phase) => OLD_ROW[view] * HERO.cols + OLD_WALK[phase] };
-    }
+  private heroSprites(size: Size, i: number): Sprites {
     const c = HEROES[i];
-    return this.sheet(`hero:${c.id}`, () => figureSheet('', c.make(BUILDS[style.build!]), style.ink));
+    return this.sheet(`hero:${c.id}:${size}`, () => figureSheet('', c.make(BUILDS[size]), INK));
   }
 
   private folkSprites(i: number): Sprites {
-    const style = STYLES[this.style];
-    if (!style.build) return { key: 'folk', fw: 16, fh: 16, frame: (_v, phase) => OLD_FOLK[i] + (phase % 2) };
     const c = FOLK_CAST[i];
-    return this.sheet(`folk:${c.id}`, () => figureSheet('', c.make(BUILDS[style.build!]), style.ink));
+    return this.sheet(`folk:${c.id}:${this.size}`, () => figureSheet('', c.make(BUILDS[this.size]), INK));
   }
 
   private creatureSprites(i: number): Sprites {
     const c = CREATURES[i];
-    const ink = STYLES[this.style].ink;
-    return this.sheet(`creature:${c.id}`, () => (c.figure ? figureSheet('', c.figure, ink) : beastSheet('', c.beast!, ink)));
+    if (c.mob) {
+      const [first, count] = c.mob;
+      return { key: 'mobs', fw: 16, fh: 16, colors: 0, frame: (_v, phase) => first + (phase % count) };
+    }
+    if (c.figure) return this.sheet(`creature:${c.id}`, () => figureSheet('', c.figure!, INK));
+    // drawn by hand: five frames in a row, outline and all
+    return this.sheet(`creature:${c.id}`, () => {
+      const frames = c.frames!;
+      const fw = frames[0].w;
+      const fh = frames[0].h;
+      const buf = new PixelBuffer(fw * frames.length, fh);
+      frames.forEach((f, k) => buf.copy(f, k * fw, 0));
+      return { buf, fw, fh };
+    });
   }
 
   // ------------------------------------------------------------------ exhibits
 
   private buildExhibits(): void {
-    const add = (code: string, title: Bilingual, name: Bilingual, note: Bilingual | null, spot: [number, number], paces: boolean, sprites: () => Sprites): void => {
+    const add = (code: string, title: Bilingual, name: Bilingual, note: Bilingual | null, spot: [number, number], does: Exhibit['does'], sprites: () => Sprites): void => {
       const x = spot[0] * TILE + 8;
       const y = spot[1] * TILE + 8;
       const figure = new Figure(this, x, y, sprites());
       const lift = 9 + (this.exhibits.length % 2) * 11;
       const label = new PixelText(this, x - 70, y - figure.set.fh - lift, { width: 140, height: 13, align: 'center', color: 0xfff6d8 });
       label.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
-      this.exhibits.push({ code, title, name, note, lift, figure, label, paces, homeX: x, t: Math.random() * 3, sprites });
+      this.exhibits.push({ code, title, name, note, lift, figure, label, does, homeX: x, t: Math.random() * 3, sprites });
     };
-    HEROES.forEach((c, i) => add(`H${i + 1}`, c.name, c.name, null, HERO_SPOTS[i], false, () => this.heroSprites(i)));
-    FOLK_CAST.forEach((c, i) => add(`N${i + 1}`, c.name, c.name, null, FOLK_SPOTS[i], false, () => this.folkSprites(i)));
-    CREATURES.forEach((c, i) =>
-      add(`P${i + 1}`, c.kind.pl === c.name.pl ? c.name : { pl: `${c.kind.pl}: ${c.name.pl}`, en: `${c.kind.en}: ${c.name.en}` }, c.name, c.note, CREATURE_SPOTS[i], true, () => this.creatureSprites(i)),
-    );
-    OLD_MOBS.forEach((m, i) =>
-      add(`S${i + 1}`, m.name, m.name, { pl: 'obecny sprite 16x16, dla porównania', en: 'the current 16x16 sprite, for comparison' }, OLD_SPOTS[i], false, () => ({
-        key: 'mobs', fw: 16, fh: 16, frame: (_v, phase) => m.frame + (phase % 2),
-      })),
-    );
+    const heroNote = (size: Size): Bilingual =>
+      size === 'small'
+        ? { pl: 'zajmuje dokładnie kafel, na którym stoi: najczytelniejszy w grze', en: 'exactly the tile he stands on: the clearest to play' }
+        : { pl: 'głowa zachodzi na kafel za nim: więcej miejsca na strój i krok', en: 'his head overlaps the tile behind him: more room for clothes and a stride' };
+    HEROES.forEach((c, i) => add(`A${i + 1}`, c.name, c.name, heroNote('small'), SMALL_SPOTS[i], 'turn', () => this.heroSprites('small', i)));
+    HEROES.forEach((c, i) => add(`B${i + 1}`, c.name, c.name, heroNote('tall'), TALL_SPOTS[i], 'turn', () => this.heroSprites('tall', i)));
+    FOLK_CAST.forEach((c, i) => add(`N${i + 1}`, c.name, c.name, null, FOLK_SPOTS[i], 'turn', () => this.folkSprites(i)));
+
+    const used: Record<string, number> = { '1': 0, '1.5': 0, '2': 0 };
+    CREATURES.forEach((c, i) => {
+      const cls = String(c.tiles);
+      const spot = CLASS_SPOTS[cls][used[cls]++];
+      const title = c.kind.pl.toLowerCase() === c.name.pl.toLowerCase() ? c.kind : { pl: `${c.kind.pl}: ${c.name.pl}`, en: `${c.kind.en}: ${c.name.en}` };
+      add(`P${i + 1}`, title, c.name, c.note, spot, c.mob ? 'stay' : 'pace', () => this.creatureSprites(i));
+    });
+    // a heading over each size class
+    for (const cls of Object.keys(CLASS_SPOTS)) {
+      const [tx, ty] = CLASS_SPOTS[cls][0];
+      const text = new PixelText(this, tx * TILE - 8, ty * TILE - 52, { width: 160, height: 13, color: 0x9af4ff });
+      text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
+      this.titles.push({ text, name: CLASS_NAME[cls] });
+    }
+    for (const [spots, name] of [[SMALL_SPOTS, SIZES[0].name], [TALL_SPOTS, SIZES[1].name]] as const) {
+      const text = new PixelText(this, spots[0][0] * TILE - 8, spots[0][1] * TILE - 52, { width: 180, height: 13, color: 0x9af4ff });
+      text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
+      this.titles.push({ text, name });
+    }
     this.relabel();
   }
 
@@ -354,37 +360,38 @@ export class PlaygroundScene extends Phaser.Scene {
     for (const f of [this.hero, ...this.exhibits.map((e) => e.figure)]) f.sprite.setTint(tint);
   }
 
-  /** New style or colour depth: every figure gets its sheet for it. */
+  /** The hero's height changed: he and the villagers get their sheets for it. */
   private restyle(): void {
-    this.hero.use(this.heroSprites(this.costume));
+    this.hero.use(this.heroSprites(this.size, this.costume));
     for (const e of this.exhibits) {
       e.figure.use(e.sprites());
       e.label.image.setY(Math.round(e.figure.y) - e.figure.set.fh - e.lift);
     }
+    this.light();
   }
 
   private relabel(): void {
     for (const e of this.exhibits) e.label.setText(`${e.code} ${t(e.name)}`);
+    for (const g of this.titles) g.text.setText(t(g.name));
   }
 
-  private setStyle(i: number): void {
-    this.style = i;
+  private setSize(size: Size): void {
+    this.size = size;
     this.restyle();
     this.refresh();
   }
 
   private setCostume(i: number): void {
     this.costume = (i + HEROES.length) % HEROES.length;
-    this.hero.use(this.heroSprites(this.costume));
+    this.hero.use(this.heroSprites(this.size, this.costume));
+    this.light();
     this.refresh();
   }
 
   private refresh(): void {
-    const old = !STYLES[this.style].build;
-    const hero = old ? HERO_LOOKS[this.costume % HERO_LOOKS.length].name : HEROES[this.costume].name;
-    this.status[0].setText(`[1-4] ${t(STYLES[this.style].name)}`);
-    this.status[1].setText(`[Q/E] ${t(hero)}`);
-    this.status[2].setText(`[N] ${t(MOODS[this.mood].name)}   [C] ${t(DEPTHS[this.depth])}`);
+    this.status[0].setText(`[1/2] ${t(SIZES[this.size === 'small' ? 0 : 1].name)}`);
+    this.status[1].setText(`[Q/E] ${t(HEROES[this.costume].name)}`);
+    this.status[2].setText(`[N] ${t(MOODS[this.mood].name)}`);
     this.keys.setText(t({ pl: '[SHIFT] świat  [G] siatka  [T] podpisy  [ESC] menu', en: '[SHIFT] world  [G] grid  [T] labels  [ESC] menu' }));
   }
 
@@ -434,8 +441,8 @@ export class PlaygroundScene extends Phaser.Scene {
     for (const e of this.exhibits) {
       e.t += dt;
       const f = e.figure;
-      if (e.paces) {
-        // 0-1.6 s walk right, a breath facing us, 1.6 s back, another breath
+      if (e.does === 'pace') {
+        // 1.6 s walking right, a breath facing us, 1.6 s back, another breath
         const k = e.t % 5.2;
         const walking = k < 1.6 || (k >= 2.6 && k < 4.2);
         f.moving = walking;
@@ -443,9 +450,14 @@ export class PlaygroundScene extends Phaser.Scene {
         else if (k < 2.6) { f.facing = 'down'; f.x = e.homeX + 14; }
         else if (k < 4.2) { f.facing = 'left'; f.x = e.homeX + 14 - ((k - 2.6) / 1.6) * 28; }
         else { f.facing = 'down'; f.x = e.homeX - 14; }
+        // things drawn only in profile keep facing the way they last walked
+        if (!walking && f.set.frame('down', 0) === f.set.frame('side', 0)) f.facing = k < 2.6 ? 'right' : 'left';
         f.dist = walking ? e.t * 17.5 : 0;
-      } else {
+      } else if (e.does === 'turn') {
         f.facing = (['down', 'right', 'up', 'left'] as Dir[])[Math.floor(e.t / 1.5) % 4];
+      } else {
+        f.moving = true;
+        f.dist = e.t * 30;
       }
       f.draw();
       e.label.image.setX(Math.round(f.x) - 70);
@@ -460,7 +472,11 @@ export class PlaygroundScene extends Phaser.Scene {
       this.infoBox.setVisible(near !== null);
       this.info.image.setVisible(near !== null);
       this.keys.image.setVisible(near === null);
-      if (near) this.info.setText(`${near.code}  ${t(near.title)}  (${near.figure.set.fw}x${near.figure.set.fh})${near.note ? `\n${t(near.note)}` : ''}`);
+      if (near) {
+        const s = near.figure.set;
+        const colors = s.colors ? t({ pl: `, ${s.colors} kolorów`, en: `, ${s.colors} colours` }) : '';
+        this.info.setText(`${near.code}  ${t(near.title)}  (${s.fw}x${s.fh}${colors})${near.note ? `\n${t(near.note)}` : ''}`);
+      }
     }
 
     // ---- water and stars

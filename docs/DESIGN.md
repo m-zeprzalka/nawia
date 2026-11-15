@@ -22,8 +22,12 @@ a pisanie rozmów w [DIALOGS.md](DIALOGS.md).
 4. **Jakość ponad ilość.** Mało lokacji, każda dopracowana.
 5. **Od wesołej wsi do skazy.** Gra zaczyna się pogodnie: poranek, kury, malwy. Zło pojawia się dopiero w głębi lasu
    i narasta z każdym pokojem. Kontrast jest częścią opowieści.
-6. **Potwory mają być straszne, nie śmieszne.** Epoka, do której mierzymy, to 16-bitowe konsole tuż przed grami 3D,
-   nie konsole 8-bitowe. Styl postaci jest w trakcie wyboru na placu prób ([PLAYGROUND.md](PLAYGROUND.md)).
+6. **Potwory mają być straszne, nie śmieszne.** Zwieszona głowa, długie ręce, same światła zamiast oczu.
+7. **Mała postać, piękny piksel.** Wzorcem wielkości i rzemiosła są 16-bitowe gry przygodowe z widokiem z góry: postać
+   szeroka na jeden kafel, wysoka na jeden albo półtora, 15 kolorów, jeden ciemny kontur. Potwory mają od jednego do dwóch kafli
+   wysokości. Ostateczny wybór zapada na placu prób ([PLAYGROUND.md](PLAYGROUND.md)).
+8. **Słowiańszczyzna.** Świat, stwory i wierzenia biorą się z mitologii słowiańskiej i z pomysłów autora gry:
+   przygoda z kluczami, bramami i dwoma światami, ale w krainie utopców, strzyg, leszego i południcy.
 
 ## Świat
 
@@ -170,8 +174,8 @@ Izba ⇄ Wieś ⇄ Chata zielarki          (⇄ to drzwi)
 
 Pomysły w kolejności, w jakiej wydają się warte zrobienia przed terminem:
 
-1. Wybór stylu na placu prób: bohater, potwory, nastrój scenerii. Potem przeniesienie wybranych postaci do gry
-   (klatki ciosu i gardy, ataki potworów).
+1. Wybór na placu prób: wysokość bohatera (16×16 czy 16×24), kostium, które potwory, nastrój scenerii.
+   Potem przeniesienie wybranych postaci do gry (klatki ciosu i gardy, ataki potworów).
 2. Scenariusz: prawdziwe teksty rozmów w miejsce roboczych; rozmowy, które coś zmieniają w świecie.
 3. Przemalować gród w tym samym stylu co powierzchnię (dziś loch jest w starszej technice).
 4. Dźwięk powierzchni: dziś jest tam cisza. Jeśli ma coś grać, to oszczędnie (ptaki, woda), nie w pętli.

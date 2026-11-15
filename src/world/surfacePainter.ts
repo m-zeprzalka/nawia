@@ -166,15 +166,6 @@ export class SurfacePainter implements RoomPicture {
     }
   }
 
-  /** Runs `fn` over every picture this painter holds (the playground uses it to change the colour depth). */
-  eachBuffer(fn: (b: PixelBuffer) => void): void {
-    for (const world of WORLDS) {
-      fn(this.buffers[world]);
-      fn(this.overhead[world]);
-      for (const f of this.frames[world] ?? []) fn(f);
-    }
-  }
-
   private kindAt(world: World, x: number, y: number): number {
     const r = this.room;
     const gx = r.gx * SCREEN_COLS + x;

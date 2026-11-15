@@ -1,9 +1,10 @@
-// A figure painter for 16-bit proportions: people and monsters assembled from shaded parts,
-// so one description gives every direction and a whole walk cycle, at any size.
+// A figure painter: people and monsters assembled from shaded parts, so one description
+// gives every direction and a whole walk cycle.
 //
-// The 16x16 sprites in actors.ts are drawn by hand, pixel by pixel. That does not scale to
-// 24x32 figures in three directions and five frames, in several styles to choose between.
-// Here a figure is a set of proportions, materials and features; `figureFrame` poses it.
+// The proportions it is used with are those of 16-bit top-down adventures: a figure is 16 px wide
+// and one to two tiles tall, and about half of it is head. The head is where a character lives,
+// so it can be given as hand-drawn art (`headArt`); the body under it is posed by the painter.
+// Monsters keep painted heads: a hollow with two lights in it needs no portrait.
 //
 // Conventions:
 //  - light from the upper left: every part is lighter on its left, darker on its right;
@@ -24,7 +25,11 @@ export function rampOf(hex: number, shadow = 0x1a1423, light = 0xfff2d0): Ramp {
   return [mix(c, rgb(shadow), 0.48), c, mix(c, rgb(light), 0.3), mix(c, rgb(light), 0.58)];
 }
 
-export const tone = (r: Ramp, i: number): Color => r[Math.max(0, Math.min(3, i))];
+/**
+ * Painted parts use three tones of a ramp (shadow, base, light). The fourth, the highlight, is kept for
+ * hand-drawn details: a 16-bit sprite had fifteen colours to spend, and every extra tone is one of them.
+ */
+export const tone = (r: Ramp, i: number): Color => r[Math.max(0, Math.min(2, i))];
 
 /** A horizontal run of one material, lit from the left. `lift` moves the whole run up or down the ramp. */
 export function run(b: PixelBuffer, y: number, x0: number, x1: number, r: Ramp, lift = 0): void {
@@ -115,8 +120,12 @@ export interface Figure {
   robe?: boolean;
   /** how many of the robe's bottom rows fade out (ghosts) */
   fade?: number;
+  /** the robe narrows to a wisp instead of flaring like a skirt */
+  wisp?: boolean;
   ribs?: boolean;
-  shield?: { rim: Ramp; face: Color; cross: Color; boss: Color };
+  shield?: { rim: Ramp; face: Ramp; cross: Color; boss: Color; /** radius in px; by default it follows the shoulders */ r?: number };
+  /** A hand-drawn head for each view, exactly `head.w` x `head.h`: used instead of the painted one. */
+  headArt?: Record<View, PixelBuffer>;
   /** drawn before the body (tails, wings, what is carried on the back) */
   under?: (b: PixelBuffer, a: Anchors) => void;
   /** drawn after it (headgear, weapons, weeds, antlers) */
@@ -133,6 +142,10 @@ function headInset(row: number, hh: number, hw: number): number {
 
 function drawHead(b: PixelBuffer, f: Figure, a: Anchors): void {
   const { hx0, hx1, hy0, hy1, view } = a;
+  if (f.headArt) {
+    b.blit(f.headArt[view], hx0, hy0);
+    return;
+  }
   const hh = hy1 - hy0 + 1;
   const hw = hx1 - hx0 + 1;
   const back = view === 'up';
@@ -262,6 +275,8 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
   };
   const armY0 = shoulderY + 1;
   const armY = (swing: number): number => armY0 + f.arm.len - 1 + swing;
+  /** how far a hand travels when an arm swings (side view) */
+  const reach = f.arm.len >= 7 ? 3 : 2;
 
   // ---- what is carried behind the body
   if (f.cloak && view !== 'up') {
@@ -273,7 +288,16 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
       else run(b, y, tx0 - 1 - flare, tx1 + 1 + flare, f.cloak, -1);
     }
   }
-  if (f.shield && side) ball(b, tx0 - 1, shoulderY + 4, 4, 5, f.shield.rim, -1);
+  // from the side a round shield on the far arm is seen edge-on: a rim and a sliver of its face
+  if (f.shield && side) {
+    const top = shoulderY + 1;
+    const len = Math.max(3, Math.min(7, waistY - shoulderY + 2));
+    for (let i = 0; i < len; i++) {
+      const end = i === 0 || i === len - 1;
+      b.set(tx0 - 2, top + i, end ? f.shield.rim[1] : f.shield.rim[2]);
+      if (!end) b.set(tx0 - 1, top + i, f.shield.face[1]);
+    }
+  }
   f.under?.(b, a);
 
   // ---- legs (or a robe)
@@ -283,7 +307,7 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
     for (let y = top; y <= foot; y++) {
       const t = (y - top) / Math.max(1, foot - top);
       const sway = Math.round(Math.sin(frame * 1.57 + t * 3) * t * 1.5);
-      const half = (f.waist >> 1) + 1 + Math.round(t * 2);
+      const half = f.wisp ? Math.max(1, (f.waist >> 1) + 2 - Math.round(t * t * ((f.waist >> 1) + 1))) : (f.waist >> 1) + 1 + Math.round(t * 2);
       const ragged = y > foot - 3;
       for (let x = cx - half + sway; x <= cx + half - 1 + sway; x++) {
         if (ragged && hash2(x, y - foot, 5) % (y === foot ? 2 : 4) === 0) continue;
@@ -297,11 +321,11 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
   } else if (side) {
     // the far leg first, darker; then the near one over it
     for (const [dir, lift] of [[-step, -1], [step, 0]] as const) {
-      const raised = dir < 0 ? 2 : 0;
+      const raised = dir < 0 ? (f.leg.len >= 7 ? 2 : 1) : 0;
       for (let i = 0; i < f.leg.len - raised; i++) {
         const y = hipY + i;
         const t = i / (f.leg.len - 1);
-        const x = cx - (lw >> 1) + Math.round(dir * t * (lw + 1)) + (lift < 0 && step === 0 ? -1 : 0);
+        const x = cx - (lw >> 1) + Math.round(dir * t * (f.leg.len >= 7 ? lw + 1 : lw)) + (lift < 0 && step === 0 ? -1 : 0);
         const boot = i >= f.leg.len - raised - f.bootH;
         run(b, y, x, x + lw - 1, boot ? f.boots : f.bottom, lift);
         if (i === f.leg.len - raised - 1) b.set(x + lw, y, tone(f.boots, lift)); // toe
@@ -312,7 +336,7 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
     xs.forEach((x, k) => {
       // the leg coming towards us reaches the ground; the one going back is shorter and in shade
       const fwd = view === 'down' ? (k === 0 ? step : -step) : k === 0 ? -step : step;
-      const cut = fwd < 0 ? 2 : 0;
+      const cut = fwd < 0 ? (f.leg.len >= 7 ? 2 : 1) : 0;
       for (let i = 0; i < f.leg.len - cut; i++) {
         const boot = i >= f.leg.len - cut - f.bootH;
         run(b, hipY + i, x, x + lw - 1, boot ? f.boots : f.bottom, fwd < 0 ? -1 : 0);
@@ -327,10 +351,10 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
     const y1 = armY(0);
     for (let y = armY0; y <= y1; y++) {
       const t = (y - armY0) / Math.max(1, y1 - armY0);
-      const x = cx + Math.round(armSwing * t * 3) - (f.arm.w >> 1);
+      const x = cx + Math.round(armSwing * t * reach) - (f.arm.w >> 1);
       run(b, y, x, x + f.arm.w - 1, f.top, -1);
     }
-    const hx = cx + armSwing * 3 - (f.arm.w >> 1);
+    const hx = cx + armSwing * reach - (f.arm.w >> 1);
     drawHand(b, f, hx, hx + f.arm.w - 1, y1 + 1, true);
     a.hands.push([hx, y1 + 1]);
   }
@@ -354,7 +378,7 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
     const wd = side ? depth : f.waist;
     const x0 = cx - (wd >> 1);
     for (let x = x0; x < x0 + wd; x++) b.set(x, waistY, f.belt);
-    if (!side && view === 'down') b.set(cx, waistY, f.boots[3]);
+    if (!side && view === 'down') b.set(cx, waistY, f.boots[2]);
   }
 
   // ---- the cloak seen from behind covers the back
@@ -372,10 +396,10 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
     const y1 = armY(0);
     for (let y = armY0; y <= y1; y++) {
       const t = (y - armY0) / Math.max(1, y1 - armY0);
-      const x = cx - Math.round(armSwing * t * 3) - (f.arm.w >> 1);
+      const x = cx - Math.round(armSwing * t * reach) - (f.arm.w >> 1);
       run(b, y, x, x + f.arm.w - 1, f.top, y === armY0 ? 1 : 0);
     }
-    const hx = cx - armSwing * 3 - (f.arm.w >> 1);
+    const hx = cx - armSwing * reach - (f.arm.w >> 1);
     drawHand(b, f, hx, hx + f.arm.w - 1, y1 + 1, false);
     a.hands.push([hx, y1 + 1]);
   } else {
@@ -394,12 +418,14 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
   if (f.shield && !side) {
     const sx = view === 'down' ? tx1 + 1 : tx0 - 1;
     const sy = shoulderY + Math.round(f.torsoH * 0.62);
-    const r = Math.max(3, Math.round(f.shoulder * 0.42));
-    ball(b, sx, sy, r, r, f.shield.rim);
+    const r = f.shield.r ?? Math.max(3, Math.round(f.shoulder * 0.42));
+    // from behind only its inside shows, and less of it
+    if (view === 'up') ball(b, sx + 1, sy, r - 1, r, f.shield.rim, -1);
+    else ball(b, sx, sy, r, r, f.shield.rim);
     if (view === 'down') {
-      ball(b, sx, sy, r - 1, r - 1, [mix(f.shield.face, f.outline, 0.35), f.shield.face, mix(f.shield.face, rgb(0xffffff), 0.2), mix(f.shield.face, rgb(0xffffff), 0.4)]);
+      ball(b, sx, sy, r - 1, r - 1, f.shield.face);
       for (let i = -r + 2; i <= r - 2; i++) { b.set(sx + i, sy, f.shield.cross); b.set(sx, sy + i, f.shield.cross); }
-      b.set(sx, sy, f.shield.boss); b.set(sx - 1, sy, f.shield.boss); b.set(sx, sy - 1, f.shield.boss); b.set(sx - 1, sy - 1, rgb(0xffffff));
+      b.set(sx, sy, f.shield.boss); b.set(sx - 1, sy, f.shield.boss); b.set(sx, sy - 1, f.shield.boss); b.set(sx - 1, sy - 1, f.shield.cross);
     }
   }
 
@@ -407,115 +433,6 @@ export function figureFrame(f: Figure, view: View, frame: number): PixelBuffer {
   for (let y = hy1 + 1; y < shoulderY; y++) run(b, y, cx - 1 + lean, cx + lean, f.skin, -1);
   drawHead(b, f, a);
   f.over?.(b, a);
-  return b;
-}
-
-// ------------------------------------------------------------------ beasts on four legs
-
-export interface Beast {
-  w: number;
-  h: number;
-  /** distance between shoulder and hip, and the radius of the body at each */
-  len: number;
-  chest: number;
-  haunch: number;
-  leg: { w: number; len: number };
-  /** where the head sits relative to the shoulder (forward, up) and its size */
-  neck: [number, number];
-  head: { len: number; h: number };
-  fur: Ramp;
-  belly: Ramp;
-  outline: Color;
-  eye: Color;
-  ears: 'point' | 'round';
-  tail: 'bushy' | 'thin' | 'none';
-  /** a ridge of bristles (or thorns) along the back */
-  ridge?: Color;
-  tusk?: Color;
-  /** bare its teeth */
-  snarl?: boolean;
-}
-
-/** A beast in profile, facing right. Frame 0 stands; 1-4 trot. */
-export function beastFrame(s: Beast, frame: number): PixelBuffer {
-  const b = new PixelBuffer(s.w, s.h);
-  const ground = s.h - 2;
-  const step = frame === 1 ? 1 : frame === 3 ? -1 : 0;
-  const bob = step !== 0 ? 1 : 0;
-  const by = ground - s.leg.len - Math.round(s.chest * 0.55) + bob;
-  const xb = Math.round((s.w - s.len) / 2) - 1;
-  const xf = xb + s.len;
-  const farLeg: Ramp = [s.fur[0], s.fur[0], s.fur[1], s.fur[1]];
-
-  const leg = (x: number, swing: number, r: Ramp, lift: number): void => {
-    const top = ground - s.leg.len - 1;
-    const n = ground - top + 1;
-    for (let i = 0; i < n - (lift > 0 ? 2 : 0); i++) {
-      const t = i / (n - 1);
-      const lx = x + Math.round(swing * t * 3);
-      run(b, top + i, lx, lx + s.leg.w - 1, r, i > n - 3 ? -1 : 0);
-      if (i === n - 1 - (lift > 0 ? 2 : 0)) b.set(lx + s.leg.w, top + i, r[0]);
-    }
-  };
-  // far pair, in shade and a little behind
-  leg(xf - 3, -step, farLeg, step < 0 ? 0 : step);
-  leg(xb - 1, step, farLeg, step > 0 ? 0 : -step);
-
-  // tail
-  if (s.tail !== 'none') {
-    const droop = s.tail === 'bushy' ? 5 : 6;
-    for (let i = 0; i < droop + 2; i++) {
-      const x = xb - s.haunch - i * (s.tail === 'bushy' ? 0.7 : 0.5) + 1;
-      const y = by - 1 + i * 0.9 + Math.sin(frame * 1.57 + i * 0.6) * 0.7;
-      if (s.tail === 'bushy') ball(b, x, y, 1.6, 1.6, s.fur, i > droop ? 1 : -1);
-      else b.set(Math.round(x), Math.round(y), s.fur[0]);
-    }
-  }
-
-  // body: a capsule from haunch to chest, light on the back, the belly's own colour underneath
-  for (let y = Math.floor(by - s.chest - 1); y <= Math.ceil(by + s.chest + 1); y++)
-    for (let x = Math.floor(xb - s.haunch - 1); x <= Math.ceil(xf + s.chest + 1); x++) {
-      const t = Math.max(0, Math.min(1, (x + 0.5 - xb) / (xf - xb)));
-      const r = s.haunch + (s.chest - s.haunch) * t;
-      const dx = x + 0.5 - (xb + (xf - xb) * t);
-      const dy = (y + 0.5 - by) * 1.12;
-      if (dx * dx + dy * dy >= r * r) continue;
-      const v = dy / r;
-      b.set(x, y, v > 0.42 ? s.belly[v > 0.75 ? 0 : 1] : tone(s.fur, v < -0.55 ? 2 : v < 0.05 ? 1 : 0));
-    }
-  if (s.ridge) for (let x = xb - 1; x <= xf + 1; x += 2) {
-    const t = Math.max(0, Math.min(1, (x - xb) / (xf - xb)));
-    const top = Math.round(by - (s.haunch + (s.chest - s.haunch) * t) / 1.12);
-    b.set(x, top - 1, s.ridge);
-    if ((x & 2) === 0) b.set(x, top - 2, s.ridge);
-  }
-
-  // near pair
-  leg(xf - 1, step, s.fur, step > 0 ? 0 : -step);
-  leg(xb + 1, -step, s.fur, step < 0 ? 0 : step);
-
-  // neck and head
-  const hx = xf + s.neck[0];
-  const hy = by - s.neck[1] + (step !== 0 ? 1 : 0);
-  for (let i = 0; i <= 4; i++) ball(b, xf + ((hx - xf) * i) / 4, by - 1 + ((hy - by + 1) * i) / 4, s.chest * 0.62, s.chest * 0.62, s.fur);
-  ball(b, hx, hy, s.head.h * 0.62, s.head.h * 0.55, s.fur, 0);
-  // muzzle
-  for (let i = 0; i < s.head.len; i++) {
-    const hh = Math.max(1, Math.round(s.head.h * 0.42 * (1 - i / (s.head.len + 2))));
-    for (let k = 0; k < hh; k++) b.set(hx + 2 + i, hy + k, k === 0 ? s.fur[2] : s.fur[1]);
-    if (s.snarl && i > 0) b.set(hx + 2 + i, hy + hh, (i & 1) === 0 ? rgb(0xf6f1e6) : s.outline);
-  }
-  b.set(hx + 2 + s.head.len, hy, s.outline); // nose
-  if (s.tusk) { b.set(hx + s.head.len, hy + 2, s.tusk); b.set(hx + s.head.len + 1, hy + 1, s.tusk); b.set(hx + s.head.len + 1, hy, s.tusk); }
-  // ears
-  const ex = hx - 2;
-  const ey = Math.round(hy - s.head.h * 0.55);
-  if (s.ears === 'point') { b.set(ex, ey, s.fur[1]); b.set(ex + 1, ey, s.fur[2]); b.set(ex, ey - 1, s.fur[1]); b.set(ex + 1, ey - 1, s.fur[0]); b.set(ex, ey - 2, s.fur[0]); b.set(ex + 3, ey, s.fur[0]); b.set(ex + 3, ey - 1, s.fur[0]); }
-  else { b.set(ex, ey, s.fur[0]); b.set(ex + 1, ey, s.fur[1]); b.set(ex + 1, ey - 1, s.fur[0]); }
-  // eye: one pixel is all it takes
-  b.set(hx + 1, hy - 1, s.eye);
-  b.set(hx, hy - 2, s.outline);
-  b.set(hx + 1, hy - 2, s.outline);
   return b;
 }
 
@@ -567,11 +484,4 @@ export function figureSheet(key: string, f: Figure, s: FigureStyle): Sheet {
     for (let c = 0; c < RIG.cols; c++) buf.copy(finish(figureFrame(f, view, c), f.outline, s), c * f.w, row * f.h);
   });
   return { key, buf, fw: f.w, fh: f.h };
-}
-
-/** One row: stand, then the four frames of the trot, facing right. */
-export function beastSheet(key: string, s: Beast, style: FigureStyle): Sheet {
-  const buf = new PixelBuffer(s.w * RIG.cols, s.h);
-  for (let c = 0; c < RIG.cols; c++) buf.copy(finish(beastFrame(s, c), s.outline, style), c * s.w, 0);
-  return { key, buf, fw: s.w, fh: s.h };
 }

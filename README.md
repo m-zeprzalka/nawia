@@ -27,9 +27,9 @@ Learn the room, then turn the stone.
 > a memory room of invisible crossings, a boss that has to be fought in both worlds, and a bell at the end.
 > All art and sound are generated in code.
 >
-> The look of the characters is being chosen: the title menu has a **playground** where the hero, the villagers and
-> thirteen monsters stand side by side in 16-bit proportions (16x24 and 24x32), in several drawing styles and under
-> five moods of scenery. See [docs/PLAYGROUND.md](docs/PLAYGROUND.md).
+> The look of the characters is being chosen: the title menu has a **playground** where the hero stands in two heights
+> (16x16 and 16x24), next to the villagers and sixteen monsters one to two tiles tall, each within a 15-colour budget,
+> under five moods of scenery. See [docs/PLAYGROUND.md](docs/PLAYGROUND.md).
 
 ## Documentation (in Polish)
 
@@ -106,7 +106,7 @@ Jump straight into a room while developing: `http://localhost:5173/?room=barrow&
 - **Sound** is synthesized with WebAudio (`src/audio/audio.ts`): no audio files. The stronghold has a drone under it;
   the surface is quiet.
 - **The playground** (`?lab`, or from the title menu) draws figures with a small rig (`src/art/rig.ts`): proportions,
-  materials and features in, three views and a walk cycle out.
+  materials and features in, three views and a walk cycle out. Heads of people and all four-legged animals are drawn by hand.
 - **Conversations** are plain text files (`src/story/*.dialog.txt`) with answers to pick, jumps and things remembered.
 - Feel tuning lives in one place: `TUNE` in `src/config.ts` (the hero, the shift and its penalty, the boss).
   Enemy behaviour numbers are the `SPECS` table at the top of `src/entities/Enemy.ts`.

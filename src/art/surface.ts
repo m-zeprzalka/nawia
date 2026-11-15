@@ -216,16 +216,6 @@ export const MOODS: Mood[] = [
   },
 ];
 
-/** The Mega Drive could show 512 colours: three bits a channel. Snaps a picture to that grid. */
-export function quantize9(b: PixelBuffer): void {
-  const q = (v: number): number => Math.round(Math.round((v / 255) * 7) * (255 / 7));
-  for (let i = 0; i < b.u32.length; i++) {
-    const c = b.u32[i];
-    if (c >>> 24 === 0) continue;
-    b.u32[i] = ((c & 0xff000000) | (q((c >> 16) & 255) << 16) | (q((c >> 8) & 255) << 8) | q(c & 255)) >>> 0;
-  }
-}
-
 // ------------------------------------------------------------------ noise
 
 /** Smooth value noise, 0..1. Feed it global pixel coordinates and patterns run on across rooms. */

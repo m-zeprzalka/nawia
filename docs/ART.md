@@ -4,9 +4,10 @@ Cała grafika powstaje w kodzie (`src/art/`). Nie ma ani jednego pliku graficzne
 
 ![Skraj wsi w Jawi](img/shrine-jawia.png)
 
-> **Styl postaci jest w trakcie wyboru.** Gra używa dziś ręcznie rysowanych sprite'ów 16×16, które okazały się zbyt dziecinne.
-> Na placu prób ([PLAYGROUND.md](PLAYGROUND.md)) stoją obok nich figury w proporcjach 16-bitowych (16×24 i 24×32) oraz potwory
-> pomyślane tak, żeby były straszne. To, co poniżej o postaciach 16×16, opisuje stan gry, nie stan docelowy.
+> **Styl postaci jest w trakcie wyboru.** Gra używa dziś starszych, ręcznie rysowanych sprite'ów 16×16.
+> Na placu prób ([PLAYGROUND.md](PLAYGROUND.md)) stoją postaci w docelowym rzemiośle: szerokość jednego kafla, wysokość jednego
+> albo półtora, 15 kolorów na postać, jeden ciemny kontur, głowy rysowane ręcznie; potwory mają od jednego do dwóch kafli.
+> To, co poniżej o postaciach 16×16, opisuje stan gry, nie stan docelowy.
 
 ## Kierunek
 
