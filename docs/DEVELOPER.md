@@ -59,9 +59,10 @@ src/
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
     surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
     surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
-    rig.ts              „szkielet” postaci: figura z proporcji i materiałów, trzy widoki, klatki chodu; głowa może być rysunkiem
-    cast.ts             obsada placu prób: bohater w dwóch wysokościach (głowy rysowane ręcznie), mieszkańcy,
-                        potwory na 1, 1,5 i 2 kafle, zwierzęta rysowane ręcznie (jeszcze nie w grze)
+    dolls.ts            ludzie placu prób, rysowani ręcznie jak lalki z papieru: ciała w dwóch wysokościach, głowy,
+                        rzeczy w warstwach; pięć pomysłów na bohatera i mieszkańcy (jeszcze nie w grze)
+    rig.ts              „szkielet” potworów dwunożnych: figura z proporcji i materiałów, trzy widoki, klatki chodu
+    cast.ts             potwory placu prób na 1, 1,5 i 2 kafle; zwierzęta rysowane ręcznie (jeszcze nie w grze)
     font.ts, title.ts   czcionka bitmapowa z polskimi znakami, obraz tytułowy
     textures.ts         most między buforami pikseli a teksturami Phasera; podmiana na PNG z /assets
   world/
@@ -262,8 +263,12 @@ Nowy wariant to nowy wpis w `HERO_LOOKS`. Docelowo zostanie jeden; lista jest po
 - **`Fx`**: emitery cząsteczek (`shiftBurst`, `hit`, `death`, `debris`, `block`, `pickup`, `reject`) i tło pokoju (`setAmbience`: kurz, iskry Nawi, pyłki na powierzchni).
 - **`audio`**: jeden obiekt, `audio.sfx('nazwa')`, `startAmbience()`, `setWorld()`, `setPlace(biom)`. Wszystko syntezowane, bez plików.
   Nowy efekt to nowy `case` w `sfx()` i wpis w typie `Sfx`.
-  **Tło**: w grodzie gra dron z wiatrem, chórem Nawi i kroplami. Poza grodem (na dworze i w izbach) w Jawi nie ma żadnego tła:
-  słychać tylko to, co się dzieje. W Nawi chór gra wszędzie, na powierzchni ciszej (`mix()` w `audio.ts`).
+  **Tło**: w grodzie gra dron z wiatrem, chórem Nawi i kroplami. Poza grodem (na dworze i w izbach) nic nie brzmi ciągle,
+  po żadnej stronie. W Jawi gra tam jedna melodyjka (taniec wsi, `VILLAGE` w `audio.ts`): raz, potem osiem sekund przerwy;
+  milknie w Nawi i tam, gdzie skaza jest gęsta (`blight >= 2`). W Nawi na powierzchni słychać tylko pojedyncze szkliste nuty.
+  Każde ciągłe źródło przechodzi przez szynę `cave`, a chór trafia do pogłosu przez `choirSend`: gdy miejsce je zamyka,
+  nic nie zostaje (wcześniej chór szedł do pogłosu bezpośrednio i było go słychać wszędzie).
+  W trybie dev `window.__audio.levels()` zwraca głośność tła i całości w dB: ciszę da się zmierzyć, nie tylko usłyszeć.
 - **`input`**: akcje `shift, attack, shield, pause, mute, fullscreen, lang`. `input.consume(akcja, bufor)` zwraca `true` raz na wciśnięcie
   (z buforem w sekundach), `input.isDown(akcja)`, `input.moveX/moveY`, `input.device`. Mapowanie klawiszy i pada jest na górze `core/input.ts`.
 - **Teksty**: poza pokojami w `i18n/strings.ts` jako pary `{ pl, en }`; w pokojach w blokach `sign`. `t(para)` wybiera bieżący język.
@@ -334,7 +339,7 @@ Na itch.io projekt ma być typu „HTML”, z oknem 960×540 (albo inną wielokr
 - Loch i powierzchnia są malowane dwiema technikami i różnią się poziomem szczegółu. Loch jest starszy (stemple z kafli).
 - Gruntu powierzchni nie da się podmienić plikiem PNG; arkusze sprite'ów tak.
 - Wrogowie i mieszkańcy mają jeden kierunek patrzenia (zwierzęta są rysowane z profilu i odbijane); mieszkańcy stoją w miejscu.
-- Dźwięk jest w całości syntezowany. Powierzchnia nie ma tła dźwiękowego (melodie zostały usunięte jako męczące).
+- Dźwięk jest w całości syntezowany. Powierzchnia ma jedną melodyjkę z przerwami i żadnego ciągłego tła; las nie ma własnej melodii.
 - Styl postaci jest w trakcie wyboru: gra używa starych sprite'ów 16×16, a nowe postaci (16×16 i 16×24, w 15 kolorach) istnieją tylko na placu prób.
 - Pamięć rozmów (`flags`) nie wpływa jeszcze na świat gry.
 - Wnętrza chat nie mają warstwy nad głową (bohater nie chowa się za meblami).

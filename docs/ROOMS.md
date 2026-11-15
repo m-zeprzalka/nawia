@@ -33,7 +33,7 @@ door 4: home                          <- cyfra 4 na mapie to drzwi do pokoju "ho
   w tym samym miejscu po swojej stronie.
 - **Biom** decyduje tylko o wyglądzie, muzyce i o tym, kto maluje pokój (patrz [DEVELOPER.md](DEVELOPER.md), „Trzej malarze”).
   Zasady gry są wszędzie te same.
-- **Skaza** (`blight`) to ile fioletu wpełzło do pokoju: 0 czysto, 1 pierwsze plamy, 2 gęsto i inna melodia, 3 serce skazy.
+- **Skaza** (`blight`) to ile fioletu wpełzło do pokoju: 0 czysto, 1 pierwsze plamy, 2 gęsto (melodia milknie), 3 serce skazy.
   Przy krawędzi pokoju malarz uśrednia ją z sąsiadem z góry i z dołu, więc przejście jest płynne.
 - **Drzwi** to cyfra z blokiem `door N: <id pokoju>`. Pokój po drugiej stronie musi mieć drzwi prowadzące z powrotem.
   Na dworze cyfrę wstawia się w dolny rząd prostokąta chaty (zamiast `H`); w izbie w dolną ścianę.

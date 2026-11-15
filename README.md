@@ -104,9 +104,10 @@ Jump straight into a room while developing: `http://localhost:5173/?room=barrow&
   ring composites one into the other (`src/fx/DualCanvas.ts`).
 - **Light** is a CPU light map with dithered bands, multiplied over the scene (`src/fx/Lighting.ts`).
 - **Sound** is synthesized with WebAudio (`src/audio/audio.ts`): no audio files. The stronghold has a drone under it;
-  the surface is quiet.
-- **The playground** (`?lab`, or from the title menu) draws figures with a small rig (`src/art/rig.ts`): proportions,
-  materials and features in, three views and a walk cycle out. Heads of people and all four-legged animals are drawn by hand.
+  the surface has one short tune that plays and rests, and nothing that hums.
+- **The playground** (`?lab`, or from the title menu) is where looks are chosen. People are drawn by hand as paper dolls
+  (`src/art/dolls.ts`): shared bodies in two heights, a head and gear per look. Two-legged monsters are posed by a small
+  rig (`src/art/rig.ts`); animals are drawn by hand.
 - **Conversations** are plain text files (`src/story/*.dialog.txt`) with answers to pick, jumps and things remembered.
 - Feel tuning lives in one place: `TUNE` in `src/config.ts` (the hero, the shift and its penalty, the boss).
   Enemy behaviour numbers are the `SPECS` table at the top of `src/entities/Enemy.ts`.

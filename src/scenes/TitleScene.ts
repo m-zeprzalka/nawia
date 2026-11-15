@@ -117,6 +117,8 @@ export class TitleScene extends Phaser.Scene {
           // the first shift of the game: the moon becomes the hole in the stone
           audio.unlock();
           audio.startAmbience();
+          // the title belongs to the stronghold, whatever place the last game ended in
+          audio.setPlace('crypt');
           audio.setWorld('nawia');
           audio.sfx('shiftNawia');
           this.view.reveal('nawia', TITLE_MOON.x, TITLE_MOON.y);

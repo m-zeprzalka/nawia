@@ -63,6 +63,10 @@ martwe drzewa z iskrami w sękach, ciernie rysowane rampą skazy (`blight`, `bli
 **Wnętrza chat (`biome: house`)** maluje `src/world/interiorPainter.ts`: deski, ściany z bali, okna rzucające światło na podłogę,
 półki ze słojami, suszone zioła, kilim, łóżko pod pasiakiem, stół, stołek, skrzynia, beczka. Piec jest sprite'em (arkusz `surface`).
 
+**Ludzie na placu prób** (`src/art/dolls.ts`) są rysowani ręcznie jak lalki z papieru: wspólne ciała w dwóch wysokościach,
+na nich głowa i rzeczy w warstwach, pod spodem paleta 15 kolorów, a kontur w ciemnym odcieniu tego, co obrysowuje.
+Zasady i lista pomysłów na bohatera są w [PLAYGROUND.md](PLAYGROUND.md).
+
 ## Podmiana grafiki na PNG
 
 Każdy arkusz sprite'ów to zwykła, stała siatka. Podmiana nie wymaga zmian w kodzie:

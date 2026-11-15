@@ -178,7 +178,7 @@ Pomysły w kolejności, w jakiej wydają się warte zrobienia przed terminem:
    Potem przeniesienie wybranych postaci do gry (klatki ciosu i gardy, ataki potworów).
 2. Scenariusz: prawdziwe teksty rozmów w miejsce roboczych; rozmowy, które coś zmieniają w świecie.
 3. Przemalować gród w tym samym stylu co powierzchnię (dziś loch jest w starszej technice).
-4. Dźwięk powierzchni: dziś jest tam cisza. Jeśli ma coś grać, to oszczędnie (ptaki, woda), nie w pętli.
+4. Dźwięk powierzchni: gra tam jedna melodyjka wsi, z przerwami, i nic ciągłego; przy gęstej skazie i w Nawi milknie. Las nie ma własnej melodii. Jeśli ma dojść coś jeszcze, to oszczędnie (ptaki, woda), nie w pętli.
 5. Łuk: strzał przez wodę i otchłań, przełączniki na odległość.
 6. Leszy jako pan skażonego lasu (mini-boss przed kurhanem).
 7. Balans po grze ręką: dziś trudność znana jest tylko z liczb.
