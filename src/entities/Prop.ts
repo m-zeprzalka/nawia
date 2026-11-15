@@ -8,7 +8,11 @@ import { hash2 } from '../core/rng.ts';
 import type { LightSource, RGB } from '../fx/Lighting.ts';
 import type { Bilingual, ObjectDef } from '../world/roomFormat.ts';
 
-export type PropKind = 'brazier' | 'torch' | 'sign' | 'gate' | 'bell' | 'urn' | 'idol' | 'pillar' | 'soul';
+export type PropKind = 'brazier' | 'torch' | 'sign' | 'gate' | 'bell' | 'urn' | 'idol' | 'pillar' | 'soul' | 'switch' | 'post' | 'greatbell';
+export type PropDef = Exclude<ObjectDef, { kind: 'enemy' | 'boss' | 'heart' }>;
+
+const SUN: RGB = [1.0, 0.8, 0.42];
+const MOON: RGB = [0.5, 0.95, 1.0];
 
 const FIRE: Record<World, RGB> = { jawia: [1.0, 0.7, 0.4], nawia: [0.42, 0.82, 1.0] };
 const FIRE_TINT: Record<World, number> = { jawia: 0xffa040, nawia: 0x60c8ff };
@@ -21,8 +25,12 @@ export class Prop {
   readonly x: number;
   readonly y: number;
   readonly text: Record<World, Bilingual | null> | null;
-  /** Gate: open. Urn: smashed. */
+  /** Gate: open. Urn: smashed. Post: sunk into the floor. */
   open = false;
+  /** Posts only: does it belong to the moon (raised while the turning stone shows the moon)? */
+  readonly moon: boolean;
+  /** Turning stone only: which side is up. */
+  private moonUp = false;
   /** Urns only: is there a heart inside? Fixed per urn, so players can learn which ones to break. */
   readonly holdsHeart: boolean;
 
@@ -36,7 +44,7 @@ export class Prop {
   private swing = -1;
   private near = 0;
 
-  constructor(scene: Phaser.Scene, def: Exclude<ObjectDef, { kind: 'enemy' }>, ox: number, oy: number, world: World) {
+  constructor(scene: Phaser.Scene, def: PropDef, ox: number, oy: number, world: World) {
     this.kind = def.kind;
     this.tx = def.tx;
     this.ty = def.ty;
@@ -44,12 +52,13 @@ export class Prop {
     this.y = oy + def.ty * TILE + TILE / 2;
     this.world = world;
     this.text = def.kind === 'sign' ? def.text : null;
+    this.moon = def.kind === 'post' && def.moon;
     const h = hash2(Math.round(this.x), Math.round(this.y), 5);
     this.variant = h % 3;
     this.holdsHeart = def.kind === 'urn' && (h >>> 4) % 5 < 2;
 
     this.bottom = oy + (def.ty + 1) * TILE;
-    this.sprite = scene.add.sprite(this.x, this.bottom, 'objects', 0).setOrigin(0.5, 1);
+    this.sprite = scene.add.sprite(this.x, this.bottom, def.kind === 'greatbell' ? 'greatbell' : 'objects', 0).setOrigin(0.5, 1);
     // floor props sort with characters; wall torches and gates are part of the architecture
     if (def.kind === 'torch') this.sprite.setDepth(DEPTH.floorDecor).setY(this.bottom - 1);
     else if (def.kind === 'gate') this.sprite.setDepth(DEPTH.entities + (this.bottom - 12) / 1000);
@@ -67,7 +76,8 @@ export class Prop {
 
   /** Does it stand in the way? */
   get solid(): boolean {
-    return this.kind !== 'torch' && this.kind !== 'soul' && !(this.kind === 'urn' && this.open) && !(this.kind === 'gate' && this.open);
+    if (this.kind === 'torch' || this.kind === 'soul') return false;
+    return !((this.kind === 'urn' || this.kind === 'gate' || this.kind === 'post') && this.open);
   }
 
   /** Where light comes from, if this thing shines in the current world. */
@@ -87,6 +97,10 @@ export class Prop {
       case 'gate':
         // a glint on the iron, so the way out can be found in the dark
         return { x: this.x, y: this.y, radius: 26, color: [0.75, 0.8, 0.95], intensity: this.open ? 0.5 : 0.3 };
+      case 'switch':
+        return { x: this.x, y: this.y - 8, radius: 36, color: this.moonUp ? MOON : SUN, intensity: 0.55, flicker: 0.2, phase: this.phase };
+      case 'greatbell':
+        return { x: this.x, y: this.y - 14, radius: 84, color: [1.0, 0.84, 0.52], intensity: this.swing >= 0 ? 1 : 0.6, flicker: 0.2, phase: this.phase };
       case 'bell':
         return { x: this.x, y: this.y - 4, radius: 48, color: [1.0, 0.82, 0.5], intensity: this.swing >= 0 ? 0.9 : 0.42, flicker: 0.3, phase: this.phase };
       default:
@@ -105,6 +119,12 @@ export class Prop {
     this.apply();
   }
 
+  /** Turning stone: show the sun (false) or the moon (true). */
+  setPhase(moon: boolean): void {
+    this.moonUp = moon;
+    this.apply();
+  }
+
   /** Start the bell swinging. */
   ring(): void {
     this.swing = 0;
@@ -115,7 +135,7 @@ export class Prop {
     this.t += dt;
     if (this.swing >= 0) {
       this.swing += dt;
-      if (this.swing > 2.4) this.swing = -1;
+      if (this.swing > (this.kind === 'greatbell' ? 6 : 2.4)) this.swing = -1;
     }
     if (this.kind === 'soul') {
       const close = Math.hypot(px - this.x, py - this.y) < 15 ? 1 : 0;
@@ -161,6 +181,22 @@ export class Prop {
           s.setFrame(OBJ.BONES).setAlpha(1).setY(this.bottom).setDepth(DEPTH.floorDecor);
         }
         break;
+      case 'switch':
+        s.setFrame(this.moonUp ? OBJ.SWITCH_MOON : OBJ.SWITCH_SUN);
+        break;
+      case 'post':
+        s.setFrame(this.moon ? (this.open ? OBJ.POST_MOON_DOWN : OBJ.POST_MOON_UP) : this.open ? OBJ.POST_SUN_DOWN : OBJ.POST_SUN_UP);
+        s.setDepth(this.open ? DEPTH.floorDecor : DEPTH.entities + (this.bottom - 3) / 1000);
+        break;
+      case 'greatbell': {
+        let frame = 0;
+        if (this.swing >= 0) {
+          const k = Math.sin(this.swing * 5.5) * Math.exp(-this.swing * 0.45);
+          frame = k > 0.2 ? 2 : k < -0.2 ? 1 : 0;
+        }
+        s.setFrame(frame);
+        break;
+      }
       case 'bell': {
         let frame: number = OBJ.BELL;
         if (this.swing >= 0) {

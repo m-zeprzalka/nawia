@@ -1,0 +1,17 @@
+// The end: the great bell (Q). No enemies. In Nawia the people of the stronghold stand around the water.
+room: greatbell
+at: 3,0
+name: Wielki Dzwon | The Great Bell
+
+map:
+####################
+##!###!###!###!###!#
+#..s.............s.#
+#...~~~,,,,,,,~~~..#
+#.s.~~,,,,,,,,,~~s.#
+#...~~,,,,Q,,,,~~..#
+#.s.~~,,,,,,,,,~~s.#
+#...~~~,,,,,,,~~~..#
+#.......,,,,,......#
+#T.s....,,,,,...s.T#
+##########.#########

@@ -1,0 +1,24 @@
+// A memory room. Jawia: planks (=). Nawia: the old bridges (:). They cross in exactly three places (+),
+// and nothing on screen marks them: on a crossing each world shows only its own deck.
+// The way over:  west bank -> old bridge -> planks -> old bridge -> planks -> east bank.
+// Every other branch is a dead end. Turn the stone anywhere else and the border throws you back to the door.
+room: crossings
+at: 2,2
+name: Kładki | The Crossings
+
+map:
+####################
+#!#####!####!#####!#
+#..~~~~~:::::::~~..#
+#..~=====+~~~~:~~.z#
+#1.~=~~~~~~===+==..#
+#..~====~~w=~~:~~...
+#..~=~~~:~~=~~:~~..#
+...:+::::~~=~~:~~..#
+#..~~~~~:~~~~~~~~..#
+#T.~~~~~~~~~~~~~~.T#
+####################
+
+sign 1:
+  jawia: Żywi kładą deski, gdzie mogą. Umarli chodzą starym mostem. Te drogi krzyżują się w trzech miejscach i nic tego nie zdradza. | The living lay planks where they can. The dead walk the old bridge. The two ways cross in three places, and nothing gives them away.
+  nawia: ...stoimy na moście i patrzymy, jak chodzisz po wodzie... | ...we stand on the bridge and watch you walk on water...

@@ -4,14 +4,16 @@ import Phaser from 'phaser';
 import {
   DEPTH, GAME_H, GAME_W, TILE, TUNE, VIEW_PAD_Y, otherWorld, type World,
 } from '../config.ts';
-import { OBJ } from '../art/sprites.ts';
+import { OBJ, PX } from '../art/sprites.ts';
 import { ART, addBufferTexture } from '../art/textures.ts';
 import { audio } from '../audio/audio.ts';
 import { globalKeys } from '../core/globalKeys.ts';
 import { input, type Dir } from '../core/input.ts';
+import { Boss } from '../entities/Boss.ts';
 import { Enemy } from '../entities/Enemy.ts';
 import { Player } from '../entities/Player.ts';
 import { Prop } from '../entities/Prop.ts';
+import { Shot, type ShotKind } from '../entities/Shot.ts';
 import { DualCanvas } from '../fx/DualCanvas.ts';
 import { Fx } from '../fx/Fx.ts';
 import { Lighting, type LightSource, type RGB } from '../fx/Lighting.ts';
@@ -29,6 +31,8 @@ interface Pickup {
   y: number;
   t: number;
   sprite: Phaser.GameObjects.Image;
+  /** Hearts placed in the room file are remembered once taken. */
+  key?: string;
 }
 
 interface ActiveRoom {
@@ -45,6 +49,13 @@ interface ActiveRoom {
   props: Prop[];
   enemies: Enemy[];
   pickups: Pickup[];
+  shots: Shot[];
+  boss: Boss | null;
+  /** The guardian's health, shown as beads at the top of the screen. */
+  pips: Phaser.GameObjects.Image[];
+  /** Which side of the turning stone is up: false = sun posts stand, true = moon posts stand. */
+  moon: boolean;
+  bellRung: boolean;
 }
 
 const ACCENT: Record<World, number> = { jawia: 0xffcf6a, nawia: 0x9af4ff };
@@ -101,7 +112,13 @@ export class GameScene extends Phaser.Scene {
   private timeInRoom = 0;
   private bellSwing = -1;
   private clinkSwing = -1;
+  private switchSwing = -1;
   private endStep = 0;
+  private taken = new Set<string>();
+  private hasReflected = false;
+  private heartHintT = 0;
+  private stoneHintT = 0;
+  private soulsHintT = 0;
 
   constructor() {
     super('game');
@@ -127,7 +144,13 @@ export class GameScene extends Phaser.Scene {
     this.rejectHintT = 0;
     this.bellSwing = -1;
     this.clinkSwing = -1;
+    this.switchSwing = -1;
     this.endStep = 0;
+    this.taken = new Set();
+    this.hasReflected = false;
+    this.heartHintT = 0;
+    this.stoneHintT = 0;
+    this.soulsHintT = 0;
 
     // dev shortcuts: ?room=bridge&world=nawia
     const params = new URLSearchParams(location.search);
@@ -201,23 +224,59 @@ export class GameScene extends Phaser.Scene {
       this.add.image(ox, oy, key).setOrigin(0, 0).setDepth(DEPTH.fog + 0.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
     const echo = { jawia: echoImage(echoKeys[0]), nawia: echoImage(echoKeys[1]) };
 
-    const hasEnemies = def.objects.some((o) => o.kind === 'enemy');
-    const cleared = this.cleared.has(def.id) || !hasEnemies;
-    const props: Prop[] = [];
-    const enemies: Enemy[] = [];
+    const hasFoes = def.objects.some((o) => o.kind === 'enemy' || o.kind === 'boss');
+    const hasBell = def.objects.some((o) => o.kind === 'bell');
+    // a room is settled once its bell has rung or, if it has none, once nothing in it is left standing
+    const cleared = this.cleared.has(def.id) || (!hasFoes && !hasBell);
+    const room: ActiveRoom = {
+      def, ox, oy, w: painter.w, h: painter.h, painter, view, echo, echoKeys,
+      props: [], enemies: [], pickups: [], shots: [], boss: null, pips: [], moon: false, bellRung: cleared,
+    };
     const bounds = { x: ox, y: oy, w: painter.w, h: painter.h };
     for (const o of def.objects) {
+      const cx = ox + o.tx * TILE + 8;
+      const cy = oy + o.ty * TILE + 8;
       if (o.kind === 'enemy') {
-        if (!cleared) enemies.push(new Enemy(this, o.type, ox + o.tx * TILE + 8, oy + o.ty * TILE + 8, this.world, bounds));
+        if (cleared) continue;
+        const e = new Enemy(this, o.type, cx, cy, this.world, bounds);
+        if (o.type === 'ognik') e.onShoot = (x, y, vx, vy) => this.spawnShot(room, 'wisp', 'jawia', x, y, vx, vy, e);
+        room.enemies.push(e);
+      } else if (o.kind === 'boss') {
+        if (cleared) continue;
+        // 'K' marks the top-left tile of its 2x2 footprint
+        const boss = new Boss(this, cx + 8, cy + 8, this.world);
+        boss.onShoot = (x, y, vx, vy) => this.spawnShot(room, 'soul', 'nawia', x, y, vx, vy, null);
+        room.boss = boss;
+        for (let i = 0; i < TUNE.boss.hp; i++)
+          room.pips.push(
+            this.add.image(GAME_W / 2 + (i - (TUNE.boss.hp - 1) / 2) * 9, GAME_H - 26, 'px', PX.DIAMOND)
+              .setScrollFactor(0).setDepth(DEPTH.flash - 1).setVisible(false),
+          );
+      } else if (o.kind === 'heart') {
+        const key = `${def.id}:${o.tx},${o.ty}`;
+        if (!this.taken.has(key)) this.dropHeart(room, cx, cy, key);
       } else {
         const p = new Prop(this, o, ox, oy, this.world);
         if (p.kind === 'gate') p.setOpen(cleared);
+        // the turning stone starts sun side up: sun posts stand, moon posts lie flush with the floor
+        if (p.kind === 'post') p.setOpen(p.moon);
         // urns come back whole every time the room is entered, like pots should
-        this.level.setBlocked(def, o.tx, o.ty, p.solid);
-        props.push(p);
+        if (p.kind === 'greatbell') for (const dx of [-1, 0, 1]) this.level.setBlocked(def, o.tx + dx, o.ty, true);
+        else this.level.setBlocked(def, o.tx, o.ty, p.solid);
+        room.props.push(p);
       }
     }
-    return { def, ox, oy, w: painter.w, h: painter.h, painter, view, echo, echoKeys, props, enemies, pickups: [] };
+    return room;
+  }
+
+  private spawnShot(room: ActiveRoom, kind: ShotKind, home: World, x: number, y: number, vx: number, vy: number, owner: Enemy | null): void {
+    room.shots.push(new Shot(this, kind, home, x, y, vx, vy, owner));
+    if (kind === 'wisp') audio.sfx('shoot');
+  }
+
+  private dropHeart(room: ActiveRoom, x: number, y: number, key?: string): void {
+    const sprite = this.add.image(x, y + 8, 'objects', OBJ.HEART).setOrigin(0.5, 1).setDepth(DEPTH.entities + (y + 6) / 1000);
+    room.pickups.push({ x, y, t: key ? 1 : 0, sprite, key });
   }
 
   private destroyRoom(r: ActiveRoom): void {
@@ -228,6 +287,9 @@ export class GameScene extends Phaser.Scene {
     r.props.forEach((p) => p.destroy());
     r.enemies.forEach((e) => e.destroy());
     r.pickups.forEach((p) => p.sprite.destroy());
+    r.shots.forEach((sh) => sh.destroy());
+    r.boss?.destroy();
+    r.pips.forEach((p) => p.destroy());
   }
 
   private onEnterRoom(): void {
@@ -298,6 +360,9 @@ export class GameScene extends Phaser.Scene {
     this.timeInRoom += dt;
     this.shiftCd = Math.max(0, this.shiftCd - dt);
     this.rejectHintT = Math.max(0, this.rejectHintT - dt);
+    this.heartHintT = Math.max(0, this.heartHintT - dt);
+    this.stoneHintT = Math.max(0, this.stoneHintT - dt);
+    this.soulsHintT = Math.max(0, this.soulsHintT - dt);
 
     if (this.shiftCd <= 0 && input.consume('shift', TUNE.shift.buffer)) {
       this.tryShift();
@@ -313,7 +378,7 @@ export class GameScene extends Phaser.Scene {
 
     for (const e of room.enemies) {
       e.update(dt, level, this.world, player.x, player.y, !player.dead);
-      if (e.home !== this.world || !overlap(e.box, player.box)) continue;
+      if (!e.solid || e.home !== this.world || !overlap(e.box, player.box)) continue;
       if (player.blocks(e.x, e.y)) {
         // caught on the shield: it staggers back, and that is the opening
         e.bash(player.x, player.y);
@@ -322,19 +387,16 @@ export class GameScene extends Phaser.Scene {
         this.fx.block((e.x + player.x) / 2, (e.y + player.y) / 2 - 5);
         this.trauma = Math.max(this.trauma, 0.3);
         this.hitstop = 0.05;
-      } else if (player.hurt(e.x, e.y, TUNE.player.enemyDamage)) {
+      } else if (this.hurtPlayer(e.x, e.y, TUNE.player.enemyDamage)) {
         e.recoil(player.x, player.y);
-        audio.sfx('hurt');
-        this.hud.setHearts(player.hp);
-        this.hud.flash(0xc9323e, 0.28, 240);
-        this.trauma = Math.max(this.trauma, 0.6);
-        this.hitstop = 0.09;
-        if (player.dead) {
-          this.startDying();
-          return;
-        }
+        if (player.dead) return;
       }
     }
+    this.updateShots(dt);
+    if (this.state !== 'play') return;
+    this.updateBoss(dt);
+    if (this.state !== 'play') return;
+    this.settlePosts();
     for (const p of room.props) p.update(dt, player.x, player.y);
     this.updatePickups(dt);
 
@@ -371,6 +433,7 @@ export class GameScene extends Phaser.Scene {
         this.hud.setHearts(player.hp);
         audio.sfx('pickup');
         this.fx.pickup(p.x, p.y - 4);
+        if (p.key) this.taken.add(p.key);
         p.sprite.destroy();
         room.pickups.splice(i, 1);
       }
@@ -385,7 +448,11 @@ export class GameScene extends Phaser.Scene {
     else if (!this.hasShifted && this.timeInRoom > 1.5) hint = t(pad ? STR.hintShiftPad : STR.hintShift);
     else if (!this.hasAttacked && threat) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
     else if (!this.hasGuarded && threat) hint = t(pad ? STR.hintShieldPad : STR.hintShield);
-    else if (this.room.props.some((p) => p.kind === 'bell' && Math.hypot(p.x - this.player.x, p.y - this.player.y) < 44)) hint = t(STR.hintBell);
+    else if (this.heartHintT > 0 && this.world === 'jawia' && this.room.boss?.heartBare) hint = t(STR.hintHeart);
+    else if (this.stoneHintT > 0 && this.room.boss) hint = t(STR.hintStone);
+    else if (this.soulsHintT > 0) hint = t(STR.hintTwoSouls);
+    else if (!this.hasReflected && this.room.enemies.some((e) => e.kind === 'ognik' && e.home === this.world)) hint = t(pad ? STR.hintReflectPad : STR.hintReflect);
+    else if (this.room.props.some((p) => (p.kind === 'bell' || p.kind === 'greatbell') && Math.hypot(p.x - this.player.x, p.y - this.player.y) < 44)) hint = t(STR.hintBell);
     this.hud.setHint(hint);
   }
 
@@ -504,6 +571,44 @@ export class GameScene extends Phaser.Scene {
 
   // ------------------------------------------------------------------ combat
 
+  /** The hero takes a blow. Returns false if he shrugged it off (still blinking from the last one). */
+  private hurtPlayer(fromX: number, fromY: number, amount: number): boolean {
+    const { player } = this;
+    if (!player.hurt(fromX, fromY, amount)) return false;
+    audio.sfx('hurt');
+    this.hud.setHearts(player.hp);
+    this.hud.flash(0xc9323e, 0.28, 240);
+    this.trauma = Math.max(this.trauma, 0.6);
+    this.hitstop = 0.09;
+    if (player.dead) this.startDying();
+    return true;
+  }
+
+  /** Hurts an enemy with swing (or shot) `id`. Returns true if the blow landed. */
+  private strike(e: Enemy, id: number, fromX: number, fromY: number): boolean {
+    const { room } = this;
+    const was = e.home;
+    if (!e.hit(id, fromX, fromY)) return false;
+    audio.sfx('hit');
+    this.fx.hit(e.x, e.y - 4, was);
+    this.hitstop = 0.065;
+    this.trauma = Math.max(this.trauma, 0.4);
+    if (e.rose) {
+      // a strzyga's body is down; her second soul is already up on the other side
+      e.rose = false;
+      audio.sfx('rise');
+      this.fx.death(e.x, e.y - 4, was);
+      this.soulsHintT = 6;
+    } else if (e.dead) {
+      audio.sfx('enemyDie');
+      this.fx.death(e.x, e.y - 4, was);
+      e.destroy();
+      room.enemies.splice(room.enemies.indexOf(e), 1);
+      this.checkCleared();
+    }
+    return true;
+  }
+
   private resolveAttack(): void {
     const { player, room } = this;
     const a = player.attackBox();
@@ -512,18 +617,35 @@ export class GameScene extends Phaser.Scene {
     for (let i = room.enemies.length - 1; i >= 0; i--) {
       const e = room.enemies[i];
       if (e.home !== this.world || !overlap(a, e.box)) continue;
-      if (!e.hit(player.swingId, player.x, player.y)) continue;
-      landed = true;
-      audio.sfx('hit');
-      this.fx.hit(e.x, e.y - 4, this.world);
-      this.hitstop = 0.065;
-      this.trauma = Math.max(this.trauma, 0.4);
-      if (e.dead) {
-        audio.sfx('enemyDie');
-        this.fx.death(e.x, e.y - 4, e.home);
-        e.destroy();
-        room.enemies.splice(i, 1);
-        this.checkCleared();
+      if (this.strike(e, player.swingId, player.x, player.y)) landed = true;
+    }
+
+    // a blade stops fire as well as a shield does; it just does not send it back
+    for (const sh of room.shots) if (!sh.friendly && sh.home === this.world && overlap(a, sh.box)) sh.dead = true;
+
+    const boss = room.boss;
+    if (boss?.alive && this.clinkSwing !== player.swingId) {
+      if (this.world === 'nawia' && overlap(a, boss.heartBox)) {
+        if (boss.hitHeart(player.swingId)) {
+          landed = true;
+          audio.sfx('hit');
+          this.fx.hit(boss.x, boss.y - 7, 'nawia');
+          this.hitstop = 0.08;
+          this.trauma = Math.max(this.trauma, 0.5);
+        } else if (!boss.heartBare) {
+          // the shell holds
+          this.clinkSwing = player.swingId;
+          audio.sfx('clink');
+          this.fx.clink(a.x, a.y);
+          this.stoneHintT = 5;
+        }
+      } else if (this.world === 'jawia' && overlap(a, boss.box)) {
+        // steel does nothing to the stone
+        this.clinkSwing = player.swingId;
+        audio.sfx('clink');
+        this.fx.clink(a.x, a.y);
+        this.trauma = Math.max(this.trauma, 0.15);
+        if (!boss.heartBare) this.stoneHintT = 5;
       }
     }
 
@@ -532,12 +654,21 @@ export class GameScene extends Phaser.Scene {
         landed = true;
         this.smashUrn(p);
       }
-      if (p.kind !== 'bell' || this.bellSwing === player.swingId) continue;
-      if (!overlap(a, { x: p.x, y: p.y, hw: 8, hh: 8 })) continue;
+      if (p.kind === 'switch' && this.switchSwing !== player.swingId && overlap(a, { x: p.x, y: p.y, hw: 7, hh: 8 })) {
+        this.switchSwing = player.swingId;
+        landed = true;
+        this.turnStone();
+      }
+      if ((p.kind !== 'bell' && p.kind !== 'greatbell') || this.bellSwing === player.swingId) continue;
+      if (!overlap(a, { x: p.x, y: p.y, hw: p.kind === 'greatbell' ? 14 : 8, hh: 8 })) continue;
       this.bellSwing = player.swingId;
       this.clinkSwing = player.swingId;
+      if (p.kind === 'greatbell') {
+        this.ringGreatBell(p);
+        return;
+      }
       this.ringBell(p);
-      return;
+      landed = true;
     }
 
     // steel on stone
@@ -550,6 +681,145 @@ export class GameScene extends Phaser.Scene {
     if (landed) this.clinkSwing = player.swingId;
   }
 
+  /** Fire and soul orbs in flight. A raised shield stops them; a wisp's own fire goes back to the wisp. */
+  private updateShots(dt: number): void {
+    const { player, room, level } = this;
+    for (let i = room.shots.length - 1; i >= 0; i--) {
+      const sh = room.shots[i];
+      sh.update(dt, level, this.world);
+      const fromX = sh.x - sh.vx;
+      const fromY = sh.y - sh.vy;
+      if (!sh.dead && sh.friendly) {
+        for (const e of room.enemies)
+          if (e.home === sh.home && overlap(sh.box, e.box) && this.strike(e, -sh.id, fromX, fromY)) {
+            sh.dead = true;
+            break;
+          }
+      } else if (!sh.dead && sh.home === this.world && overlap(sh.box, player.box)) {
+        if (player.blocks(fromX, fromY)) {
+          audio.sfx('block');
+          this.fx.block(sh.x, sh.y);
+          this.hitstop = 0.04;
+          if (sh.kind === 'wisp') {
+            sh.reflect();
+            this.hasReflected = true;
+          } else sh.dead = true;
+        } else if (this.hurtPlayer(fromX, fromY, TUNE.player.shotDamage)) sh.dead = true;
+      }
+      if (sh.dead) {
+        this.fx.clink(sh.x, sh.y);
+        sh.destroy();
+        room.shots.splice(i, 1);
+      }
+      if (this.state !== 'play') return;
+    }
+  }
+
+  /** The guardian: drive it, dress up what it did, and let the stone hurt. */
+  private updateBoss(dt: number): void {
+    const { player, room, level } = this;
+    const boss = room.boss;
+    if (!boss) return;
+    boss.update(dt, level, this.world, player.x, player.y, !player.dead);
+    for (const ev of boss.events.splice(0)) {
+      switch (ev) {
+        case 'wake':
+          audio.sfx('roar');
+          this.trauma = Math.max(this.trauma, 0.6);
+          break;
+        case 'windup':
+          audio.sfx('roar');
+          break;
+        case 'charge':
+          audio.sfx('door');
+          break;
+        case 'crash':
+          audio.sfx('crash');
+          this.trauma = 1;
+          this.hitstop = 0.1;
+          this.fx.debris(boss.x, boss.y + 4, undefined, 14);
+          this.heartHintT = 8;
+          break;
+        case 'thud':
+          audio.sfx('clink');
+          this.trauma = Math.max(this.trauma, 0.3);
+          break;
+        case 'close':
+          // the shell slams shut and throws back anyone standing at the heart
+          audio.sfx('block');
+          this.fx.shiftBurst(boss.x, boss.y - 6, 'nawia');
+          if (this.world === 'nawia' && Math.hypot(player.x - boss.x, player.y - boss.y) < 40) player.shove(boss.x, boss.y - 2, 230);
+          break;
+        case 'orbs':
+          audio.sfx('shoot');
+          break;
+        case 'dying':
+          audio.sfx('enemyDie');
+          audio.sfx('crash');
+          this.trauma = 1;
+          this.hitstop = 0.18;
+          for (const sh of room.shots) sh.dead = true;
+          break;
+        case 'dead':
+          this.fx.death(boss.x, boss.y - 6, 'nawia');
+          this.fx.debris(boss.x, boss.y, undefined, 18);
+          this.hud.flash(0xffffff, 0.6, 500);
+          this.trauma = 1;
+          boss.destroy();
+          room.boss = null;
+          room.pips.forEach((p) => p.destroy());
+          room.pips = [];
+          this.checkCleared();
+          return;
+      }
+    }
+
+    const awake = boss.state !== 'sleep';
+    room.pips.forEach((p, i) => p.setVisible(awake).setTint(i < boss.hp ? 0xe08ae8 : 0x3a2f42));
+    if (boss.state === 'dying' && Math.random() < dt * 16)
+      this.fx.hit(boss.x + Math.random() * 24 - 12, boss.y - 8 + Math.random() * 18 - 9, Math.random() < 0.5 ? 'jawia' : 'nawia');
+
+    // the stone is solid, and being run over by it hurts
+    if (this.world === 'jawia' && boss.harmful && overlap(boss.box, player.box)) {
+      if (boss.charging && player.blocks(boss.x, boss.y)) {
+        // a shield does not stop a ton of stone, but it saves his skin
+        player.shove(boss.x, boss.y, 260);
+        player.invuln = Math.max(player.invuln, 0.4);
+        audio.sfx('block');
+        this.fx.block((boss.x + player.x) / 2, (boss.y + player.y) / 2 - 5);
+        this.trauma = Math.max(this.trauma, 0.5);
+        this.hitstop = 0.06;
+      } else this.hurtPlayer(boss.x, boss.y, TUNE.boss.damage);
+    }
+  }
+
+  /** The turning stone was struck: sun posts and moon posts trade places. */
+  private turnStone(): void {
+    const { room } = this;
+    room.moon = !room.moon;
+    for (const p of room.props) if (p.kind === 'switch') p.setPhase(room.moon);
+    audio.sfx('switch');
+    this.hud.flash(room.moon ? ACCENT.nawia : ACCENT.jawia, 0.14, 200);
+    this.trauma = Math.max(this.trauma, 0.3);
+    this.hitstop = 0.04;
+    this.settlePosts();
+  }
+
+  /** Posts that should be standing rise as soon as nobody is on top of them. */
+  private settlePosts(): void {
+    const { room, player } = this;
+    for (const p of room.props) {
+      if (p.kind !== 'post') continue;
+      const up = p.moon === room.moon;
+      if (up === !p.open) continue;
+      const spot = { x: p.x, y: p.y, hw: 8, hh: 8 };
+      if (up && (overlap(player.box, spot) || room.enemies.some((e) => overlap(e.box, spot)))) continue;
+      p.setOpen(!up);
+      this.level.setBlocked(room.def, p.tx, p.ty, up);
+      if (up) this.fx.debris(p.x, p.y + 5, undefined, 3);
+    }
+  }
+
   private smashUrn(urn: Prop): void {
     const { room } = this;
     urn.setOpen(true);
@@ -558,16 +828,18 @@ export class GameScene extends Phaser.Scene {
     this.fx.debris(urn.x, urn.y - 2, this.world === 'jawia' ? 0xc07a48 : 0x9ab6f4, 9);
     this.trauma = Math.max(this.trauma, 0.25);
     this.hitstop = 0.03;
-    if (urn.holdsHeart) {
-      const sprite = this.add.image(urn.x, urn.y + 8, 'objects', OBJ.HEART).setOrigin(0.5, 1).setDepth(DEPTH.entities + (urn.y + 6) / 1000);
-      room.pickups.push({ x: urn.x, y: urn.y, t: 0, sprite });
-    }
+    if (urn.holdsHeart) this.dropHeart(room, urn.x, urn.y);
   }
 
-  /** A room falls silent when nothing is left in either world. Then its gates open. */
+  /**
+   * A room is settled when its bell has rung or, if it has no bell, when nothing is left standing
+   * in either world. Then its gates open, and stay open.
+   */
   private checkCleared(): void {
     const { room } = this;
-    if (room.enemies.length > 0 || this.cleared.has(room.def.id)) return;
+    if (this.cleared.has(room.def.id)) return;
+    const hasBell = room.props.some((p) => p.kind === 'bell');
+    if (hasBell ? !room.bellRung : room.enemies.length > 0 || room.boss !== null) return;
     this.cleared.add(room.def.id);
     for (const p of room.props) {
       if (p.kind !== 'gate') continue;
@@ -682,18 +954,32 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** A lesser bell: the border shivers, and whatever its gates were holding back opens. */
   private ringBell(bell: Prop): void {
+    const { room } = this;
     bell.ring();
     audio.sfx('bell');
+    this.trauma = Math.max(this.trauma, 0.6);
+    this.hitstop = 0.08;
+    this.hud.flash(0xfff0c0, 0.4, 400);
+    this.fx.hit(bell.x, bell.y - 6, 'jawia');
+    this.fx.shiftBurst(bell.x, bell.y - 6, this.world);
+    room.bellRung = true;
+    this.checkCleared();
+  }
+
+  private ringGreatBell(bell: Prop): void {
+    bell.ring();
+    audio.sfx('greatbell');
     this.state = 'ending';
     this.stateT = 0;
     this.endStep = 0;
-    this.trauma = 0.7;
-    this.hitstop = 0.1;
+    this.trauma = 0.9;
+    this.hitstop = 0.12;
     this.hud.setHint(null);
     this.hud.setDialog(null);
-    this.hud.flash(0xfff0c0, 0.5, 400);
-    this.fx.hit(bell.x, bell.y - 6, 'jawia');
+    this.hud.flash(0xfff0c0, 0.6, 500);
+    this.fx.hit(bell.x, bell.y - 14, 'jawia');
   }
 
   /** The bell answers: the border trembles, both worlds wash over the room in rings from the bell. */
@@ -702,13 +988,13 @@ export class GameScene extends Phaser.Scene {
     player.update(dt, this.level, this.world, false);
     for (const p of room.props) p.update(dt, player.x, player.y);
     for (const e of room.enemies) e.update(dt, this.level, this.world, player.x, player.y, false);
-    const bell = room.props.find((p) => p.kind === 'bell');
+    const bell = room.props.find((p) => p.kind === 'greatbell');
     const beats = [0.15, 0.75, 1.35, 1.95];
     if (bell && this.endStep < beats.length && this.stateT >= beats[this.endStep]) {
       this.endStep++;
       this.world = otherWorld(this.world);
-      room.view.reveal(this.world, bell.x - room.ox, bell.y - 6 - room.oy);
-      this.fx.shiftBurst(bell.x, bell.y - 6, this.world);
+      room.view.reveal(this.world, bell.x - room.ox, bell.y - 14 - room.oy);
+      this.fx.shiftBurst(bell.x, bell.y - 14, this.world);
       this.hud.setWorld(this.world, false);
       audio.setWorld(this.world);
       this.kick = 3;
@@ -742,10 +1028,11 @@ export class GameScene extends Phaser.Scene {
     const cy = room.oy + room.view.centerY;
     for (const p of room.props) if (Math.hypot(p.x - cx, p.y - cy) <= r) p.setWorld(world);
     for (const e of room.enemies) if (Math.hypot(e.x - cx, e.y - cy) <= r) e.setWorldVisual(world);
+    if (room.boss && Math.hypot(room.boss.x - cx, room.boss.y - cy) <= r) room.boss.setWorldVisual(world);
 
-    // the afterimage of the other side: strong at first, gone in a couple of seconds
+    // the afterimage of the other side (off unless TUNE.shift.afterimage > 0)
     this.echoT = Math.max(0, this.echoT - dt);
-    const k0 = this.echoT / TUNE.shift.afterimage;
+    const k0 = TUNE.shift.afterimage > 0 ? this.echoT / TUNE.shift.afterimage : 0;
     const shimmer = 0.85 + 0.15 * Math.sin(this.clock * 18);
     room.echo[world].setAlpha(k0 * k0 * 0.95 * shimmer);
     room.echo[otherWorld(world)].setAlpha(0);
@@ -783,6 +1070,10 @@ export class GameScene extends Phaser.Scene {
         const l = p.light();
         if (l && onScreen(l)) lights.push(l);
       }
+    for (const sh of this.room.shots)
+      if (sh.home === this.world) lights.push({ x: sh.x, y: sh.y, radius: 26, color: sh.kind === 'wisp' ? [0.6, 1.0, 0.4] : [0.9, 0.55, 1.0], intensity: 0.5 });
+    const bossLight = this.room.boss?.light(this.world);
+    if (bossLight) lights.push(bossLight);
     this.lighting.ambient = this.ambient;
     this.lighting.render(scrollX, scrollY, lights, this.clock);
 

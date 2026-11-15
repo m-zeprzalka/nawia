@@ -6,7 +6,7 @@ import { GAME_H, GAME_W, type World } from '../config.ts';
 import { PixelBuffer, bayer, mix, rgb, shade, withAlpha, type Color } from '../core/PixelBuffer.ts';
 import { mulberry32 } from '../core/rng.ts';
 import { drawText, measure } from './font.ts';
-import { heroFromBehind } from './sprites.ts';
+import { heroFromBehind } from './actors.ts';
 
 const HORIZON = 104;
 export const TITLE_MOON = { x: 262, y: 36, r: 13 } as const;

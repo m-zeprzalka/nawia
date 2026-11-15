@@ -8,6 +8,8 @@
   Powierzchnie są ciemne, a **szczeliny świecą**. Mury mają świetlny kontur, poza nimi nie ma ziemi, tylko gwiazdy.
   Dusze i zjawy są fioletowe, żeby nie zlewały się z cyjanem otoczenia.
 - Bohater wygląda tak samo po obu stronach (czerwony płaszcz i opaska, tarcza, miecz) – jest jedyną stałą.
+- **Postaci są rysowane na siatce**, jak w klasykach 8- i 16-bitowych: bohater i każdy zwykły wróg to dokładnie
+  jeden kafel 16x16, strażnik to 2x2 kafle (32x32). Miecz jest osobnym sprite'em 16x16 kładzionym obok bohatera.
 
 Palety: `src/art/palette.ts`. Podgląd wszystkiego naraz: `npm run art:preview`.
 
@@ -24,10 +26,14 @@ taka sama jak w docelowym PNG. Podmiana nie wymaga zmian w kodzie:
 | Plik | Komórka | Układ |
 |---|---|---|
 | `tiles_jawia.png`, `tiles_nawia.png` | 16x16 | 8 kolumn; kolejność kafli = `TILE_NAMES` w `src/art/tiles.ts` |
-| `hero.png` | 32x32 | wiersze: przód, tył, bok (w prawo; lewo to odbicie); kolumny: stoi, krok A, krok B, cios 0–2, garda (tarcza w górze), wolne. Podeszwy w wierszu 29 komórki |
-| `mobs.png` | 24x24 | wiersz 0: utopiec (3 klatki), wiersz 1: zjawa (3 klatki); trzecia klatka to atak |
-| `objects.png` | 16x32 | wiersz 0: Jawia – kosz x4, pochodnia x4; wiersz 1: to samo w Nawi; wiersz 2: kamień (J), kamień (N), krata, krata otwarta, dzwon x3, serce; wiersz 3: urna (J), urna (N), bożek (J), bożek (N), kolumna (J), kolumna (N), kości; wiersz 4: dusze x3. Wszystko stoi na dolnej krawędzi komórki |
-| `slash.png` | 32x32 | wiersze: prawo, dół, lewo, góra; 3 klatki; biały (barwiony w grze kolorem świata) |
+| `hero.png` | 16x16 | wiersze: przód, tył, bok (w prawo; lewo to odbicie); kolumny: stoi, krok A, krok B, zamach, cios, garda (tarcza w górze), 2 wolne (łuk). Podeszwy na dolnej krawędzi komórki |
+| `sword.png` | 16x16 | 8 klatek: ostrze skierowane na N, NE, E, SE, S, SW, W, NW. Rękojeść w klatce N leży w punkcie (7.5, 11.5), w NE w (3.5, 11.5); pozostałe to obroty |
+| `mobs.png` | 16x16 | 4 kolumny. Wiersz 0: utopiec (2 klatki spoczynku, atak); 1: zjawa (tak samo); 2: ognik (4 klatki płomienia); 3: strzyga, ciało; 4: strzyga, druga dusza; 5: serce strażnika (2 klatki w skorupie, 2 odsłonięte) |
+| `boss.png` | 32x32 | strażnik: spoczynek A, spoczynek B, zamach, szarża, ogłuszony (pęknięty) |
+| `shots.png` | 8x8 | ogień ognika x2, kula duszy x2 |
+| `objects.png` | 16x32 | wiersz 0: Jawia – kosz x4, pochodnia x4; wiersz 1: to samo w Nawi; wiersz 2: kamień (J), kamień (N), krata, krata otwarta, dzwon x3, serce; wiersz 3: urna (J), urna (N), bożek (J), bożek (N), kolumna (J), kolumna (N), kości; wiersz 4: dusze x3, kamień słońca i księżyca (słońce, księżyc); wiersz 5: słup słońca (stoi, schowany), słup księżyca (stoi, schowany). Wszystko stoi na dolnej krawędzi komórki |
+| `greatbell.png` | 48x48 | wielki dzwon: w spoczynku, wychylony w lewo, w prawo; stoi na środku dolnej krawędzi |
+| `slash.png` | 32x32 | łuk za ostrzem; wiersze: prawo, dół, lewo, góra; 3 klatki; biały (barwiony w grze kolorem świata). Ćwierć koła, którą przechodzi miecz |
 | `px.png` | 8x8 | cząsteczki, białe |
 | `ui.png` | 16x16 | serce, pół serca, puste serce, kamień (Jawia), kamień (Nawia) |
 
@@ -39,4 +45,5 @@ Zasady, których trzyma się kod (warto trzymać się ich też w PNG):
 - Oba zestawy kafli mają identyczny układ. Niektóre pola znaczą co innego w każdym świecie
   (omszały mur w Jawi to mur z runą w Nawi; „to, co poza murami” to 4 warianty ziemi w Jawi i 4 klatki migoczących gwiazd w Nawi).
 - Światło i mgła są nakładane w grze, więc kafle maluje się „w pełnym świetle”.
-- Bohater jest składany z części (ciało, nogi, tarcza, miecz) w `src/art/sprites.ts` – nowa poza (np. łuk) to kilka linii.
+- Bohater jest składany z części (tułów z głową, nogi, tarcza) w `src/art/actors.ts` – nowa poza (np. łuk) to kilka linii.
+  Tam też są wrogowie i strażnik; `src/art/sprites.ts` trzyma wszystko, co stoi w miejscu.

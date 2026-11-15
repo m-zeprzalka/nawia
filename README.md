@@ -11,11 +11,24 @@ where rubble blocks the living, the dead remember an open corridor. A bridge sta
 Some things can only be hurt in the world they belong to.
 
 The border forgives no mistakes: turn the stone where something stands on the other side and it throws you back
-to where you entered the room, half a heart lighter. For a moment after each turn you still see an afterimage of
-the side you left. Learn the room, then turn the stone.
+to where you entered the room, half a heart lighter. Nothing on screen shows you the other side.
+Learn the room, then turn the stone.
 
-> Status: playable demo. Five rooms (one of them two screens wide), both worlds, sword and shield, two enemies,
-> urns to smash, a gate, a bell. All art and sound are generated in code.
+> Status: playable demo, start to finish. Eleven rooms (one of them two screens wide), both worlds, sword and shield,
+> four kinds of enemies, a sun-and-moon switch puzzle, a memory room of invisible crossings, a boss that has to be
+> fought in both worlds, and a bell at the end. All art and sound are generated in code.
+
+## What is in the dungeon
+
+| | Lives in | What it does | What beats it |
+|---|---|---|---|
+| Utopiec (drowned one) | Jawia | wades in, crouches, lunges | the shield, then the sword |
+| Zjawa (wraith) | Nawia | circles, then swoops straight through you; flies over the abyss | face it with the shield up |
+| Ognik (wisp) | Jawia | hangs over water and spits fire | a raised shield sends its own fire back |
+| Strzyga | both | has two souls: killed in Jawia, she gets up in Nawia | follow her across |
+| The Guardian | the border | stone in Jawia, a heart in Nawia | make the stone charge into a wall, then strike the heart on the other side |
+
+Every enemy warns before it strikes (it blinks white and shakes), then commits to a straight line.
 
 ## Controls
 
@@ -61,15 +74,16 @@ Jump straight into a room while developing: `http://localhost:5173/?room=bridge&
   ring composites one into the other (`src/fx/DualCanvas.ts`).
 - **Light** is a CPU light map with dithered bands, multiplied over the scene (`src/fx/Lighting.ts`).
 - **Sound** is synthesized with WebAudio (`src/audio/audio.ts`): no audio files.
-- Feel tuning lives in one place: `TUNE` in `src/config.ts`.
+- Feel tuning lives in one place: `TUNE` in `src/config.ts` (the hero, the shift and its penalty, the boss).
+  Enemy behaviour numbers are the `SPECS` table at the top of `src/entities/Enemy.ts`.
 
 ```
 src/
   config.ts          resolution, tuning
   core/              pixel buffer, input (keyboard + gamepad), rng
-  art/               palettes, tiles, sprites, font, title picture (all drawn in code)
+  art/               palettes, tiles, actors (16x16, on the grid), props, font, title picture (all drawn in code)
   world/             room format + parser, room painter, collision, rooms/*.room.txt
-  entities/          Player, Enemy, Prop
+  entities/          Player, Enemy, Boss, Shot, Prop
   fx/                DualCanvas (the ring), Lighting, particles
   ui/                pixel text, HUD
   scenes/            Boot, Title (+ intro), Game, End

@@ -39,9 +39,13 @@ export class Level {
       const grid = { jawia: new Uint8Array(room.cols * room.rows), nawia: new Uint8Array(room.cols * room.rows) };
       for (const w of WORLDS) for (let i = 0; i < grid[w].length; i++) grid[w][i] = terrainBlock(room.terrain[w][i]);
       this.grids.set(room.id, grid);
-      // things that stand on the floor block both worlds
-      for (const o of room.objects)
-        if (o.kind !== 'enemy' && o.kind !== 'torch' && o.kind !== 'soul') this.setBlocked(room, o.tx, o.ty, true);
+      // things that stand on the floor block both worlds (posts go up and down at runtime)
+      for (const o of room.objects) {
+        if (o.kind === 'enemy' || o.kind === 'boss' || o.kind === 'torch' || o.kind === 'soul' || o.kind === 'heart') continue;
+        if (o.kind === 'post') this.setBlocked(room, o.tx, o.ty, !o.moon);
+        else if (o.kind === 'greatbell') for (const dx of [-1, 0, 1]) this.setBlocked(room, o.tx + dx, o.ty, true);
+        else this.setBlocked(room, o.tx, o.ty, true);
+      }
     }
   }
 

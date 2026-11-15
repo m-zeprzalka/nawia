@@ -1,0 +1,24 @@
+// A strzyga (x) has two souls: kill the body in Jawia and the second soul gets up in Nawia.
+// The hall is a patchwork: rubble (J) only in Jawia, standing walls (N) only in Nawia.
+// Following her across means turning the stone mid-fight, and not on the wrong tile.
+// The gate (G) to the guardian opens when everything here is dead on both sides. The heart (h) is for what comes next.
+room: souls
+at: 3,2
+name: Sala Dwóch Dusz | Hall of Two Souls
+
+map:
+##########.#########
+#!###!####G###!###!#
+#.....N......J.....#
+#..J.....N.......N.#
+#.....x.....J......#
+....N....h,....J...#
+#.......J...x...N..#
+#..N.........N.....#
+#.o...J....N....J.o#
+#T...u...1........T#
+####################
+
+sign 1:
+  jawia: Strzyga rodzi się z dwiema duszami. Zabij ciało, a druga wstanie tam, gdzie stal jej nie sięga. Chyba że pójdziesz za nią. | A strzyga is born with two souls. Kill the body and the other rises where steel cannot reach it. Unless you follow.
+  nawia: ...ona jest nasza tylko w połowie. Zabierz ją całą... | ...she is only half ours. Take all of her...

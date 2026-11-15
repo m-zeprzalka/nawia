@@ -1,0 +1,21 @@
+// The guardian (K marks the top-left tile of its 2x2 body).
+// Jawia: stone, cannot be hurt. It charges in a straight line; make it hit a wall or a rubble pile (J).
+// Nawia: while the stone is stunned its heart lies bare in the same place. The standing pillars (N)
+// are cover from its soul orbs, and a reason not to turn the stone just anywhere.
+// The gate (G) opens when it falls.
+room: guardian
+at: 3,1
+name: Strażnik | The Guardian
+
+map:
+##########.#########
+#!###!####G####!##!#
+#..................#
+#..N.....K.....N...#
+#......J....J......#
+#........,,........#
+#........,,........#
+#......J....J......#
+#..N...........N...#
+#T................T#
+##########.#########

@@ -1,4 +1,4 @@
-// End of the demo: strike the small bell.
+// The lesser bell: strike it and the gate in the south wall (G) opens. The way goes down from here.
 // Two ways onto the island: planks guarded by a drowned one, the old bridge guarded by a wraith.
 // In Nawia the people of the stronghold stand around the water, waiting to hear it.
 room: bell
@@ -16,8 +16,8 @@ map:
 #.u.~~~~~~~~~~~~z..#
 #.o..............o.#
 #T.......1........T#
-####################
+####G###############
 
 sign 1:
-  jawia: Mały dzwon. Jego wielki brat czeka głębiej, pod jeziorem. | The lesser bell. Its great brother waits deeper, beneath the lake.
+  jawia: Mały dzwon otwiera drogę w dół. Jego wielki brat czeka głębiej, pod jeziorem. | The lesser bell opens the way down. Its great brother waits deeper, beneath the lake.
   nawia: Uderz. Niech nas wreszcie ktoś usłyszy. | Strike it. Let someone hear us at last.

@@ -1,393 +1,16 @@
 // Sprite sheets, drawn in code. Every sheet is a fixed grid (fw x fh cells):
 // that grid is the contract for real art (see docs/ART.md).
 //
-// The hero is assembled from parts (body, legs, shield, sword) so every pose stays consistent
-// and new poses (a bow, later) are a few lines, not a redraw.
+// Characters live in actors.ts; this file holds everything that stands still.
 
 import { type World } from '../config.ts';
-import { PixelBuffer, bayer, fromAscii, mix, rgb, withAlpha, type Color } from '../core/PixelBuffer.ts';
+import { PixelBuffer, bayer, fromAscii, mix, rgb, type Color } from '../core/PixelBuffer.ts';
+import { makeActorSheets } from './actors.ts';
 import { INK, PAL, type WorldPalette } from './palette.ts';
+import { art, flame, grid, type Sheet } from './sheet.ts';
 
-export interface Sheet {
-  key: string;
-  buf: PixelBuffer;
-  fw: number;
-  fh: number;
-}
+export type { Sheet } from './sheet.ts';
 
-function grid(key: string, fw: number, fh: number, cols: number, frames: (PixelBuffer | null)[]): Sheet {
-  const rows = Math.ceil(frames.length / cols);
-  const buf = new PixelBuffer(cols * fw, rows * fh);
-  frames.forEach((f, i) => {
-    if (f) buf.copy(f, (i % cols) * fw, Math.floor(i / cols) * fh, 0, 0, Math.min(fw, f.w), Math.min(fh, f.h));
-  });
-  return { key, buf, fw, fh };
-}
-
-/** ASCII art with a width check: a typo in a row should fail loudly, not draw a crooked sprite. */
-function art(width: number, rows: string[]): string[] {
-  rows.forEach((r, i) => {
-    if (r.length !== width) throw new Error(`sprite row ${i} is ${r.length} wide, expected ${width}: "${r}"`);
-  });
-  return rows;
-}
-
-// =============================================================== the hero
-// 32x32 cells. Rows: facing down, up, side (right; left is a flip).
-// Columns: stand, walk A, walk B, attack 0-2, guard (shield up), spare.
-
-export const HERO = {
-  fw: 32, fh: 32, cols: 8,
-  STAND: 0, WALK_A: 1, WALK_B: 2, ATK0: 3, ATK1: 4, ATK2: 5, GUARD: 6,
-  DOWN: 0, UP: 1, SIDE: 2,
-  /** Row of the cell where the soles are: the sprite's origin sits just below it. */
-  FEET: 30,
-} as const;
-
-const HP: Record<string, Color> = {
-  o: INK.outline,
-  h: INK.hair, H: INK.hairDark, l: INK.hairLight,
-  s: INK.skin, S: INK.skinDark, e: INK.eye,
-  r: INK.band, R: INK.bandDark,
-  t: INK.tunic, T: INK.tunicDark, U: INK.tunicDeep,
-  c: INK.cloak, C: INK.cloakDark, k: INK.cloakLight,
-  b: INK.belt, y: INK.buckle,
-  p: INK.trousers, P: INK.trousersDark,
-  n: INK.boot, N: INK.bootDark,
-};
-
-const BODY = {
-  down: art(16, [
-    '....hhhhhhhh....',
-    '...hhlhhhhhhh...',
-    '..hhllhhhhhhhh..',
-    '..hrrrrrrrrrrh..',
-    '..hhsssssssshh..',
-    '..hssessssessh..',
-    '..HssessssessH..',
-    '...sssSSSSsss...',
-    '....SssssssS....',
-    '..kcttrrrrttck..',
-    '.ccTttttttttTcc.',
-    '.ccTttttttttTcc.',
-    '.sstbbbyybbbtss.',
-    '...tttttttttt...',
-    '...trtrttrtrt...',
-  ]),
-  up: art(16, [
-    '....hhhhhhhh....',
-    '...hhhhhhhhhh...',
-    '..hhhhhhhhhhhh..',
-    '..hrrrrrrrrrrh..',
-    '..hhhhhhhhhhhh..',
-    '..hHhhhhhhhhHh..',
-    '..HHhhhhhhhhHH..',
-    '...HHhhhhhhHH...',
-    '....sHHHHHHs....',
-    '..kkkkkkkkkkkk..',
-    '.cckccccccccCcc.',
-    '.cccccccccccCCc.',
-    '.sccccccccccCCs.',
-    '...cccccccCCC...',
-    '...cCccCccCcC...',
-  ]),
-  side: art(16, [
-    '.....hhhhhhh....',
-    '....hhhhhhhhh...',
-    '...hhhhhhhhlhh..',
-    '.rrrhrrrrrrrrr..',
-    '..R.hhhhssssss..',
-    '....hhhsssses...',
-    '....Hhhssssess..',
-    '....HHhsssssS...',
-    '.....HhSssss....',
-    '...cckttttttt...',
-    '..ccckttttttt...',
-    '..cccCtttttts...',
-    '..cccCtbbbyb....',
-    '...ccCtttttt....',
-    '...cCCtrtrtt....',
-  ]),
-};
-
-const LEGS = {
-  downStand: art(16, ['....ppp..ppp....', '....ppp..ppp....', '....nnn..nnn....', '...Nnnn..nnnN...']),
-  downA: art(16, ['....ppp..ppp....', '....ppp..nnn....', '....nnn..NnN....', '...Nnnn.........']),
-  downB: art(16, ['....ppp..ppp....', '....nnn..ppp....', '....NnN..nnn....', '.........nnnN...']),
-  sideStand: art(16, ['.....ppppp......', '.....ppppp......', '.....nnnn.......', '.....nnnnn......']),
-  sideA: art(16, ['....ppp.ppp.....', '...ppp...ppp....', '...nn.....nn....', '..nnn.....nnn...']),
-  sideB: art(16, ['.....ppppp......', '......pppp......', '......nnnn......', '......nnnnn.....']),
-};
-
-const SP: Record<string, Color> = {
-  w: INK.shieldRim, W: INK.shieldRimDark,
-  r: INK.shieldRed, R: INK.shieldRedDark, t: INK.shieldCream, T: INK.shieldCreamDark,
-  i: INK.iron, I: INK.ironMid,
-};
-const SHIELD = {
-  front: fromAscii(art(9, [
-    '..wwwww..',
-    '.wrrrttw.',
-    'wrrrrtttw',
-    'wrrriittW',
-    'wrriIIttW',
-    'wttiIIRRW',
-    'wtttiiRRW',
-    'wTTTrRRRW',
-    '.wTTRRRW.',
-    '..WWWWW..',
-  ]), SP),
-  side: fromAscii(art(5, ['.www.', 'wrrtw', 'wrrtW', 'wrriW', 'wriIW', 'wtiIW', 'wttRW', 'wTTRW', 'wTRRW', '.WWW.']), SP),
-  back: fromAscii(art(3, ['.w.', 'wrW', 'wrW', 'wrW', 'wtW', 'wtW', 'wRW', 'wRW', '.W.']), SP),
-};
-
-/** A short straight sword from the hand outwards. Angle in degrees, clockwise, 0 = right. */
-function drawSword(b: PixelBuffer, hx: number, hy: number, angle: number, len = 10): void {
-  const a = (angle * Math.PI) / 180;
-  const dx = Math.cos(a);
-  const dy = Math.sin(a);
-  const at = (t: number, side = 0): [number, number] => [Math.round(hx + dx * t - dy * side), Math.round(hy + dy * t + dx * side)];
-  // pommel: the hag stone, a speck of the other side's light
-  b.set(...at(-2), rgb(0x9af4ff));
-  b.set(...at(-1), INK.belt);
-  b.set(...at(0), INK.belt);
-  for (const s of [-1.2, 0, 1.2]) b.set(...at(1, s), s === 0 ? INK.bronze : INK.bronzeDark);
-  for (let t = 2; t <= len; t += 0.5) {
-    b.set(...at(t), t > len - 1.5 ? INK.steel : INK.steelMid);
-    if (t < len - 1.5) b.set(...at(t, 1), INK.steel);
-  }
-}
-
-type Dir3 = 'down' | 'up' | 'side';
-type Pose = 'stand' | 'walkA' | 'walkB' | 'atk0' | 'atk1' | 'atk2' | 'guard';
-
-const BX = 8; // where the 16px-wide body sits in the 32px cell
-const BY = HERO.FEET - 1 - 19; // 15 rows of body + 4 rows of legs, soles on row FEET-1
-
-function heroFrame(dir: Dir3, pose: Pose): PixelBuffer {
-  const b = new PixelBuffer(32, 32);
-  const walking = pose === 'walkA' || pose === 'walkB';
-  const attacking = pose === 'atk0' || pose === 'atk1' || pose === 'atk2';
-  // the body dips on contact frames, crouches behind the shield, leans into a strike
-  const dy = walking || pose === 'guard' || pose === 'atk1' ? 1 : 0;
-  let dx = 0;
-  if (dir === 'side' && pose === 'atk1') dx = 2;
-  if (dir === 'side' && pose === 'atk2') dx = 1;
-  const lunge = pose === 'atk1' ? 1 : 0;
-
-  const legs =
-    dir === 'side'
-      ? pose === 'walkA' || attacking ? LEGS.sideA : pose === 'walkB' ? LEGS.sideB : LEGS.sideStand
-      : pose === 'walkA' || pose === 'atk1' ? LEGS.downA : pose === 'walkB' ? LEGS.downB : LEGS.downStand;
-
-  const x0 = BX + dx;
-  const y0 = BY + dy + (dir === 'down' ? lunge : dir === 'up' ? -lunge : 0);
-  const body = (): void => {
-    b.blit(fromAscii(legs, HP), BX + (dir === 'side' ? dx : 0), BY + 15);
-    b.blit(fromAscii(BODY[dir], HP), x0, y0);
-  };
-  const swing = pose === 'walkA' ? 1 : pose === 'walkB' ? -1 : 0; // arms swing a little as he walks
-
-  if (dir === 'down') {
-    body();
-    const guard = pose === 'guard';
-    b.blit(SHIELD.front, guard ? x0 + 4 : x0 + 9, guard ? y0 + 9 : y0 + 7 + swing);
-    if (pose === 'atk0') drawSword(b, x0 + 13, y0 + 13, 20);
-    else if (pose === 'atk1') drawSword(b, x0 + 8, y0 + 15, 90);
-    else if (pose === 'atk2') drawSword(b, x0 + 2, y0 + 13, 160);
-    else drawSword(b, x0 + 1, y0 + 12 - swing, guard ? -100 : -122, 9);
-  } else if (dir === 'up') {
-    // seen from behind: his gear is on the far side of him
-    const guard = pose === 'guard';
-    if (pose === 'atk0') drawSword(b, x0 + 2, y0 + 9, 200);
-    else if (pose === 'atk1') drawSword(b, x0 + 8, y0 + 4, 270);
-    else if (pose === 'atk2') drawSword(b, x0 + 13, y0 + 9, 340);
-    else drawSword(b, x0 + 14, y0 + 12 + swing, -62, 9);
-    if (guard) b.blit(SHIELD.front, x0 + 4, y0 + 1);
-    body();
-    if (!guard) b.blit(SHIELD.back, x0 - 1, y0 + 8 - swing);
-  } else {
-    const guard = pose === 'guard';
-    if (!attacking && !guard) drawSword(b, x0 + 5, y0 + 12 + swing, -138, 9);
-    body();
-    if (pose === 'atk0') drawSword(b, x0 + 8, y0 + 7, -105);
-    else if (pose === 'atk1') drawSword(b, x0 + 12, y0 + 11, 0);
-    else if (pose === 'atk2') drawSword(b, x0 + 11, y0 + 13, 52);
-    else if (guard) drawSword(b, x0 + 4, y0 + 12, -160, 8);
-    b.blit(SHIELD.side, guard ? x0 + 12 : attacking ? x0 + 6 : x0 + 10, guard ? y0 + 6 : y0 + 8 - swing);
-  }
-  return b.outlined(INK.outline);
-}
-
-/** The hero seen from behind, standing: used as a silhouette on the title picture. */
-export const heroFromBehind = (): PixelBuffer => heroFrame('up', 'stand');
-
-function heroSheet(): Sheet {
-  const poses: (Pose | null)[] = ['stand', 'walkA', 'walkB', 'atk0', 'atk1', 'atk2', 'guard', null];
-  const frames: (PixelBuffer | null)[] = [];
-  for (const dir of ['down', 'up', 'side'] as Dir3[]) for (const p of poses) frames.push(p ? heroFrame(dir, p) : null);
-  return grid('hero', HERO.fw, HERO.fh, HERO.cols, frames);
-}
-
-// =============================================================== enemies
-// 24x24 cells. Row 0: utopiec (3 frames), row 1: zjawa (3 frames).
-
-export const MOB = { fw: 24, fh: 24, cols: 4, UTOPIEC: 0, ZJAWA: 4 } as const;
-
-const UP_: Record<string, Color> = {
-  g: rgb(0x3d6f62), G: rgb(0x27504a), L: rgb(0x66a084), b: rgb(0x86b48c), B: rgb(0x5c9078),
-  w: rgb(0x1c3528), W: rgb(0x315c3a),
-  y: rgb(0xf4f0a0), p: rgb(0x2a1420), m: rgb(0x10181e), t: rgb(0xe6dfc8), d: rgb(0x5ea89c),
-};
-const UTOPIEC = [
-  art(20, [
-    '......wWww.wWw......',
-    '....wWWwWWwWWWw.....',
-    '...wWwgggggggWWw....',
-    '..wWgggLLLgggggWw...',
-    '..wgggLLggggggggw...',
-    '..WgyyyggggggyyyW...',
-    '..wgypyggggggypyw...',
-    '..WggggGGGGGGgggW...',
-    '..wggmtmtmmtmtggw...',
-    '..WGggmmmmmmmmgGW...',
-    '.ggGGgggggggggGGgg..',
-    'gLgGgBbbbbbbbBgGgLg.',
-    'gg.GgbbbbbbbbbgG.gg.',
-    'gG.GggBbbbbbBggG.Gg.',
-    'dG..GggggggggggG.Gd.',
-    '....GgGG....GGgG....',
-    '...GggG......GggG...',
-    '...GGGG......GGGG...',
-  ]),
-  art(20, [
-    '....................',
-    '......wWww.wWw......',
-    '....wWWwWWwWWWw.....',
-    '...wWwgggggggWWw....',
-    '..wWgggLLLgggggWw...',
-    '..WgyyyggggggyyyW...',
-    '..wgypyggggggypyw...',
-    '..WggggGGGGGGgggW...',
-    '..wggmtmtmmtmtggw...',
-    '.gWGggmmmmmmmmgGWg..',
-    'gLGGGgggggggggGGGLg.',
-    'gg.GgBbbbbbbbBgG.gg.',
-    'gG.GgbbbbbbbbbgG.Gg.',
-    'G..GggBbbbbbBggG..G.',
-    'd...GggggggggggG..d.',
-    '....GgGG....GGgG....',
-    '...GggG......GggG...',
-    '..GGGGG......GGGGG..',
-  ]),
-  art(20, [
-    '......wWww.wWw......',
-    '....wWWwWWwWWWw.....',
-    '...wWwgggggggWWw....',
-    '..wWgggLLLgggggWw...',
-    'g.wgggLLggggggggw.g.',
-    'gLWgyyyggggggyyyWLg.',
-    'ggwgypyggggggypywgg.',
-    '.GWggggGGGGGGgggWG..',
-    '.GwggmttmmmmttggwG..',
-    '..WGggmmmmmmmmgGW...',
-    '...GGgggggggggGG....',
-    '...GgBbbbbbbbBgG....',
-    '...GgbbbbbbbbbgG....',
-    '...GggBbbbbbBggG....',
-    '....GggggggggggG....',
-    '....GgGG....GGgG....',
-    '...GggG......GggG...',
-    '...GGGG......GGGG...',
-  ]),
-];
-
-const ZP: Record<string, Color> = {
-  W: rgb(0xf2f6ff), w: rgb(0xb9c6f2), h: rgb(0x8f9ae2), v: INK.soul[2], V: INK.soul[1],
-  e: rgb(0x220c38), m: INK.soul[3],
-};
-const ZJAWA = [
-  art(18, [
-    '.......hhhh.......',
-    '.....hhWWWWhh.....',
-    '....hWWWWWWWWh....',
-    '...hhWWWWWWWWhh...',
-    '...hWeeWWWWeeWh...',
-    '...hWemWWWWmeWh...',
-    '..hhWWWWWWWWWWhh..',
-    '..h.wWWWeeWWWw.h..',
-    '.hh.wWWWeeWWWw.hh.',
-    '.h..wWWWWWWWWw..h.',
-    '...wwWWWWWWWWww...',
-    '..wWWwWWWWWWwWWw..',
-    '.wWw.wWWWWWWw.wWw.',
-    '.vw..wWWWWWWw..wv.',
-    '.....wWWWWWWw.....',
-    '.....vwWWWWwv.....',
-    '......vwWWwv......',
-    '......v.wWv.......',
-    '........vw........',
-    '........v.........',
-  ]),
-  art(18, [
-    '.......hhhh.......',
-    '.....hhWWWWhh.....',
-    '....hWWWWWWWWh....',
-    '...hhWWWWWWWWhh...',
-    '...hWeeWWWWeeWh...',
-    '...hWemWWWWmeWh...',
-    '..hhWWWWWWWWWWhh..',
-    '.hh.wWWWeeWWWw.hh.',
-    '.h..wWWWWWWWWw..h.',
-    '....wWWWWWWWWw....',
-    '..wwwWWWWWWWWwww..',
-    '.wWWwwWWWWWWwwWWw.',
-    '.vw..wWWWWWWw..wv.',
-    '.....wWWWWWWw.....',
-    '.....wWWWWWWwv....',
-    '......wWWWWwv.....',
-    '.......wWWwv......',
-    '.......vwWv.......',
-    '.........wv.......',
-    '..........v.......',
-  ]),
-  art(18, [
-    '.......hhhh.......',
-    '.....hhWWWWhh.....',
-    '....hWWWWWWWWh....',
-    '...hhWWWWWWWWhh...',
-    '...hWeeWWWWeeWh...',
-    '...hWmeWWWWemWh...',
-    '..hhWWWWWWWWWWhh..',
-    '..h.wWWeeeeWWw.h..',
-    '.hh.wWWeeeeWWw.hh.',
-    'wW..wWWWWWWWWw..Ww',
-    'vWwwwWWWWWWWWwwwWv',
-    '.vwWWwWWWWWWwWWwv.',
-    '.....wWWWWWWw.....',
-    '.....wWWWWWWw.....',
-    '....vwWWWWWWw.....',
-    '.....vwWWWWw......',
-    '......vwWWw.......',
-    '.......vWwv.......',
-    '.......vw.........',
-    '.......v..........',
-  ]),
-];
-
-function mobFrame(rows: string[], pal: Record<string, Color>, outline: Color, w: number, bottom: number): PixelBuffer {
-  const b = new PixelBuffer(24, 24);
-  b.blit(fromAscii(rows, pal), Math.floor((24 - w) / 2), bottom - rows.length);
-  return b.outlined(outline);
-}
-
-function mobSheet(): Sheet {
-  const ghost = withAlpha(INK.soul[0], 200);
-  return grid('mobs', MOB.fw, MOB.fh, MOB.cols, [
-    ...UTOPIEC.map((f) => mobFrame(f, UP_, INK.outline, 20, 22)), null,
-    ...ZJAWA.map((f) => mobFrame(f, ZP, ghost, 18, 22)), null,
-  ]);
-}
 
 // =============================================================== objects
 // 16x32 cells, 8 per row, everything stands on the bottom edge of its cell.
@@ -395,52 +18,38 @@ function mobSheet(): Sheet {
 // Row 1: Nawia  - brazier x4, wall torch x4
 // Row 2: sign (J), sign (N), gate, gate open, bell (rest, left, right), heart pickup
 // Row 3: urn (J), urn (N), idol (J), idol (N), pillar (J), pillar (N), bones, spare
-// Row 4: souls x3
+// Row 4: souls x3, turning stone (sun side up), turning stone (moon side up)
+// Row 5: sun post (raised, lowered), moon post (raised, lowered)
 
 export const OBJ = {
   fw: 16, fh: 32, cols: 8,
   BRAZIER: 0, TORCH: 4, ROW_NAWIA: 8,
   SIGN_J: 16, SIGN_N: 17, GATE: 18, GATE_OPEN: 19, BELL: 20, BELL_L: 21, BELL_R: 22, HEART: 23,
   URN_J: 24, URN_N: 25, IDOL_J: 26, IDOL_N: 27, PILLAR_J: 28, PILLAR_N: 29, BONES: 30,
-  SOUL: 32,
+  SOUL: 32, SWITCH_SUN: 35, SWITCH_MOON: 36,
+  POST_SUN_UP: 40, POST_SUN_DOWN: 41, POST_MOON_UP: 42, POST_MOON_DOWN: 43,
 } as const;
 
 const cell = (): PixelBuffer => new PixelBuffer(16, 32);
-
-function flame(b: PixelBuffer, p: WorldPalette, cx: number, base: number, height: number, width: number, f: number): void {
-  for (let i = 0; i < height; i++) {
-    const t = i / (height - 1); // 0 at the base, 1 at the tip
-    const sway = Math.sin(f * (Math.PI / 2) + i * 0.9) * t * 1.7;
-    const half = Math.max(0.5, (width / 2) * (1 - t * t) * (0.85 + 0.15 * Math.sin(f * 1.7 + i)));
-    const y = base - i;
-    for (let x = Math.floor(cx + sway - half); x <= Math.ceil(cx + sway + half - 1); x++) {
-      const d = Math.abs(x + 0.5 - (cx + sway)) / half;
-      const c = d < 0.35 && t < 0.5 ? p.fire[0] : d < 0.7 && t < 0.78 ? p.fire[1] : t > 0.86 ? p.fire[3] : p.fire[2];
-      b.set(x, y, c);
-    }
-  }
-  const sx = Math.round(cx + Math.sin(f * 2.1) * 3);
-  b.set(sx, base - height - 1 - (f % 2), f % 2 ? p.fire[2] : p.fire[1]);
-}
 
 function brazier(p: WorldPalette, f: number): PixelBuffer {
   const b = cell();
   const I = { l: INK.ironMid, m: INK.ironDark, d: INK.ironDeep, h: INK.iron };
   const bowl = fromAscii(art(16, [
-    '..hllllllllllh..',
-    '.hlmmmmmmmmmmld.',
-    '.dlmmmmmmmmmmdd.',
-    '..dmmmmmmmmmdd..',
-    '...ddmmmmmddd...',
-    '....d.dmmd.d....',
-    '...d...dd...d...',
-    '..dd...dd...dd..',
-    '..d....dd....d..',
-    '.dd...dddd...dd.',
+    '.hllllllllllllh.',
+    '.dmmmmmmmmmmmmd.',
+    '..dmmmmmmmmmmd..',
+    '...dddmmmmddd...',
+    '......dmmd......',
+    '......dmmd......',
+    '.....ddmmdd.....',
+    '....dd.dd.dd....',
+    '...dd..dd..dd...',
+    '..ddd..dd..ddd..',
   ]), I);
   b.blit(bowl, 0, 21);
   for (let x = 3; x < 13; x++) b.set(x, 21, x % 3 === f % 3 ? p.fire[1] : p.fire[2]);
-  flame(b, p, 8, 20, 10, 9, f);
+  flame(b, p.fire, 8, 20, 10, 9, f);
   return b.outlined(INK.outline);
 }
 
@@ -450,7 +59,7 @@ function wallTorch(p: WorldPalette, f: number): PixelBuffer {
     h: INK.ironMid, m: INK.ironDark, d: INK.ironDeep,
   });
   b.blit(sconce, 4, 22);
-  flame(b, p, 8.5, 21, 8, 6, f);
+  flame(b, p.fire, 8.5, 21, 8, 6, f);
   return b;
 }
 
@@ -631,72 +240,129 @@ function bones(): PixelBuffer {
   return b;
 }
 
+
+// The dead of the stronghold, as Nawia remembers them: a woman, a man, a child.
+const SOUL_PAL: Record<string, Color> = { S: INK.soul[3], s: INK.soul[2], W: INK.soul[4], d: INK.soul[1], e: INK.soul[0] };
 const SOULS = [
   art(12, [
-    '....ssss....',
-    '...sSSSSs...',
-    '..sSSSSSSs..',
-    '..sSeSSeSs..',
-    '..sSSSSSSs..',
-    '...sSSSSs...',
-    '..ssSSSSss..',
-    '.sSSSSSSSSs.',
-    '.sSsSSSSsSs.',
-    '.sS.sSSs.Ss.',
-    '....sSSs....',
-    '...sSSSSs...',
-    '...sSSSSs...',
-    '..sSSSSSSs..',
-    '..sSSSSSSs..',
-    '..sSSSSSSs..',
-    '.sSSSSSSSSs.',
-    '.sSSSSSSSSs.',
-    '.sSsSSsSsSs.',
-    '..s..ss..s..',
+    '....SSSS....',
+    '...SWWSSs...',
+    '..SSWSSSss..',
+    '..SseSSess..',
+    '..SSSSSSss..',
+    '...SSSSss...',
+    '..sSSSSSss..',
+    '.sSSSSSSsss.',
+    '.sSSsSSSsss.',
+    '.sSSsSSssss.',
+    '.sSSSSSssss.',
+    'sSSSSSSsssss',
+    'sSSSSSssssss',
+    'sSSSSSssssss',
   ]),
   art(12, [
-    '...sssss....',
-    '..sSSSSSs...',
-    '..sSSSSSs...',
-    '..sSeSeSs...',
-    '..sSSSSSs...',
-    '...sSSSs....',
-    '.ssSSSSSss..',
-    'sSSSSSSSSSs.',
-    'sSsSSSSSsSs.',
-    'sSsSSSSSsSs.',
-    'sS.sSSSs.Ss.',
-    '...sSSSs....',
-    '...sSSSs....',
-    '...sS.Ss....',
-    '...sS.Ss....',
-    '...sS.Ss....',
-    '...sS.Ss....',
-    '..ssS.Sss...',
+    '...SSSSSS...',
+    '..SWWSSSss..',
+    '..SSSSSSss..',
+    '..SeSSeSss..',
+    '..SSSSSSss..',
+    '...SSSsss...',
+    '.SSSSSSSsss.',
+    'SSSWSSSSssss',
+    'SSsSSSSSsdss',
+    'SSsSSSSSsdss',
+    '.ssSSSSsss..',
+    '..SSSsSsss..',
+    '..SSs.sSss..',
+    '..SSs.sSss..',
   ]),
-  art(12, [
-    '....ssss....',
-    '...sSSSSs...',
-    '...sSeeSs...',
-    '...sSSSSs...',
-    '....sSSs....',
-    '...sSSSSs...',
-    '..sSSSSSSs..',
-    '..sSSSSSSs..',
-    '...sSSSSs...',
-    '...sSSSSs...',
-    '...sSssSs...',
-    '...ss..ss...',
+  art(10, [
+    '..SSSSSS..',
+    '.SWWSSSss.',
+    '.SSSSSSss.',
+    '.SeSSeSss.',
+    '.SSSSSSss.',
+    '..SSSSss..',
+    '.SSSSSSss.',
+    '.SSSSSSss.',
+    '.SSSSSsss.',
+    '..Ss..ss..',
   ]),
 ];
 
 function soul(i: number): PixelBuffer {
   const b = cell();
   const rows = SOULS[i];
-  b.blit(fromAscii(rows, { s: INK.soul[2], S: INK.soul[4], e: INK.soul[0] }), 2, 29 - rows.length);
+  b.blit(fromAscii(rows, SOUL_PAL), (16 - rows[0].length) >> 1, 29 - rows.length);
   // dissolve the feet: the dead do not quite touch the floor
   for (let y = 25; y < 30; y++) for (let x = 0; x < 16; x++) if (bayer(x, y) < (y - 24) / 6) b.set(x, y, 0);
   return b;
+}
+
+const SUN = [rgb(0xfff4b8), rgb(0xffcf6a), rgb(0xe08a2a), rgb(0x8a4a1c)];
+const MOON = [rgb(0xf4ffff), rgb(0x9af4ff), rgb(0x3db6c6), rgb(0x1e6c8a)];
+
+/** The turning stone: strike it and the sun posts and moon posts trade places. */
+function switchStone(moon: boolean): PixelBuffer {
+  const b = cell();
+  const R = PAL.jawia.rock;
+  const pedestal = fromAscii(art(12, [
+    '..hhhhhhhh..',
+    '.hllllllmmd.',
+    '.dlmmmmmmdd.',
+    '..dmmmmmmd..',
+    '..dlmmmmdd..',
+    '..dlmmmmdd..',
+    '.dllmmmmmdd.',
+    'dllmmmmmmmdd',
+    'dddddddddddd',
+  ]), { h: R[5], l: R[4], m: R[3], d: R[1] });
+  b.blit(pedestal, 2, 22);
+  const ramp = moon ? MOON : SUN;
+  for (let y = 9; y < 24; y++)
+    for (let x = 1; x < 15; x++) {
+      const dx = x + 0.5 - 8;
+      const dy = y + 0.5 - 16.5;
+      const d = Math.hypot(dx, dy);
+      if (d > 5.6) continue;
+      const lit = (-dx - dy) / 5.6; // light from the upper left
+      b.set(x, y, d > 4.6 && lit < 0 ? ramp[3] : lit > 0.75 ? ramp[0] : lit > -0.1 ? ramp[1] : ramp[2]);
+    }
+  if (moon) {
+    // a crescent
+    for (const [x, y] of [[9, 14], [10, 15], [10, 16], [10, 17], [9, 18], [8, 19]]) b.set(x, y, ramp[0]);
+  } else {
+    // a sun wheel
+    for (const [x, y] of [[8, 14], [8, 19], [5, 16], [10, 17], [7, 16], [8, 16], [7, 17], [8, 17]]) b.set(x, y, ramp[3]);
+  }
+  return b.outlined(INK.outline);
+}
+
+/** A sun post or a moon post: a block of stone that is either in your way or flush with the floor. */
+function post(moon: boolean, raised: boolean): PixelBuffer {
+  const b = cell();
+  const R = PAL.jawia.rock;
+  const ramp = moon ? MOON : SUN;
+  const mark = (cx: number, cy: number, c: Color): void => {
+    if (moon) for (const [x, y] of [[0, -2], [1, -1], [1, 0], [1, 1], [0, 2], [-1, 2]]) b.set(cx + x, cy + y, c);
+    else for (const [x, y] of [[0, -2], [0, 2], [-2, 0], [2, 0], [0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) b.set(cx + x, cy + y, c);
+  };
+  if (!raised) {
+    // a socket in the floor with the sign still showing
+    b.rect(1, 17, 14, 14, R[0]);
+    b.rect(2, 18, 12, 12, R[1]);
+    for (let x = 2; x < 14; x++) b.set(x, 29, R[2]);
+    mark(8, 23, ramp[2]);
+    return b;
+  }
+  for (let y = 15; y <= 30; y++)
+    for (let x = 1; x <= 14; x++) b.set(x, y, x < 4 ? R[4] : x < 10 ? R[3] : R[2]);
+  for (let x = 1; x <= 14; x++) { b.set(x, 21, R[1]); b.set(x, 26, R[1]); b.set(x, 30, R[1]); }
+  // the top face carries the colour
+  for (let y = 7; y <= 14; y++)
+    for (let x = 1; x <= 14; x++) b.set(x, y, y === 7 || x === 1 ? ramp[0] : y === 14 || x === 14 ? ramp[2] : ramp[1]);
+  mark(8, 10, ramp[3]);
+  return b.outlined(INK.outline);
 }
 
 function heartPickup(): PixelBuffer {
@@ -714,8 +380,68 @@ function objectSheet(): Sheet {
   }
   frames.push(signStone(PAL.jawia, false), signStone(PAL.nawia, true), gate(false), gate(true), bell(0), bell(-1), bell(1), heartPickup());
   frames.push(urn('jawia'), urn('nawia'), idol('jawia'), idol('nawia'), pillar('jawia'), pillar('nawia'), bones(), null);
-  frames.push(soul(0), soul(1), soul(2));
+  frames.push(soul(0), soul(1), soul(2), switchStone(false), switchStone(true), null, null, null);
+  frames.push(post(false, true), post(false, false), post(true, true), post(true, false));
   return grid('objects', OBJ.fw, OBJ.fh, OBJ.cols, frames);
+}
+
+// =============================================================== the great bell
+// 48x48 cells: at rest, swung left, swung right. It stands on the middle of the bottom edge.
+
+export const GREAT_BELL = { fw: 48, fh: 48, cols: 3 } as const;
+
+function greatBell(tilt: number): PixelBuffer {
+  const b = new PixelBuffer(48, 48);
+  const w = PAL.jawia.wood;
+  // the frame: two posts, a beam, two braces
+  for (let y = 6; y < 47; y++)
+    for (const x0 of [3, 40]) {
+      b.set(x0, y, w[5]); b.set(x0 + 1, y, w[4]); b.set(x0 + 2, y, w[3]); b.set(x0 + 3, y, w[3]); b.set(x0 + 4, y, w[2]);
+    }
+  for (let x = 1; x < 47; x++) {
+    b.set(x, 3, w[5]); b.set(x, 4, w[4]); b.set(x, 5, w[4]); b.set(x, 6, w[3]); b.set(x, 7, w[3]); b.set(x, 8, w[2]); b.set(x, 9, w[1]);
+    if (x % 9 === 4) for (let y = 4; y < 9; y++) b.set(x, y, w[2]);
+  }
+  for (let i = 0; i < 7; i++) {
+    b.set(8 + i, 16 - i, w[3]); b.set(8 + i, 17 - i, w[2]);
+    b.set(39 - i, 16 - i, w[3]); b.set(39 - i, 17 - i, w[2]);
+  }
+  // the bell
+  const bronze = [rgb(0xfff0b0), rgb(0xf6d47a), rgb(0xc8923e), rgb(0xa06e30), rgb(0x7f5526), rgb(0x4e3320)];
+  const top = 12;
+  const height = 27;
+  for (let i = 0; i <= height; i++) {
+    const t = i / height;
+    const y = top + i;
+    const cx = 24 + tilt * 3.2 * t;
+    const hw = 4.2 + 6.4 * Math.pow(t, 0.8) + (t > 0.84 ? (t - 0.84) * 17 : 0);
+    const band = Math.abs(t - 0.3) < 0.025 || Math.abs(t - 0.8) < 0.025 || i === height;
+    for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw - 1); x++) {
+      const n = (x + 0.5 - cx) / hw;
+      let c = n < -0.72 ? bronze[2] : n < -0.45 ? bronze[1] : n < 0.15 ? bronze[2] : n < 0.62 ? bronze[3] : bronze[4];
+      if (n > -0.62 && n < -0.5 && t > 0.1 && t < 0.72) c = bronze[0];
+      if (band) c = n < 0.15 ? bronze[3] : bronze[5];
+      b.set(x, y, c);
+    }
+  }
+  // carved signs between the bands: sun, moon, sun
+  for (const [ox, moon] of [[-5, 0], [0, 1], [5, 0]] as [number, number][]) {
+    const cx = Math.round(24 + tilt * 1.8 + ox);
+    const cy = top + 15;
+    if (moon) for (const [x, y] of [[0, -2], [1, -1], [1, 0], [1, 1], [0, 2]]) b.set(cx + x, cy + y, bronze[5]);
+    else for (const [x, y] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) b.set(cx + x, cy + y, bronze[5]);
+  }
+  // crown and clapper
+  b.rect(22, 10, 4, 3, bronze[4]);
+  b.rect(23, 9, 2, 1, bronze[5]);
+  const kx = Math.round(24 + tilt * 5.5);
+  b.rect(kx - 1, top + height + 1, 3, 3, bronze[5]);
+  b.set(kx, top + height + 1, bronze[3]);
+  return b.outlined(INK.outline);
+}
+
+function greatBellSheet(): Sheet {
+  return grid('greatbell', GREAT_BELL.fw, GREAT_BELL.fh, GREAT_BELL.cols, [greatBell(0), greatBell(-1), greatBell(1)]);
 }
 
 // =============================================================== sword slash
@@ -723,11 +449,17 @@ function objectSheet(): Sheet {
 
 export const SLASH = { fw: 32, fh: 32, cols: 3, RIGHT: 0, DOWN: 1, LEFT: 2, UP: 3 } as const;
 
-function slashFrame(f: number): PixelBuffer {
+/**
+ * One frame of the arc the blade leaves behind. The sweep runs from angle `from` to angle `to`
+ * (degrees, 0 = right, clockwise): the same quarter circle the sword itself travels.
+ */
+function slashFrame(f: number, from: number, to: number): PixelBuffer {
   const b = new PixelBuffer(32, 32);
   const R = 15;
-  const deg = Math.PI / 180;
-  const [a0, a1] = [[-84, -8], [-66, 58], [14, 84]][f].map((d) => d * deg);
+  const span = Math.abs(to - from);
+  const dir = Math.sign(to - from);
+  // which part of the sweep each frame shows: the leading edge sits on the blade, the tail fades behind it
+  const [w0, w1] = [[-0.6, 0.15], [-0.2, 0.7], [0.4, 1.06]][f];
   const hot = rgb(0xffffff);
   const pale = rgb(0xd6ecff);
   for (let y = 0; y < 32; y++)
@@ -735,9 +467,12 @@ function slashFrame(f: number): PixelBuffer {
       const dx = x + 0.5 - 16;
       const dy = y + 0.5 - 16;
       const r = Math.hypot(dx, dy);
-      const a = Math.atan2(dy, dx);
-      if (a < a0 || a > a1 || r > R) continue;
-      const t = (a - a0) / (a1 - a0); // 0 = tail, 1 = leading edge
+      if (r > R) continue;
+      const a = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const d = ((((a - from + 540) % 360) + 360) % 360) - 180;
+      const sweep = (d * dir) / span;
+      if (sweep < w0 || sweep > w1) continue;
+      const t = (sweep - w0) / (w1 - w0); // 0 = tail, 1 = leading edge
       const thick = f === 2 ? 1 + 2.4 * t : 1.2 + 5.4 * Math.pow(t, 1.4);
       if (r < R - thick) continue;
       const fade = f === 2 ? 0.78 : 0.36;
@@ -748,12 +483,10 @@ function slashFrame(f: number): PixelBuffer {
 }
 
 function slashSheet(): Sheet {
+  // right: up -> right.  down: left -> down.  left: up -> left.  up: right -> up.
+  const sweeps: [number, number][] = [[-90, 0], [180, 90], [-90, -180], [0, -90]];
   const frames: PixelBuffer[] = [];
-  let cur = [0, 1, 2].map(slashFrame);
-  for (let dir = 0; dir < 4; dir++) {
-    frames.push(...cur);
-    cur = cur.map((b) => b.rotateCW());
-  }
+  for (const [from, to] of sweeps) for (let f = 0; f < 3; f++) frames.push(slashFrame(f, from, to));
   return grid('slash', SLASH.fw, SLASH.fh, SLASH.cols, frames);
 }
 
@@ -857,5 +590,5 @@ export function makeGlow(size = 48): PixelBuffer {
 }
 
 export function makeSheets(): Sheet[] {
-  return [heroSheet(), mobSheet(), objectSheet(), slashSheet(), particleSheet(), uiSheet()];
+  return [...makeActorSheets(), objectSheet(), greatBellSheet(), slashSheet(), particleSheet(), uiSheet()];
 }

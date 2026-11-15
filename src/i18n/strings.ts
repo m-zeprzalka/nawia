@@ -74,13 +74,18 @@ export const STR = {
     en: 'Something stands here on the other side. The border threw you back.',
   },
   hintBell: { pl: 'Uderz w dzwon.', en: 'Strike the bell.' },
+  hintReflect: { pl: 'Tarcza [X] odsyła błędny ogień tam, skąd przyszedł.', en: 'The shield [X] sends a wisp\'s fire back where it came from.' },
+  hintReflectPad: { pl: 'Tarcza (B) odsyła błędny ogień tam, skąd przyszedł.', en: 'The shield (B) sends a wisp\'s fire back where it came from.' },
+  hintTwoSouls: { pl: 'Strzyga ma dwie dusze. Druga wstała po tamtej stronie.', en: 'A strzyga has two souls. The second one rose on the other side.' },
+  hintStone: { pl: 'Kamienia nie rani stal. Niech sam się rozbije.', en: 'Steel does not hurt the stone. Let it break itself.' },
+  hintHeart: { pl: 'Pękł. Jego serce bije po drugiej stronie.', en: 'It cracked. Its heart beats on the other side.' },
 
   dead: { pl: 'Nawia cię nie chce. Jeszcze nie.', en: 'Nawia does not want you. Not yet.' },
 
   endTitle: { pl: 'Dzwon odpowiedział.', en: 'The bell answered.' },
   endBody: {
-    pl: 'Mały dzwon bije, a granica na chwilę drży.\nGłębiej, pod jeziorem, czeka jego wielki brat\ni strażnik, który żyje na samej granicy.\n\nTo koniec dema. Dziękuję za grę.',
-    en: 'The lesser bell rings, and the border trembles.\nDeeper, beneath the lake, its great brother waits,\nand a guardian who lives on the border itself.\n\nThis is the end of the demo. Thank you for playing.',
+    pl: 'Wielki dzwon bije pod jeziorem, a granica się domyka.\nStrażnik leży w gruzach po obu jej stronach.\nDusze grodu odchodzą tam, gdzie ich miejsce.\n\nTo koniec dema. Dziękuję za grę.',
+    en: 'The great bell rings beneath the lake, and the border closes.\nThe guardian lies in rubble on both sides of it.\nThe souls of the stronghold go where they belong.\n\nThis is the end of the demo. Thank you for playing.',
   },
   endAgain: { pl: '[SHIFT] od nowa', en: '[SHIFT] play again' },
   paused: { pl: 'PAUZA', en: 'PAUSED' },

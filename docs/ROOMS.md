@@ -54,21 +54,35 @@ Obiekty (stoją na podłodze, istnieją w obu światach):
 | `!` | ściana z pochodnią (światło; tylko tam, gdzie pod ścianą jest podłoga lub woda w obu światach) |
 | `T` | kosz z ogniem (blokuje, światło) |
 | `1`–`9` | kamień z napisem; treść w bloku `sign N:` pod mapą (`jawia:`, `nawia:` albo `both:`) |
-| `G` | krata – otwiera się, gdy w pokoju nie ma już wrogów w żadnym ze światów |
-| `B` | mały dzwon – uderzenie mieczem kończy demo |
+| `G` | krata – otwiera się, gdy pokój jest „załatwiony”: w pokoju z małym dzwonem po uderzeniu w dzwon, w pozostałych gdy nie ma już wrogów w żadnym ze światów |
+| `B` | mały dzwon – uderzenie mieczem otwiera kraty w tym pokoju |
+| `Q` | wielki dzwon (3 kafle szerokości, znak stoi na środkowym) – uderzenie kończy grę |
+| `L` | kamień słońca i księżyca – uderzenie mieczem zamienia miejscami słupy `a` i `m` |
+| `a` | słup słońca – na początku stoi (blokuje w obu światach), po uderzeniu w kamień chowa się w podłodze |
+| `m` | słup księżyca – odwrotnie: na początku schowany, po uderzeniu w kamień wstaje |
+| `h` | serce leżące na podłodze (raz zebrane nie wraca) |
 | `o` | urna – do rozbicia mieczem; w niektórych jest serce (zawsze w tych samych) |
 | `I` | bożek – blokuje; w Nawi świecą mu oczy |
 | `P` | kolumna – blokuje |
 | `s` | dusza – w Nawi stoi tam mieszkaniec grodu, w Jawi leżą jego kości (nie blokuje) |
-| `u` | utopiec – wróg z Jawi |
-| `z` | zjawa – wróg z Nawi (przelatuje nad otchłanią) |
+| `u` | utopiec – wróg z Jawi: podchodzi, przykuca, skacze |
+| `z` | zjawa – wróg z Nawi: krąży i przelatuje przez bohatera; lata nad otchłanią |
+| `f` | ognik – wróg z Jawi: wisi w miejscu i pluje ogniem; podniesiona tarcza odsyła ogień do niego |
+| `w` | ognik nad wodą (kafel jest wodą w obu światach) – miecz go nie dosięgnie, zostaje tarcza |
+| `x` | strzyga – ma dwie dusze: zabita w Jawi wstaje w Nawi i trzeba ją zabić drugi raz |
+| `K` | strażnik (boss) – znak stoi na lewym górnym kaflu jego ciała 2×2 |
+
+Stan słupów wraca do początkowego przy każdym wejściu do pokoju. Słup nie wstaje, dopóki ktoś na nim stoi.
 
 ## Zasady, na których opiera się projekt poziomów
 
 - **Kamień obraca się tylko tam, gdzie po drugiej stronie da się stanąć.** Obrót na gruzie, w murze albo nad
   wodą kończy się odrzuceniem: pół serca i powrót do miejsca, którym bohater wszedł do pokoju
   (w świecie, w którym do niego wszedł). Pokoju trzeba się nauczyć.
-- Przez chwilę po obrocie widać **powidok** tego, co stoi po stronie, którą właśnie opuścił. Potem gaśnie.
+- **Powidok jest wyłączony** (`TUNE.shift.afterimage = 0` w `src/config.ts`; wartość w sekundach włącza go z powrotem).
+  Układ drugiej strony trzeba zapamiętać.
+- `=` i `:` wyglądają w swoim świecie tak samo jak `+`, więc **skrzyżowania kładki z mostem nie da się zobaczyć** –
+  na tym stoi pokój `08-crossings`.
 - Podpowiedzi w obrazie, z których warto korzystać świadomie:
   - `,` (ozdobna posadzka) istnieje w obu światach – to „bezpieczny grunt”. Dobrze nią znaczyć filary,
     progi i ścieżki; ścieżka, która wchodzi pod gruz, mówi „droga biegnie dalej, tylko nie w tym świecie”.
@@ -76,6 +90,10 @@ Obiekty (stoją na podłodze, istnieją w obu światach):
   - Przy kaflach różniących się między światami pojawiają się same **pęknięcia** świecące kolorem drugiej strony.
 - Wróg jest groźny i wrażliwy tylko w swoim świecie. Z drugiej strony widać samo echo.
 - Krata potrzebuje ciszy po obu stronach, więc pokój z kratą wymusza walkę w obu światach.
+- Każdy wróg ostrzega przed atakiem (mruga na biało i drży), potem atakuje po prostej. Tarcza zatrzymuje cios od frontu.
+- Strażnik: w Jawi jest z kamienia i stal go nie rani. Szarżuje po prostej; gdy z rozpędu trafi w ścianę albo
+  gruz (`J`), pada ogłuszony, a jego serce odsłania się **w Nawi, w tym samym miejscu**. Mury `N` na arenie
+  osłaniają przed kulami serca i karzą obrót w złym miejscu. Liczby: `TUNE.boss` w `src/config.ts`.
 
 ## Sprawdzanie
 
@@ -83,8 +101,10 @@ Obiekty (stoją na podłodze, istnieją w obu światach):
 npm run rooms:check
 ```
 
-Skrypt przechodzi cały loch po kaflach w obu światach naraz i mówi, czy da się dojść do dzwonu,
-ile obrotów trzeba co najmniej i czy każde przejście między pokojami ma parę po drugiej stronie.
+Skrypt przechodzi cały loch po kaflach w obu światach naraz i mówi, czy da się dojść do obu dzwonów
+i do kamienia słońca i księżyca, ile obrotów trzeba co najmniej i czy każde przejście między pokojami
+ma parę po drugiej stronie. Zna słupy (stan kamienia jest częścią przeszukiwania); kraty uznaje za otwarte,
+wrogów pomija.
 Odpala się też przy `npm run build`, więc zepsuty loch nie trafi na itch.io.
 
 Podgląd wszystkich pokoi jako PNG (Jawia nad Nawią): `npm run art:preview`.

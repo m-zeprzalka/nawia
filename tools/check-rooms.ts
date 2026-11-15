@@ -1,6 +1,9 @@
 // Design-time check: is the dungeon finishable, and how many shifts does it take at minimum?
 //   npm run rooms:check
 // Walks the whole dungeon on the tile grid in both worlds at once (0-1 BFS: steps are free, shifts cost 1).
+// It knows about the turning stone: the state of the sun/moon posts is part of the search
+// (it resets when you leave a room, as it does in the game).
+// Gates are assumed open (they open when a room is cleared), enemies are ignored.
 import { SCREEN_COLS, SCREEN_ROWS, type World } from '../src/config.ts';
 import { isWalkable } from '../src/world/roomFormat.ts';
 import { loadDungeon } from './rooms.ts';
@@ -12,20 +15,33 @@ const problems = dungeon.validate();
 for (const p of problems) console.log(`  ! ${p}`);
 if (problems.length) failed = true;
 
-// props that stand on the floor block it (the gate is assumed open: it opens when the room is cleared)
 const blocked = new Set<string>();
-const goals: { x: number; y: number; room: string }[] = [];
+const switches = new Set<string>();
+const posts = new Map<string, boolean>(); // tile -> is it a moon post?
+const goals: { x: number; y: number; room: string; what: string }[] = [];
 for (const r of dungeon.rooms)
   for (const o of r.objects) {
     const gx = r.gx * SCREEN_COLS + o.tx;
     const gy = r.gy * SCREEN_ROWS + o.ty;
-    // urns can be smashed, souls and torches are not in the way; everything else blocks
-    if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell' || o.kind === 'idol' || o.kind === 'pillar') blocked.add(`${gx},${gy}`);
-    if (o.kind === 'bell') goals.push({ x: gx, y: gy, room: r.id });
+    const k = `${gx},${gy}`;
+    // urns can be smashed; souls, torches, hearts and everything alive are not in the way
+    if (o.kind === 'brazier' || o.kind === 'sign' || o.kind === 'bell' || o.kind === 'idol' || o.kind === 'pillar' || o.kind === 'switch') blocked.add(k);
+    if (o.kind === 'greatbell') for (const dx of [-1, 0, 1]) blocked.add(`${gx + dx},${gy}`);
+    if (o.kind === 'switch') switches.add(k);
+    if (o.kind === 'post') posts.set(k, o.moon);
+    if (o.kind === 'bell') goals.push({ x: gx, y: gy, room: r.id, what: 'lesser bell' });
+    if (o.kind === 'greatbell') goals.push({ x: gx, y: gy, room: r.id, what: 'great bell' });
+    if (o.kind === 'switch') goals.push({ x: gx, y: gy, room: r.id, what: 'turning stone' });
   }
 
 const WORLDS: World[] = ['jawia', 'nawia'];
-const free = (w: World, x: number, y: number): boolean => isWalkable(dungeon.terrainAt(w, x, y)) && !blocked.has(`${x},${y}`);
+/** moon: 0 = sun posts stand, 1 = moon posts stand */
+const free = (w: number, x: number, y: number, moon: number): boolean => {
+  const k = `${x},${y}`;
+  if (!isWalkable(dungeon.terrainAt(WORLDS[w], x, y)) || blocked.has(k)) return false;
+  const post = posts.get(k);
+  return post === undefined || post !== (moon === 1);
+};
 
 const start = dungeon.startRoom();
 if (!start.spawn) {
@@ -35,29 +51,40 @@ if (!start.spawn) {
 const sx = start.gx * SCREEN_COLS + start.spawn.tx;
 const sy = start.gy * SCREEN_ROWS + start.spawn.ty;
 
-const key = (w: number, x: number, y: number): string => `${w},${x},${y}`;
-const cost = new Map<string, number>([[key(0, sx, sy), 0]]);
-const deque: [number, number, number][] = [[0, sx, sy]];
+const key = (w: number, x: number, y: number, m: number): string => `${w},${x},${y},${m}`;
+const cost = new Map<string, number>([[key(0, sx, sy, 0), 0]]);
+const deque: [number, number, number, number][] = [[0, sx, sy, 0]];
+const relax = (w: number, x: number, y: number, m: number, c: number, front: boolean): void => {
+  const k = key(w, x, y, m);
+  if ((cost.get(k) ?? Infinity) <= c) return;
+  cost.set(k, c);
+  if (front) deque.unshift([w, x, y, m]);
+  else deque.push([w, x, y, m]);
+};
+const NEAR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 while (deque.length) {
-  const [w, x, y] = deque.shift()!;
-  const c = cost.get(key(w, x, y))!;
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-    const k = key(w, x + dx, y + dy);
-    if (free(WORLDS[w], x + dx, y + dy) && (cost.get(k) ?? Infinity) > c) {
-      cost.set(k, c);
-      deque.unshift([w, x + dx, y + dy]);
-    }
+  const [w, x, y, m] = deque.shift()!;
+  const c = cost.get(key(w, x, y, m))!;
+  const here = dungeon.roomAtTile(x, y);
+  for (const [dx, dy] of NEAR) {
+    const there = dungeon.roomAtTile(x + dx, y + dy);
+    // walking into another room: its posts are back in their starting position
+    const m2 = there === here ? m : 0;
+    if (free(w, x + dx, y + dy, m2)) relax(w, x + dx, y + dy, m2, c, true);
   }
-  const k = key(1 - w, x, y);
-  if (free(WORLDS[1 - w], x, y) && (cost.get(k) ?? Infinity) > c + 1) {
-    cost.set(k, c + 1);
-    deque.push([1 - w, x, y]);
-  }
+  // strike a turning stone from next to it (not while standing on a post: it could not rise under you)
+  if (!posts.has(`${x},${y}`) && NEAR.some(([dx, dy]) => switches.has(`${x + dx},${y + dy}`))) relax(w, x, y, 1 - m, c, true);
+  if (free(1 - w, x, y, m)) relax(1 - w, x, y, m, c + 1, false);
 }
+const best = (x: number, y: number): number => {
+  let b = Infinity;
+  for (const w of [0, 1]) for (const m of [0, 1]) b = Math.min(b, cost.get(key(w, x, y, m)) ?? Infinity);
+  return b;
+};
 
 console.log(`${dungeon.rooms.length} rooms, start: "${start.id}"`);
 for (const r of dungeon.rooms) {
-  let best = Infinity;
+  let first = Infinity;
   let reachable = 0;
   let walkable = 0;
   for (let y = 0; y < r.rows; y++)
@@ -65,24 +92,25 @@ for (const r of dungeon.rooms) {
       const gx = r.gx * SCREEN_COLS + x;
       const gy = r.gy * SCREEN_ROWS + y;
       for (const w of [0, 1]) {
-        if (!free(WORLDS[w], gx, gy)) continue;
+        if (!free(w, gx, gy, 0) && !free(w, gx, gy, 1)) continue;
         walkable++;
-        const c = cost.get(key(w, gx, gy));
-        if (c !== undefined) {
+        const c = Math.min(cost.get(key(w, gx, gy, 0)) ?? Infinity, cost.get(key(w, gx, gy, 1)) ?? Infinity);
+        if (c !== Infinity) {
           reachable++;
-          best = Math.min(best, c);
+          first = Math.min(first, c);
         }
       }
     }
-  const note = best === Infinity ? 'UNREACHABLE' : `first reached after ${best} shift(s), ${reachable}/${walkable} tiles reachable`;
+  const note = first === Infinity ? 'UNREACHABLE' : `first reached after ${first} shift(s), ${reachable}/${walkable} tiles reachable`;
   console.log(`  ${r.id.padEnd(12)} ${note}`);
-  if (best === Infinity) failed = true;
+  if (first === Infinity) failed = true;
 }
 for (const g of goals) {
-  let best = Infinity;
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const w of [0, 1]) best = Math.min(best, cost.get(key(w, g.x + dx, g.y + dy)) ?? Infinity);
-  console.log(best === Infinity ? `  ! the bell in "${g.room}" cannot be reached` : `  bell in "${g.room}": reachable, at least ${best} shift(s) from the start`);
-  if (best === Infinity) failed = true;
+  let b = Infinity;
+  for (const [dx, dy] of NEAR) b = Math.min(b, best(g.x + dx, g.y + dy));
+  if (g.what === 'great bell') for (const side of [-1, 1]) b = Math.min(b, best(g.x + side, g.y + 1), best(g.x + side, g.y - 1));
+  console.log(b === Infinity ? `  ! the ${g.what} in "${g.room}" cannot be reached` : `  ${g.what} in "${g.room}": reachable, at least ${b} shift(s) from the start`);
+  if (b === Infinity) failed = true;
 }
 console.log(failed ? 'FAILED' : 'OK');
 process.exit(failed ? 1 : 0);

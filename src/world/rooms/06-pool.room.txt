@@ -1,0 +1,24 @@
+// Wisps (w) hang over the water where no blade reaches them, and spit fire.
+// The gate (G) opens when the room falls silent, so there is no way around it:
+// raise the shield, face the fire, and it flies back to the wisp that spat it.
+// The old footbridge (:) leads to a heart, for those who look at the room from the other side.
+room: pool
+at: 0,2
+name: Topiel | The Drowning Pool
+
+map:
+####.###############
+##!#.##!####!###!###
+#.........~~~~~~.z.#
+#.o....~~~~~w~~~...#
+#.....~~~~~~~~~~...#
+#.,,,::::,h~~~~~..G.
+#.....~~~~~~~~~~...#
+#.T....~~~w~~~~~.u.#
+#........~~~~~~~.T.#
+#..1..............o#
+####################
+
+sign 1:
+  jawia: Błędne ognie. Nad wodą stal ich nie dosięgnie. Podnieś tarczę i oddaj im ich własny ogień. | Wisps. No blade reaches them over the water. Raise your shield and give them back their own fire.
+  nawia: ...światła nad wodą? Nie widzimy żadnych świateł. Tu jest tylko kładka... | ...lights over the water? We see no lights. There is only the footbridge here...

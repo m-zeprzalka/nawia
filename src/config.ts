@@ -38,6 +38,22 @@ export const TUNE = {
     enemyDamage: 2,
     guardSpeed: 0.45, // walking speed behind the raised shield
     guardArc: 0.2, // how squarely he must face a blow to stop it (dot product)
+    /** What a wisp's fire or a soul orb costs (half hearts). */
+    shotDamage: 1,
+  },
+  /** The guardian. Three phases of `hitsPerPhase` blows each. */
+  boss: {
+    hp: 9,
+    hitsPerPhase: 3,
+    stalkSpeed: [24, 28, 32],
+    stalkTime: [1.5, 1.15, 0.85], // seconds of walking before each charge
+    windup: [0.7, 0.6, 0.5],
+    chargeSpeed: [185, 215, 245],
+    stun: [3.6, 3.2, 2.8], // how long the heart lies bare after it hits a wall
+    orbEvery: [1.7, 1.45, 1.2], // the heart shoots at anyone who lingers in Nawia
+    orbCount: [1, 3, 5],
+    orbSpeed: [58, 66, 74],
+    damage: 2,
   },
   shift: {
     cooldown: 0.22,
@@ -48,8 +64,11 @@ export const TUNE = {
     rejectDamage: 1,
     /** ...and throws him back to where he entered the room, after this long. */
     rejectTime: 0.55,
-    /** How long the afterimage of the world he just left stays visible. */
-    afterimage: 2.6,
+    /**
+     * How long an afterimage of the world he just left stays visible. 0 = off:
+     * the layout of the other side has to be remembered, not read off the screen.
+     */
+    afterimage: 0 as number,
   },
   camera: {
     slideTime: 0.55,

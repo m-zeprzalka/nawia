@@ -1,0 +1,26 @@
+// The turning stone (L) sits in the wall between two chambers. Strike it and the sun posts (a)
+// and the moon posts (m) trade places.
+// Striking it from the south chamber only locks you out. The way through:
+//   west hall -> past the lowered moon post -> the north chamber (rubble in Jawia: go as a spirit)
+//   -> strike the stone from the north -> turn back to Jawia (not on the rubble!) -> through the gap
+//   that is a wall in Nawia (N) -> past the lowered sun posts -> out.
+room: sunmoon
+at: 1,2
+name: Komnata Słońca i Księżyca | Chamber of Sun and Moon
+
+map:
+####################
+##!######!##!####!##
+#....#JJ......N...o#
+#....mJ..z....N....#
+#....#J..J....#....#
+.....####L######aa##
+#....#........#....#
+#.............#.....
+#.T..#...1....#.u.T#
+#....#........#....#
+####################
+
+sign 1:
+  jawia: Kamień słońca i księżyca. Uderz, a słupy zamienią się miejscami. Zanim uderzysz, pomyśl, po której stronie muru chcesz stać. | The stone of sun and moon. Strike it and the posts trade places. Before you strike, think which side of the wall you want to be on.
+  nawia: ...słońce jest dla żywych, księżyc dla nas. Kamień nie wybiera... | ...the sun is for the living, the moon is for us. The stone does not choose...

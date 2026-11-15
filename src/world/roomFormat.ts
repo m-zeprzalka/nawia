@@ -19,7 +19,7 @@ export const isWalkable = (t: number): boolean => t === TERRAIN.FLOOR || t === T
 
 export type Bilingual = { pl: string; en: string };
 
-export type EnemyKind = 'utopiec' | 'zjawa';
+export type EnemyKind = 'utopiec' | 'zjawa' | 'ognik' | 'strzyga';
 
 export type ObjectDef =
   | { kind: 'brazier'; tx: number; ty: number }
@@ -31,6 +31,11 @@ export type ObjectDef =
   | { kind: 'idol'; tx: number; ty: number }
   | { kind: 'pillar'; tx: number; ty: number }
   | { kind: 'soul'; tx: number; ty: number }
+  | { kind: 'switch'; tx: number; ty: number }
+  | { kind: 'post'; tx: number; ty: number; moon: boolean }
+  | { kind: 'greatbell'; tx: number; ty: number }
+  | { kind: 'heart'; tx: number; ty: number }
+  | { kind: 'boss'; tx: number; ty: number }
   | { kind: 'enemy'; type: EnemyKind; tx: number; ty: number };
 
 export interface RoomDef {
@@ -76,6 +81,15 @@ export const LEGEND: Record<string, [Terrain, Terrain]> = {
   I: [TERRAIN.FLOOR, TERRAIN.FLOOR],
   P: [TERRAIN.FLOOR, TERRAIN.FLOOR],
   s: [TERRAIN.FLOOR, TERRAIN.FLOOR],
+  f: [TERRAIN.FLOOR, TERRAIN.FLOOR], // ognik
+  w: [TERRAIN.WATER, TERRAIN.WATER], // ognik hovering over water
+  x: [TERRAIN.FLOOR, TERRAIN.FLOOR], // strzyga
+  K: [TERRAIN.FLOOR, TERRAIN.FLOOR], // the guardian
+  Q: [TERRAIN.FLOOR, TERRAIN.FLOOR], // the great bell
+  L: [TERRAIN.FLOOR, TERRAIN.FLOOR], // turning stone
+  a: [TERRAIN.FLOOR, TERRAIN.FLOOR], // sun post
+  m: [TERRAIN.FLOOR, TERRAIN.FLOOR], // moon post
+  h: [TERRAIN.FLOOR, TERRAIN.FLOOR], // a heart lying on the floor
 };
 for (let d = 1; d <= 9; d++) LEGEND[String(d)] = [TERRAIN.FLOOR, TERRAIN.FLOOR];
 
@@ -175,6 +189,14 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
       else if (ch === 's') room.objects.push({ kind: 'soul', tx: x, ty: y });
       else if (ch === 'u') room.objects.push({ kind: 'enemy', type: 'utopiec', tx: x, ty: y });
       else if (ch === 'z') room.objects.push({ kind: 'enemy', type: 'zjawa', tx: x, ty: y });
+      else if (ch === 'f' || ch === 'w') room.objects.push({ kind: 'enemy', type: 'ognik', tx: x, ty: y });
+      else if (ch === 'x') room.objects.push({ kind: 'enemy', type: 'strzyga', tx: x, ty: y });
+      else if (ch === 'K') room.objects.push({ kind: 'boss', tx: x, ty: y });
+      else if (ch === 'Q') room.objects.push({ kind: 'greatbell', tx: x, ty: y });
+      else if (ch === 'L') room.objects.push({ kind: 'switch', tx: x, ty: y });
+      else if (ch === 'a') room.objects.push({ kind: 'post', tx: x, ty: y, moon: false });
+      else if (ch === 'm') room.objects.push({ kind: 'post', tx: x, ty: y, moon: true });
+      else if (ch === 'h') room.objects.push({ kind: 'heart', tx: x, ty: y });
       else if (ch >= '1' && ch <= '9') {
         const text = signs.get(Number(ch));
         if (!text) fail(`sign '${ch}' is on the map but has no "sign ${ch}:" block`);

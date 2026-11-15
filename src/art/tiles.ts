@@ -91,10 +91,16 @@ function ornamentTile(p: WorldPalette, world: World): PixelBuffer {
       const u = (x + y) % 8;
       const v = (x - y + 16) % 8;
       if (world === 'jawia') {
-        const dark = u < 4 !== v < 4;
-        let c = dark ? p.stone[2] : p.stone[4];
-        if (u === 0 || v === 0) c = p.stone[1];
-        if ((x * 13 + y * 7) % 23 === 0) c = p.stone[3];
+        // small square setts of warm stone, every other one with a carved diamond
+        const cx = x & 7;
+        const cy = y & 7;
+        const odd = (((x >> 3) + (y >> 3)) & 1) === 1;
+        let c = odd ? p.rock[3] : mix(p.rock[3], p.rock[4], 0.55);
+        if (cx === 7 || cy === 7) c = p.rock[1];
+        else if (cx === 0 || cy === 0) c = mix(c, p.rock[5], 0.3);
+        else if (cx === 6 || cy === 6) c = mix(c, p.rock[2], 0.45);
+        else if (odd && Math.abs(cx - 3) + Math.abs(cy - 3) === 1) c = p.rock[2];
+        else if (!odd && cx === 3 && cy === 3) c = p.rock[5];
         b.set(x, y, c);
       } else {
         let c = p.floor[1];
@@ -104,7 +110,6 @@ function ornamentTile(p: WorldPalette, world: World): PixelBuffer {
         b.set(x, y, c);
       }
     }
-  if (world === 'jawia') for (let i = 0; i < S; i++) { b.plot(i, 15, black(110)); b.plot(15, i, black(60)); b.plot(i, 0, white(22)); }
   return b;
 }
 
@@ -392,19 +397,19 @@ function shoreTile(p: WorldPalette, world: World, kind: 'n' | 'w' | 'e' | 's'): 
     if (kind === 'n') {
       if (jawia) {
         b.set(i, 0, p.floor[1]); b.set(i, 1, p.floor[0]); b.set(i, 2, p.water[0]); b.plot(i, 3, black(96));
-        if (i % 5 < 3) b.set(i, 4, p.water[4]);
+        if ((i * 7 + 3) % 11 < 2) b.set(i, 4, p.water[3]);
         if (i % 7 === 2) b.set(i, 1, p.growth[2]);
       } else {
         b.set(i, 0, p.growth[2]); b.set(i, 1, p.growth[0]); b.plot(i, 2, withAlpha(p.growth[0], 120));
       }
     } else if (kind === 's') {
       b.set(i, 15, jawia ? p.floor[1] : p.growth[1]);
-      if (jawia && i % 6 < 2) b.set(i, 14, p.water[3]);
+      if (jawia && (i * 5 + 1) % 13 < 2) b.set(i, 14, p.water[3]);
     } else {
       const x = kind === 'w' ? 0 : 15;
       const x2 = kind === 'w' ? 1 : 14;
       b.set(x, i, jawia ? p.floor[1] : p.growth[1]);
-      if (jawia && i % 5 < 2) b.set(x2, i, p.water[4]);
+      if (jawia && (i * 7 + 2) % 12 < 2) b.set(x2, i, p.water[3]);
     }
   }
   return b;

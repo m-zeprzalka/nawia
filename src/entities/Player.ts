@@ -1,16 +1,28 @@
-// The hero: sword in the right hand, round shield on the left arm.
+// The hero: one tile tall, sword in the right hand, round shield on the left arm.
+// The sword is its own sprite, laid next to him through the three steps of a swing.
 // All the "feel" numbers live in TUNE.player (src/config.ts).
 
 import Phaser from 'phaser';
 import { DEPTH, TUNE, type World } from '../config.ts';
 import { input, type Dir } from '../core/input.ts';
-import { HERO, SLASH } from '../art/sprites.ts';
+import { HERO, SWORD } from '../art/actors.ts';
+import { SLASH } from '../art/sprites.ts';
 import type { Box, Level } from '../world/Level.ts';
 
 export const DIR_VEC: Record<Dir, [number, number]> = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] };
 const SLASH_ROW: Record<Dir, number> = { right: SLASH.RIGHT, down: SLASH.DOWN, left: SLASH.LEFT, up: SLASH.UP };
 const WALK_CYCLE = [HERO.WALK_A, HERO.STAND, HERO.WALK_B, HERO.STAND];
-const STRIDE = 7; // px travelled per animation frame: feet stay planted at any speed
+const STRIDE = 6; // px travelled per animation frame: feet stay planted at any speed
+/**
+ * The swing: sword frame and where its cell sits relative to the middle of the hero's cell.
+ * A quarter circle from his sword side to straight ahead.
+ */
+const SWING: Record<Dir, [number, number, number][]> = {
+  right: [[SWORD.N, 5, -10], [SWORD.NE, 11, -7], [SWORD.E, 12, 1]],
+  left: [[SWORD.N, -5, -10], [SWORD.NW, -11, -7], [SWORD.W, -12, 1]],
+  down: [[SWORD.W, -10, 1], [SWORD.SW, -8, 9], [SWORD.S, -2, 10]],
+  up: [[SWORD.E, 10, -2], [SWORD.NE, 9, -10], [SWORD.N, 2, -12]],
+};
 
 const approach = (v: number, target: number, step: number): number =>
   v < target ? Math.min(target, v + step) : Math.max(target, v - step);
@@ -41,6 +53,7 @@ export class Player {
 
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly shadow: Phaser.GameObjects.Image;
+  readonly sword: Phaser.GameObjects.Sprite;
   readonly slash: Phaser.GameObjects.Sprite;
 
   private attackCd = 0;
@@ -52,7 +65,8 @@ export class Player {
     this.x = x;
     this.y = y;
     this.shadow = scene.add.image(x, y, 'shadow');
-    this.sprite = scene.add.sprite(x, y, 'hero', 0).setOrigin(0.5, HERO.FEET / HERO.fh);
+    this.sprite = scene.add.sprite(x, y, 'hero', 0).setOrigin(0.5, 1);
+    this.sword = scene.add.sprite(x, y, 'sword', 0).setVisible(false);
     this.slash = scene.add.sprite(x, y, 'slash', 0).setVisible(false);
     this.sync();
   }
@@ -211,9 +225,14 @@ export class Player {
 
   /** A blow caught on the shield still pushes him back a little. */
   absorb(fromX: number, fromY: number): void {
+    this.shove(fromX, fromY, 55);
+  }
+
+  /** Thrown away from (fromX, fromY) without being hurt. */
+  shove(fromX: number, fromY: number, force: number): void {
     const d = Math.hypot(this.x - fromX, this.y - fromY) || 1;
-    this.kx = ((this.x - fromX) / d) * 55;
-    this.ky = ((this.y - fromY) / d) * 55;
+    this.kx = ((this.x - fromX) / d) * force;
+    this.ky = ((this.y - fromY) / d) * force;
   }
 
   /** Puts sprites where the logic says they are (rounded: no sub-pixel shimmer). */
@@ -222,7 +241,7 @@ export class Player {
     const py = Math.round(this.y);
     const row = this.facing === 'down' ? HERO.DOWN : this.facing === 'up' ? HERO.UP : HERO.SIDE;
     let col: number = HERO.STAND;
-    if (this.attacking) col = this.attackT < 0.05 ? HERO.ATK0 : this.attackT < 0.15 ? HERO.ATK1 : HERO.ATK2;
+    if (this.attacking) col = this.attackT < 0.06 ? HERO.ATK0 : HERO.ATK1;
     else if (this.guarding) col = HERO.GUARD;
     else if (this.wasMoving) col = WALK_CYCLE[Math.floor(this.walkPhase) % 4];
     const depth = DEPTH.entities + (this.y + 4) / 1000;
@@ -239,13 +258,20 @@ export class Player {
     if (this.flash > 0) this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     else this.sprite.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xffffff);
 
+    // the blade: up, across, out, and it stays out for the rest of the swing
+    this.sword.setVisible(this.attacking && this.fade > 0.5);
+    if (this.attacking) {
+      const [frame, ox, oy] = SWING[this.facing][this.attackT < 0.04 ? 0 : this.attackT < 0.085 ? 1 : 2];
+      this.sword.setFrame(frame).setPosition(px + ox, py - 3 + oy).setDepth(this.facing === 'up' ? depth - 0.0003 : depth + 0.0003);
+    }
+
     const showSlash = this.attacking && this.attackT < 0.15;
     this.slash.setVisible(showSlash);
     if (showSlash) {
       const [fx, fy] = DIR_VEC[this.facing];
       const f = Math.min(2, Math.floor(this.attackT / 0.05));
       this.slash.setFrame(SLASH_ROW[this.facing] * SLASH.cols + f);
-      this.slash.setPosition(px + fx * 5, py - 5 + fy * 5);
+      this.slash.setPosition(px + fx * 3, py - 3 + fy * 3);
       this.slash.setDepth(this.facing === 'up' ? depth - 0.0002 : depth + 0.0002);
     }
   }

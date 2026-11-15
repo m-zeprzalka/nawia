@@ -5,7 +5,8 @@ import type { World } from '../config.ts';
 
 export type Sfx =
   | 'shiftNawia' | 'shiftJawia' | 'denied' | 'swing' | 'hit' | 'clink' | 'enemyDie' | 'hurt'
-  | 'door' | 'text' | 'gate' | 'bell' | 'start' | 'die' | 'block' | 'smash' | 'pickup' | 'reject';
+  | 'door' | 'text' | 'gate' | 'bell' | 'start' | 'die' | 'block' | 'smash' | 'pickup' | 'reject'
+  | 'shoot' | 'switch' | 'crash' | 'roar' | 'rise' | 'greatbell';
 
 // A minor pentatonic, the scale of the whole game (the bell is an A).
 const SCALE = [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
@@ -369,6 +370,47 @@ class AudioEngine {
         this.tone('square', 98, 70, 0.3, 0.3, { at: 0.04 });
         this.tone('sine', 60, 36, 0.4, 0.8, { at: 0.02 });
         break;
+      case 'shoot':
+        // a wisp spitting fire
+        this.tone('sine', 700, 1500, 0.12, 0.2, { echo: 0.3 });
+        this.hiss('bandpass', 1200, 3000, 0.1, 0.2, { q: 2 });
+        break;
+      case 'switch':
+        // the turning stone: a deep click and two notes trading places
+        this.tone('square', 150, 90, 0.07, 0.3);
+        this.tone('triangle', 523.25, 523.25, 0.3, 0.16, { echo: 0.6 });
+        this.tone('triangle', 783.99, 783.99, 0.45, 0.14, { at: 0.09, echo: 0.6 });
+        this.hiss('lowpass', 400, 120, 0.3, 0.35, { at: 0.02 });
+        break;
+      case 'crash':
+        // a ton of stone meeting a wall
+        this.tone('sine', 90, 30, 0.5, 0.9);
+        this.hiss('lowpass', 1800, 120, 0.5, 0.8);
+        this.hiss('highpass', 2500, 1200, 0.12, 0.3, { at: 0.02 });
+        break;
+      case 'roar':
+        this.tone('sawtooth', 70, 110, 0.5, 0.35, { attack: 0.08, echo: 0.5 });
+        this.tone('sawtooth', 105, 60, 0.7, 0.3, { at: 0.25, echo: 0.5 });
+        this.hiss('lowpass', 300, 700, 0.8, 0.35, { attack: 0.2 });
+        break;
+      case 'rise':
+        // the second soul getting up on the other side
+        this.tone('sine', 180, 720, 0.5, 0.25, { attack: 0.1, echo: 0.7 });
+        this.tone('sine', 271, 1080, 0.5, 0.14, { attack: 0.1, at: 0.05, echo: 0.7 });
+        this.hiss('bandpass', 500, 2600, 0.45, 0.2, { q: 3, echo: 0.5 });
+        break;
+      case 'greatbell': {
+        // the great bell: an octave under its little brother, and it does not stop
+        const f = 110;
+        const partials: [number, number, number][] = [
+          [0.5, 0.6, 7], [1, 0.7, 6], [1.19, 0.4, 5], [1.56, 0.25, 4],
+          [2, 0.32, 3.6], [2.51, 0.18, 2.8], [2.66, 0.14, 2.4], [3.01, 0.12, 2], [4.1, 0.07, 1.4],
+        ];
+        for (const [ratio, gain, dur] of partials) this.tone('sine', f * ratio, f * ratio * 0.997, dur, gain * 0.55, { attack: 0.003, echo: 0.6 });
+        this.hiss('bandpass', 2400, 600, 0.14, 0.5, { q: 0.8 });
+        this.tone('sine', 55, 40, 1.2, 0.8);
+        break;
+      }
       case 'bell': {
         // a struck bell: inharmonic partials, long tail
         const f = 220;
