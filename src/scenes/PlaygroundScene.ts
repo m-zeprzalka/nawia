@@ -1,11 +1,12 @@
 // The playground: a place to compare looks, not to play.
 //
 // The hero walks around a meadow that has a bit of everything in it. Along the roads stand exhibits:
-// the hero in every manner and look tried so far, the villagers, and the monsters grouped by how tall they
-// stand (one tile, one and a half, two). Every exhibit has a code (S2, A1, P7...) so a choice can be
-// named in one word; standing next to one shows what it is, its size and how many colours it uses.
+// the heroes still in the running, the villagers, and the monsters grouped by how tall they stand (one tile,
+// one and a half, two). Every exhibit has a code (C1, S2, P7...) so a choice can be named in one word;
+// standing next to one shows what it is, its size and how many colours it uses.
 //
-// Nothing is removed from here while the choosing goes on: what was drawn earlier stands in the archive rows.
+// Which heroes stand here, in what order and under what headings, is written in src/lab/lineup.txt.
+// What is taken off the board goes to that file's archive: it is never deleted, and comes back with one line.
 // What is chosen gets built into the game; see docs/PLAYGROUND.md.
 //
 //   Q / E  walk as the previous / next hero     1 / 2  villagers' height     O  line round the dolls    N  scenery mood
@@ -17,6 +18,8 @@ import { HERO as GAME_HERO, HERO_LOOKS as GAME_LOOKS } from '../art/actors.ts';
 import { BUILDS as OLD_BUILDS, HEROES as OLD_HEROES, OLD_BEASTS } from '../art/archive.ts';
 import { CREATURES } from '../art/cast.ts';
 import { FOLK_LOOKS, HERO_LOOKS, dollSheet, type Ink, type Size } from '../art/dolls.ts';
+import { conceptSheet } from '../art/concepts/concept.ts';
+import { CONCEPTS } from '../art/concepts/index.ts';
 import { HERO_HANDS, HERO_SCHOOLS, HERO_STYLES, HERO_TYPES, styleSheet } from '../art/heroStyles.ts';
 import { RIG, figureSheet, type FigureStyle } from '../art/rig.ts';
 import { MOODS, SURF } from '../art/surface.ts';
@@ -28,6 +31,7 @@ import { input, type Dir } from '../core/input.ts';
 import { DualCanvas } from '../fx/DualCanvas.ts';
 import { t, toggleLang } from '../i18n/strings.ts';
 import { loadLab } from '../lab/labData.ts';
+import { loadLineup } from '../lab/lineup.ts';
 import { PixelText } from '../ui/PixelText.ts';
 import { Level } from '../world/Level.ts';
 import { paintEcho } from '../world/painter.ts';
@@ -53,12 +57,15 @@ const SIZES: { id: Size; name: Bilingual; short: string }[] = [
   { id: 'tall', name: { pl: 'lalki 16x24: te same pomysły, półtora kafla', en: 'dolls 16x24: the same ideas, a tile and a half' }, short: '16x24' },
 ];
 
-/** The hero as he can be walked: one of these is picked with Q / E, and every one stands in the meadow. */
-interface Candidate {
+/**
+ * Something lineup.txt can put on the board: a hero (who can also be walked, with Q / E) or one of the first
+ * animals, kept in the archive.
+ */
+interface Entry {
   code: string;
   name: Bilingual;
   note: Bilingual | null;
-  spot: [number, number];
+  walk: boolean;
   sprites: () => Sprites;
 }
 
@@ -74,27 +81,9 @@ const INKS: { id: Ink; name: Bilingual }[] = [
 
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
 
-/** Where the exhibits stand, in tiles. */
-const SCHOOL_SPOTS: [number, number][] = [[2, 13], [5, 13], [8, 13], [11, 13]];
-const GAME_SPOT: [number, number] = [18, 13];
-const TYPE_SPOTS: [number, number][] = [[2, 18], [5, 18], [8, 18], [11, 18]];
-const HAND_SPOTS: [number, number][] = [[2, 23], [5, 23], [8, 23], [11, 23], [14, 23]];
-const STYLE_SPOTS: [number, number][] = [[2, 28], [5, 28], [8, 28], [11, 28]];
-const SMALL_SPOTS: [number, number][] = [[2, 33], [5, 33], [8, 33], [11, 33], [14, 33]];
-const TALL_SPOTS: [number, number][] = [[2, 38], [5, 38], [8, 38], [11, 38], [14, 38]];
-const OLD_LOOK_SPOTS: [number, number][] = [[2, 43], [5, 43], [8, 43]];
-const OLD_RIG_SPOTS: [number, number][] = [[11, 43], [13, 43], [15, 43], [17, 43], [19, 43], [21, 43]];
-const OLD_BEAST_SPOTS: [number, number][] = [[25, 23], [29, 23], [33, 23], [38, 23]];
-const HEADINGS: { spot: [number, number]; name: Bilingual }[] = [
-  { spot: SCHOOL_SPOTS[0], name: { pl: 'cztery postacie, cztery szkoły rysunku (G1: bohater z gry)', en: 'four characters, four schools of drawing (G1: the game hero)' } },
-  { spot: TYPE_SPOTS[0], name: { pl: 'cztery wcielenia z jednego szablonu', en: 'four incarnations from one template' } },
-  { spot: HAND_SPOTS[0], name: { pl: 'jeden bohater, pięciu różnych grafików', en: 'one hero, five different artists' } },
-  { spot: STYLE_SPOTS[0], name: { pl: 'bohater z gry w czterech wykończeniach', en: 'the game hero finished four ways' } },
-  { spot: SMALL_SPOTS[0], name: SIZES[0].name },
-  { spot: TALL_SPOTS[0], name: SIZES[1].name },
-  { spot: OLD_LOOK_SPOTS[0], name: { pl: 'archiwum: wyglądy z gry (G) i postacie ze szkieletu (X)', en: 'archive: looks from the game (G) and rig figures (X)' } },
-  { spot: OLD_BEAST_SPOTS[0], name: { pl: 'archiwum: pierwsze zwierzęta', en: 'archive: the first animals' } },
-];
+/** Where the exhibits stand, in tiles. Heroes fill rows in the order of lineup.txt, six to a row. */
+const HERO_ROWS = [13, 18, 23, 28];
+const HERO_COLS = [2, 5, 8, 11, 14, 17];
 const FOLK_SPOTS: [number, number][] = [[3, 8], [7, 8], [12, 8], [16, 8]];
 const CLASS_SPOTS: Record<string, [number, number][]> = {
   '1': [[22, 13], [25, 13], [28, 13], [33, 13], [37, 13], [41, 13]],
@@ -191,10 +180,14 @@ export class PlaygroundScene extends Phaser.Scene {
   private infoBox!: Phaser.GameObjects.Rectangle;
   private keys!: PixelText;
   private size: Size = 'small';
-  private candidates: Candidate[] = [];
+  /** every hero and archived animal there is, by code */
+  private entries = new Map<string, Entry>();
+  /** the heroes on the board, in the order Q / E walks through them */
+  private walkers: Entry[] = [];
   private picked = 0;
   private mood = 0;
-  private ink = 0;
+  /** dolls start without a line: the art lead liked A1 best that way */
+  private ink = 2;
   private labels = true;
   private animT = 0;
   private animFrame = 0;
@@ -216,7 +209,8 @@ export class PlaygroundScene extends Phaser.Scene {
     this.vx = 0;
     this.vy = 0;
 
-    // ?hero=S2&size=tall&mood=noc&ink=dark opens the playground on a particular combination
+    // ?hero=C2&size=tall&mood=noc&ink=dark opens the playground on a particular combination
+    // (?hero= also takes a code from the archive: it is walked, but not put back on the board)
     const q = new URLSearchParams(location.search);
     const pick = (list: { id: string }[], id: string | null, fallback: number): number => {
       const i = list.findIndex((e) => e.id === id);
@@ -225,9 +219,13 @@ export class PlaygroundScene extends Phaser.Scene {
     if (q.get('size') === 'tall') this.size = 'tall';
     this.mood = pick(MOODS, q.get('mood'), this.mood);
     this.ink = pick(INKS, q.get('ink'), this.ink);
-    this.candidates = this.listCandidates();
-    const wanted = this.candidates.findIndex((c) => c.code.toLowerCase() === (q.get('hero') ?? '').toLowerCase());
-    if (wanted >= 0) this.picked = wanted;
+    this.entries = this.catalogue();
+    const lineup = loadLineup();
+    this.walkers = lineup.board.flatMap((r) => r.codes).map((c) => this.entries.get(c)).filter((e): e is Entry => !!e && e.walk);
+    const wanted = (q.get('hero') ?? '').toLowerCase();
+    const extra = [...this.entries.values()].find((e) => e.walk && e.code.toLowerCase() === wanted);
+    if (extra && !this.walkers.includes(extra)) this.walkers.unshift(extra);
+    this.picked = Math.max(0, this.walkers.findIndex((e) => e.code.toLowerCase() === wanted));
 
     this.cameras.main.setBackgroundColor(0x05050b);
     this.paint();
@@ -240,8 +238,8 @@ export class PlaygroundScene extends Phaser.Scene {
     addBufferTexture(this, 'lab:grid', grid);
     this.grid = this.add.tileSprite(0, 0, this.painter.w, this.painter.h, 'lab:grid').setOrigin(0, 0).setDepth(DEPTH.floorDecor).setVisible(false);
 
-    this.hero = new Figure(this, 10 * TILE + 8, 11 * TILE + 8, this.candidates[this.picked].sprites());
-    this.buildExhibits();
+    this.hero = new Figure(this, 10 * TILE + 8, 11 * TILE + 8, this.walkers[this.picked].sprites());
+    this.buildExhibits(lineup);
     this.light();
 
     // ---- what is selected, and how to change it
@@ -349,29 +347,57 @@ export class PlaygroundScene extends Phaser.Scene {
     return { key, fw: GAME_HERO.fw, fh: GAME_HERO.fh, colors: 0, frame: (view, phase) => row[view] * GAME_HERO.cols + col[phase] };
   }
 
-  /** Every hero there is to compare, in the order Q / E walks through them: the newest first, the archive last. */
-  private listCandidates(): Candidate[] {
-    const out: Candidate[] = [];
-    const game = (i: number, spot: [number, number], note: Bilingual): void => {
-      out.push({ code: `G${i + 1}`, name: GAME_LOOKS[i].name, note, spot, sprites: () => this.gameSprites(GAME_LOOKS[i].key) });
+  /** Everything lineup.txt can name, by code: every hero drawn so far, and the first animals. */
+  private catalogue(): Map<string, Entry> {
+    const out = new Map<string, Entry>();
+    const put = (code: string, name: Bilingual, note: Bilingual | null, sprites: () => Sprites, walk = true): void => {
+      if (out.has(code)) console.warn(`playground: two exhibits share the code ${code}`);
+      out.set(code, { code, name, note, walk, sprites });
     };
-    HERO_SCHOOLS.forEach((s, i) => out.push({ code: `R${i + 1}`, name: s.name, note: s.note, spot: SCHOOL_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
-    game(0, GAME_SPOT, { pl: 'bohater, który jest dziś w grze: punkt odniesienia', en: 'the hero the game has today: what the others are measured against' });
-    HERO_TYPES.forEach((s, i) => out.push({ code: `W${i + 1}`, name: s.name, note: s.note, spot: TYPE_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
-    HERO_HANDS.forEach((s, i) => out.push({ code: `V${i + 1}`, name: s.name, note: s.note, spot: HAND_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
-    HERO_STYLES.forEach((s, i) => out.push({ code: `S${i + 1}`, name: s.name, note: s.note, spot: STYLE_SPOTS[i], sprites: () => this.sheet(`style:${s.id}`, () => styleSheet(s)) }));
-    HERO_LOOKS.forEach((c, i) => out.push({ code: `A${i + 1}`, name: c.name, note: c.note, spot: SMALL_SPOTS[i], sprites: () => this.heroSprites('small', i) }));
-    HERO_LOOKS.forEach((c, i) => out.push({ code: `B${i + 1}`, name: c.name, note: c.note, spot: TALL_SPOTS[i], sprites: () => this.heroSprites('tall', i) }));
-    for (let i = 1; i < GAME_LOOKS.length; i++) game(i, OLD_LOOK_SPOTS[i - 1], { pl: 'wygląd z gry (klawisz H): to samo ciało, inna głowa i barwy', en: 'a look from the game (the H key): the same body, another head and colours' });
+    for (const c of CONCEPTS) put(c.code, c.name, c.note, () => this.sheet(`concept:${c.id}`, () => conceptSheet(c)));
+    GAME_LOOKS.forEach((look, i) =>
+      put(
+        `G${i + 1}`,
+        look.name,
+        i === 0
+          ? { pl: 'bohater, który jest dziś w grze: punkt odniesienia', en: 'the hero the game has today: what the others are measured against' }
+          : { pl: 'wygląd z gry (klawisz H): to samo ciało, inna głowa i barwy', en: 'a look from the game (the H key): the same body, another head and colours' },
+        () => this.gameSprites(look.key),
+      ),
+    );
+    const styles = (letter: string, list: typeof HERO_STYLES): void =>
+      list.forEach((st, i) => put(`${letter}${i + 1}`, st.name, st.note, () => this.sheet(`style:${st.id}`, () => styleSheet(st))));
+    styles('R', HERO_SCHOOLS);
+    styles('W', HERO_TYPES);
+    styles('V', HERO_HANDS);
+    styles('S', HERO_STYLES);
+    HERO_LOOKS.forEach((c, i) => put(`A${i + 1}`, c.name, c.note, () => this.heroSprites('small', i)));
+    // the dolls the art lead singled out, with the smaller head asked for
+    for (const i of [0, 2, 4])
+      put(`A${i + 1}b`, HERO_LOOKS[i].name, { pl: `A${i + 1} z mniejszą, mniej okrągłą głową (7 wierszy, 9 pikseli)`, en: `A${i + 1} with a smaller, less round head (7 rows, 9 pixels)` }, () => this.heroSprites('slim', i));
+    HERO_LOOKS.forEach((c, i) => put(`B${i + 1}`, c.name, c.note, () => this.heroSprites('tall', i)));
     (['small', 'tall'] as const).forEach((size, k) =>
       OLD_HEROES.forEach((c, i) =>
-        out.push({
-          code: `X${k * OLD_HEROES.length + i + 1}`,
-          name: c.name,
-          note: { pl: `postać ze szkieletu, ${size === 'small' ? '16x16' : '16x24'}: głowa szersza od tułowia („żarówka”)`, en: `a rig figure, ${size === 'small' ? '16x16' : '16x24'}: the head wider than the trunk` },
-          spot: OLD_RIG_SPOTS[k * OLD_HEROES.length + i],
-          sprites: () => this.sheet(`old:${c.id}:${size}`, () => figureSheet('', c.make(OLD_BUILDS[size]), INK)),
-        }),
+        put(
+          `X${k * OLD_HEROES.length + i + 1}`,
+          c.name,
+          { pl: `postać ze szkieletu, ${size === 'small' ? '16x16' : '16x24'}: głowa szersza od tułowia („żarówka”)`, en: `a rig figure, ${size === 'small' ? '16x16' : '16x24'}: the head wider than the trunk` },
+          () => this.sheet(`old:${c.id}:${size}`, () => figureSheet('', c.make(OLD_BUILDS[size]), INK)),
+        ),
+      ),
+    );
+    OLD_BEASTS.forEach((c, i) =>
+      put(
+        `Z${i + 1}`,
+        c.name,
+        null,
+        () =>
+          this.sheet(`old:${c.id}`, () => {
+            const buf = new PixelBuffer(c.frames[0].w * c.frames.length, c.frames[0].h);
+            c.frames.forEach((f, k) => buf.copy(f, k * f.w, 0));
+            return { buf, fw: c.frames[0].w, fh: c.frames[0].h };
+          }),
+        false,
       ),
     );
     return out;
@@ -403,7 +429,7 @@ export class PlaygroundScene extends Phaser.Scene {
 
   // ------------------------------------------------------------------ exhibits
 
-  private buildExhibits(): void {
+  private buildExhibits(lineup: ReturnType<typeof loadLineup>): void {
     const add = (code: string, title: Bilingual, name: Bilingual, note: Bilingual | null, spot: [number, number], does: Exhibit['does'], sprites: () => Sprites): void => {
       const x = spot[0] * TILE + 8;
       const y = spot[1] * TILE + 8;
@@ -413,18 +439,30 @@ export class PlaygroundScene extends Phaser.Scene {
       label.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
       this.exhibits.push({ code, title, name, note, lift, figure, label, does, homeX: x, t: Math.random() * 3, sprites });
     };
-    // every hero walks on the spot, so each shows its stride; villagers only turn
-    for (const c of this.candidates) add(c.code, c.name, c.name, c.note, c.spot, 'show', c.sprites);
+    // the board, as lineup.txt has it: every hero walks on the spot, so each shows its stride
+    const heading = (tx: number, ty: number, name: Bilingual): void => {
+      const text = new PixelText(this, tx * TILE - 8, ty * TILE - 52, { width: 300, height: 13, color: 0x9af4ff });
+      text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
+      this.titles.push({ text, name });
+    };
+    const named = new Set([...lineup.board.flatMap((r) => r.codes), ...lineup.archive]);
+    for (const code of named) if (!this.entries.has(code)) console.warn(`playground: lineup.txt names ${code}, which does not exist`);
+    for (const code of this.entries.keys()) if (!named.has(code)) console.warn(`playground: ${code} is in neither part of lineup.txt (not shown)`);
+    let row = 0;
+    for (const group of lineup.board) {
+      const list = group.codes.map((c) => this.entries.get(c)).filter((e): e is Entry => !!e);
+      for (let i = 0; i < list.length; i += HERO_COLS.length) {
+        if (row >= HERO_ROWS.length) {
+          console.warn('playground: the board is full; the rest of lineup.txt is not shown');
+          break;
+        }
+        const ty = HERO_ROWS[row];
+        if (i === 0 && group.heading) heading(HERO_COLS[0], ty, group.heading);
+        list.slice(i, i + HERO_COLS.length).forEach((e, k) => add(e.code, e.name, e.name, e.note, [HERO_COLS[k], ty], e.walk ? 'show' : 'pace', e.sprites));
+        row++;
+      }
+    }
     FOLK_LOOKS.forEach((c, i) => add(`N${i + 1}`, c.name, c.name, c.note, FOLK_SPOTS[i], 'turn', () => this.folkSprites(i)));
-    OLD_BEASTS.forEach((c, i) =>
-      add(`Z${i + 1}`, c.name, c.name, null, OLD_BEAST_SPOTS[i], 'pace', () =>
-        this.sheet(`old:${c.id}`, () => {
-          const buf = new PixelBuffer(c.frames[0].w * c.frames.length, c.frames[0].h);
-          c.frames.forEach((f, k) => buf.copy(f, k * f.w, 0));
-          return { buf, fw: c.frames[0].w, fh: c.frames[0].h };
-        }),
-      ),
-    );
 
     const used: Record<string, number> = { '1': 0, '1.5': 0, '2': 0 };
     CREATURES.forEach((c, i) => {
@@ -440,11 +478,6 @@ export class PlaygroundScene extends Phaser.Scene {
       text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
       this.titles.push({ text, name: CLASS_NAME[cls] });
     }
-    for (const { spot, name } of HEADINGS) {
-      const text = new PixelText(this, spot[0] * TILE - 8, spot[1] * TILE - 52, { width: 300, height: 13, color: 0x9af4ff });
-      text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
-      this.titles.push({ text, name });
-    }
     this.relabel();
   }
 
@@ -456,7 +489,7 @@ export class PlaygroundScene extends Phaser.Scene {
 
   /** The villagers' height or the line changed: everybody drawn as a doll gets a new sheet. */
   private restyle(): void {
-    this.hero.use(this.candidates[this.picked].sprites());
+    this.hero.use(this.walkers[this.picked].sprites());
     for (const e of this.exhibits) {
       e.figure.use(e.sprites());
       e.label.image.setY(Math.round(e.figure.y) - e.figure.set.fh - e.lift);
@@ -477,14 +510,14 @@ export class PlaygroundScene extends Phaser.Scene {
 
   /** Walk as another hero. */
   private pick(i: number): void {
-    this.picked = (i + this.candidates.length) % this.candidates.length;
-    this.hero.use(this.candidates[this.picked].sprites());
+    this.picked = (i + this.walkers.length) % this.walkers.length;
+    this.hero.use(this.walkers[this.picked].sprites());
     this.light();
     this.refresh();
   }
 
   private refresh(): void {
-    const c = this.candidates[this.picked];
+    const c = this.walkers[this.picked];
     const s = this.hero.set;
     this.status[0].setText(`[Q/E] ${c.code} ${t(c.name)} (${s.fw}x${s.fh})   [N] ${t(MOODS[this.mood].name)}`);
     this.status[1].setText(t({ pl: `[1/2] mieszkańcy ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] lalki: ${INKS[this.ink].name.pl}`, en: `[1/2] villagers ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] dolls: ${INKS[this.ink].name.en}` }));

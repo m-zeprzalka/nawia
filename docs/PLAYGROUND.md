@@ -2,13 +2,68 @@
 
 Plac prób to osobna scena, w której nic się nie dzieje poza tym, że bohater chodzi. Służy do jednego: żeby postawić obok siebie
 warianty bohatera, mieszkańców, potworów i scenerii, obejrzeć je w ruchu i wskazać, co zostaje. Nic stąd nie jest jeszcze
-użyte w grze. To, co zostanie wybrane, przenosi się do gry. **Dopóki trwa wybieranie, nic stąd nie znika**: wcześniejsze
-wersje stoją w rzędach archiwum.
+użyte w grze. To, co zostanie wybrane, przenosi się do gry. **Dopóki trwa wybieranie, nic stąd nie znika**: to, co odpadło,
+trafia do archiwum.
+
+## Plansza i archiwum: szybka selekcja
+
+Kto stoi na planszy, w jakiej kolejności i pod jakimi nagłówkami, jest zapisane w jednym pliku tekstowym:
+**`src/lab/lineup.txt`**. Ma dwie części:
+
+```
+board:
+* Nowe koncepty | New concepts      <- nagłówek nad nowym rzędem planszy
+C1   najlepsze z wybranych, 16x16   <- kod, a za nim dowolna notatka dla Ciebie
+C2   to samo, 16x20
+
+archive:
+W4   Łowca potworów: odpada
+```
+
+- **Zdjąć coś z planszy**: przenieść jego linijkę pod `archive:` i odświeżyć stronę. Nic nie jest kasowane.
+- **Przywrócić**: przenieść linijkę z powrotem nad `archive:`.
+- **Zmienić kolejność**: przestawić linijki. Rząd mieści sześć postaci; dłuższa grupa przechodzi do następnego rzędu.
+- Notatki za kodem plac pomija, więc można tam pisać werdykty („za duża głowa”, „odpada”).
+- Kod, którego plac nie zna, i bohater, którego nie ma w żadnej części, są wypisywane w konsoli przeglądarki.
+- Mieszkańców (N) i potworów (P) ten plik na razie nie dotyczy: stoją na swoich miejscach.
+- Bohatera z archiwum można obejrzeć w ruchu bez przenoszenia linijki: `?lab&hero=W4`.
 
 ## Teraz wybieramy: styl graficzny bohatera
 
-Bohater jest jeden: ten, który jest dziś w grze (jasne włosy, czerwona krajka z końcami na wietrze, jasna koszula, czerwony
-płaszcz, okrągła tarcza). Stoi na placu jako **G1**. Szukamy dla niego stylu, więc stoi obok w wielu wersjach.
+Bohater jest jeden: młody chłopak ze wsi, nieopierzony, który na początku boi się ruszyć w drogę (z miecza i tarczy).
+Bazą jest ten, który jest dziś w grze (**G1**). Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md).
+
+### Nowe koncepty (C1–C6)
+
+Sześć osobnych koncepcji, każda narysowana od zera w pełnych klatkach (bez wspólnego szablonu), w wysokościach od 16 do 22
+pikseli, żeby było widać, jak wysoka postać pasuje do świata.
+
+![Od lewej: bohater z gry (G1), potem C1–C6](img/hero-concepts.png)
+
+| Kod | Koncept | Rozmiar | Kto rysował | Na czym polega |
+|---|---|---|---|---|
+| **C1** | Najlepsze z wybranych | 16×16 | ja, z Twoich notatek | malowany jak S3 (bez konturu od strony światła, jaśniejszy brzeg głowy), tony S2, smukły jak A1 z mniejszą głową, oczy 2×2 (powieka, białko, tęczówka), bez opaski; czerwony płaszcz obramowuje sylwetkę, haft przy kołnierzu i mankietach |
+| **C2** | to samo, wyżej | 16×20 | ja | C1 o ćwierć kafla wyższy: ta sama głowa, dłuższe rękawy, koszula do pół uda, cholewy, płaszcz do kolan. C1 i C2 obok siebie odpowiadają na pytanie „kafel czy trochę więcej” |
+| **C3** | Miary SNES | 16×22 | ja | konstrukcja bohatera 16-bitowych przygodówek: duża głowa (10 wierszy), oczy 2×3, tarcza wysoka jak tułów, ciemny kontur, połysk na włosach; w kostiumie naszego chłopaka (patrz niżej) |
+| **C4** | Kożuszek | 16×18 | grafik 1 | żółtodziób w za dużym kożuchu po ojcu: rękawy zakrywają dłonie, runo wokół twarzy, łapcie i onuce, ojcowski miecz za długi, więc na plecach; plecionka zamiast tarczy; zmartwione oczy; bez czarnego konturu, każdy materiał obrysowany własnym ciemniejszym tonem |
+| **C5** | Naznaczony | 16×21 | grafik 2 | smukły chłopak, którego dotknęła Nawia: grzywka na oku, przez nią cyjanowy błysk; granatowy płaszcz, czerwony haft przy kołnierzu, kamień z dziurką na szyi; chłodna, księżycowa paleta, ciemna linia tylko w cieniu i drugie, cyjanowe światło na prawych krawędziach |
+| **C6** | Bartnik | 16×20 | grafik 3 | syn bartnika: czerwona filcowa czapka z futrzanym otokiem, skórzany kubrak, leziwo przez pierś, róg, tarcza z desek pod korą, ręka nerwowo na rękojeści; maniera domowych komputerów końca lat 80: dithering na dużych płaszczyznach, przygaszone barwy, ciemny kontur |
+
+Wszystkie mieszczą się w 15 kolorach i mają trzy widoki, stanie i dwa kroki. Żaden nie ma jeszcze ciosu ani gardy.
+
+**O C3.** Prośba była o wariant jak najbardziej podobny do bohatera klasycznej przygodówki ze SNES-a. Wiernej kopii tej postaci
+nie rysuję: to cudzy bohater, a repozytorium jest publiczne. C3 bierze od niej tylko to, co sprawdza się w naszej grze, czyli
+miary i rzemiosło (wysokość ok. 22 pikseli, rozkład głowa / tułów / nogi, wielkość oczu i tarczy, kontur, liczba tonów), a twarz,
+strój i barwy ma nasze. Dzięki temu widać, jak taka sylwetka zachowuje się w naszym świecie.
+
+### Poprawki z DESIGN-DECISIONS
+
+- **S3 Malowany**: brzeg głowy od strony, w którą idzie, jest o kilka tonów jaśniejszy (brąz skóry zamiast ciemnego brązu).
+- **A1, A3, A5**: nowe wersje **A1b, A3b, A5b** z mniejszą i mniej okrągłą głową (7 wierszy i 9 pikseli zamiast 8 i 11);
+  tułów zyskał wiersz, który oddała głowa. Stare A1, A3, A5 są w archiwum, do porównania.
+- Lalki (A, mieszkańcy) zaczynają teraz **bez konturu**, bo tak A1 podobał się najbardziej; klawisz O nadal przełącza.
+
+## Wcześniejsze rundy
 
 ### Cztery postacie, cztery szkoły rysunku (R1–R4)
 
@@ -106,8 +161,8 @@ Przy każdym eksponacie plac pokazuje, ile kolorów faktycznie zużywa. Dziś ws
 
 - z ekranu tytułowego: strzałka w dół na **Plac prób**, potem Shift albo Z,
 - albo wprost: `http://localhost:5173/?lab`,
-- albo od razu na wybranym zestawie: `?lab&hero=W2&mood=zmierzch`
-  (`hero`: kod eksponatu, np. `W2`, `V2`, `S2`, `G1`, `A3`, `B5`; `size`: `small`, `tall` (wzrost mieszkańców);
+- albo od razu na wybranym zestawie: `?lab&hero=C2&mood=zmierzch`
+  (`hero`: kod bohatera, także z archiwum, np. `C2`, `S3`, `A1b`, `W4`; `size`: `small`, `tall` (wzrost mieszkańców);
   `mood`: `poranek`, `zmierzch`, `jesien`, `ponuro`, `noc`; `ink`: `tinted`, `dark`, `none`).
 
 ## Klawisze
@@ -115,9 +170,9 @@ Przy każdym eksponacie plac pokazuje, ile kolorów faktycznie zużywa. Dziś ws
 | Klawisz | Co zmienia |
 |---|---|
 | WASD / strzałki | bohater chodzi |
-| **Q / E** | poprzedni / następny bohater, którym się chodzi: po kolei wszyscy, od R1 do archiwum |
+| **Q / E** | poprzedni / następny bohater, którym się chodzi: wszyscy z planszy, w kolejności z `lineup.txt` |
 | **1 / 2** | wzrost mieszkańców: 16×16 albo 16×24 |
-| **O** | kontur lalek (A, B, mieszkańcy): barwny / ciemny / bez konturu |
+| **O** | kontur lalek (A, mieszkańcy): bez konturu (na start) / barwny / ciemny |
 | **N** | nastrój scenerii (pora dnia, pora roku) |
 | **Shift** | świat: Jawia / Nawia |
 | **G** | siatka kafli 16 px |
@@ -130,20 +185,21 @@ rozmiar w pikselach, liczba kolorów i jedno zdanie o pomyśle, który za nim st
 
 ## Co tam stoi
 
-Każdy eksponat ma kod. Wystarczy napisać „bohater B1, strzyga P9, zjawa P12, sceneria: ponuro”.
+Każdy eksponat ma kod. Wystarczy napisać „bohater C2, strzyga P9, zjawa P12, sceneria: ponuro”.
+Które kody stoją na planszy, decyduje `src/lab/lineup.txt`; poniżej są wszystkie, jakie istnieją.
 
 | Kody | Co | Zachowanie |
 |---|---|---|
-| **R1–R4** | cztery postacie w czterech szkołach rysunku (patrz wyżej) | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **C1–C6** | nowe koncepty bohatera (patrz wyżej) | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **G1–G4** | bohater z gry i jego wyglądy spod klawisza H: Pastuszek, Góral, Wędrowiec | jak wyżej |
+| **R1–R4** | cztery postacie w czterech szkołach rysunku | jak wyżej |
 | **W1–W4** | cztery wcielenia z jednego szablonu | jak wyżej |
 | **V1–V5** | jeden bohater, pięciu różnych grafików | jak wyżej |
-| **G1** | bohater, który jest dziś w grze | jak wyżej |
 | **S1–S4** | rysunek z gry w czterech wykończeniach | jak wyżej |
-| **A1–A5** | lalki na jeden kafel (16×16): pięć pomysłów na postać | jak wyżej |
-| **B1–B5** | te same pomysły na półtora kafla (16×24) | jak wyżej |
-| **G2–G4** | archiwum: pozostałe wyglądy z gry (klawisz H): Pastuszek, Góral, Wędrowiec | jak wyżej |
-| **X1–X6** | archiwum: postacie ze „szkieletu” (głowa szersza od tułowia), 16×16 i 16×24 | jak wyżej |
-| **Z1–Z4** | archiwum: pierwsze ręcznie rysowane zwierzęta (żmija, wilki, dzik) | chodzą tam i z powrotem |
+| **A1–A5**, **A1b, A3b, A5b** | lalki na jeden kafel: pięć pomysłów na postać; „b” to wersja z mniejszą głową | jak wyżej |
+| **B1–B5** | te same lalki na półtora kafla (16×24) | jak wyżej |
+| **X1–X6** | postacie ze „szkieletu” (głowa szersza od tułowia), 16×16 i 16×24 | jak wyżej |
+| **Z1–Z4** | pierwsze ręcznie rysowane zwierzęta (żmija, wilki, dzik) | chodzą tam i z powrotem |
 | **N1–N4** | mieszkańcy: zielarka, starzec, gospodyni, dziecko (w wysokości wybranej klawiszem 1 / 2; dziecko ma zawsze jeden kafel) | stoją w zagrodach i obracają się |
 | **P1–P16** | potwory, pogrupowane według wysokości | chodzą tam i z powrotem; ognik i morownik stoją |
 
@@ -196,7 +252,9 @@ Nawia ma jeden wygląd: tam nie ma pogody.
 
 ## Jak są zrobione postaci
 
-- **Ludzie** (bohater i mieszkańcy) są w całości rysowani ręcznie, jako tekst, w `src/art/dolls.ts`. Postać to „lalka z papieru”:
+- **Koncepty bohatera (C)** są rysowane w całości: dziewięć obrazków (trzy widoki, stanie i dwa kroki), każdy tak wysoki jak
+  postać. Nie dzielą z sobą niczego poza formatem (`src/art/concepts/concept.ts`), więc każdy może mieć inną budowę i kreskę.
+- **Lalki** (wcześniejsze pomysły na bohatera i mieszkańcy) są rysowane ręcznie, jako tekst, w `src/art/dolls.ts`. Postać to „lalka z papieru”:
   ciało (osobny rysunek na każdy widok i każdy krok), na nim głowa, a pod i nad nimi to, co niesie (tarcza, płaszcz, łuk, miecz,
   fartuch, kij). Ciała są wspólne; pomysł na postać to głowa w trzech widokach, paleta i lista rzeczy. Kontur dorysowuje się sam.
 - **Potwory dwunożne** składa „szkielet” (`src/art/rig.ts`): z proporcji, materiałów i dodatków robi trzy widoki
@@ -210,8 +268,10 @@ Czego jeszcze nie ma: zamachu mieczem, gardy, obrażeń, ataków potworów. Post
 
 | Co | Gdzie |
 |---|---|
-| scena | `src/scenes/PlaygroundScene.ts` (miejsca eksponatów to tabele `*_SPOTS`) |
+| scena | `src/scenes/PlaygroundScene.ts`: `catalogue()` zna wszystkich bohaterów po kodach; rzędy planszy to `HERO_ROWS`, miejsca w rzędzie `HERO_COLS` |
+| plansza i archiwum | `src/lab/lineup.txt` (czyta go `src/lab/lineup.ts`) |
 | mapa łąki | `src/lab/playground.room.txt` (zwykły plik pokoju; nie należy do świata gry) |
+| koncepty bohatera | `src/art/concepts/*.concept.ts` (każdy w swoim pliku, eksportuje `CONCEPT`); format i zasady w `concept.ts`; plac znajduje je sam (`index.ts`) |
 | style bohatera | `src/art/heroStyles.ts`: `HERO_SCHOOLS` (R), `HERO_TYPES` (W), `HERO_HANDS` (V) i `HERO_STYLES` (S): głowa z tułowiem, trzy układy nóg, tarcza, paleta, sposób obrysowania; `styleFrame`, `styleSheet` |
 | ludzie (lalki) | `src/art/dolls.ts`: ciała `TALL_SHIRT`, `SMALL_SHIRT`, `*_ROBE`; głowy `HEAD_*`; rzeczy (`SHIELD`, `CLOAK_*`, `BOW_*`...); `HERO_LOOKS`, `FOLK_LOOKS`; `dollFrame`, `dollSheet` |
 | archiwum | `src/art/archive.ts`: wcześniejsze postacie ze szkieletu i pierwsze zwierzęta, bez zmian |
@@ -226,8 +286,11 @@ można podłożyć inną paletę.
 - **Nowy styl albo wcielenie bohatera**: wpis w `HERO_TYPES`, `HERO_HANDS` albo `HERO_STYLES` (`shield` może być listą rzeczy: miecz i tarcza, łuk, tobołek): `upper` (głowa i tułów, od góry komórki), `legs` (stoi, krok, drugi krok),
   `shield` (rysunek i miejsce w każdym widoku), `pal`, `ink` (`drawn`: kontur jest w rysunku jako litera `o`; `tinted`: dorysowany
   dookoła; `rim`: dorysowany tylko z prawej i u dołu) i `line` (kolor dorysowanej kreski przy danej literze). Wysokość komórki to `fh`.
-- **Wszyscy bohaterowie, którymi da się chodzić**, to jedna lista: `listCandidates()` w scenie. Kto na niej jest, ten stoi
-  na łące i jest pod Q / E.
+- **Nowy koncept bohatera**: nowy plik `src/art/concepts/<id>.concept.ts` z obiektem `Concept`: `code` (np. `C7`), `h` (16–23),
+  `pal` (kolor każdej litery), `frames` (dla `down`, `up`, `side` po trzy rysunki: stoi, krok, drugi krok; każdy wiersz
+  ma dokładnie 16 znaków, ostatni wiersz pusty, stopy w przedostatnim) i `ink` (`none`, `dark`, `tinted`, `rim`, jak wyżej).
+  Potem jedna linijka z kodem w `lineup.txt`. `checkConcept()` wypisuje, co jest nie tak (wymiary, nieznane litery, ponad 15 kolorów).
+- **Bohaterowie znani placowi** to `catalogue()` w scenie; kto stoi na planszy i jest pod Q / E, mówi `lineup.txt`.
 - **Nowy pomysł na postać (lalka)**: wpis w `HERO_LOOKS`: `head` (głowa: po trzy rysunki dla `tall` i `small`; 10 i 8 wierszy,
   ostatni to podbródek), `pal` (kolor każdej litery), `line` (które litery biorą ciepły kontur; reszta dostaje `pal.o`),
   `gear` (rzeczy i to, czy w danym widoku leżą pod ciałem, na nim, czy na wierzchu). `stillArm` wyłącza machanie ręką
@@ -241,7 +304,7 @@ można podłożyć inną paletę.
 - **Nowe zwierzę**: rysunek 24×16 z profilu, w prawo, bez konturu (dorysuje go `inked()`), i układy nóg podmieniane
   funkcją `legs()`; wpis w `CREATURES` z `frames`.
 - **Nowy nastrój**: wpis w `MOODS`: funkcja przeliczająca każdy kolor palety plus rampy podmienione w całości.
-- Każdy nowy eksponat potrzebuje miejsca w `CLASS_SPOTS` (albo w `*_SPOTS` dla ludzi).
+- Nowy potwór potrzebuje miejsca w `CLASS_SPOTS`, nowy mieszkaniec w `FOLK_SPOTS`; bohaterowie stają sami, według `lineup.txt`.
 
 ## Co dalej, gdy wybór zapadnie
 
@@ -249,4 +312,4 @@ można podłożyć inną paletę.
    Przy 16×24 trzeba sprawdzić zasięg miecza i to, jak głowa zachodzi na ściany i drzewa.
 2. Wybrane potwory dostają klatki ataku i wchodzą do tabeli wrogów (`SPECS` w `src/entities/Enemy.ts`).
 3. Wybrany nastrój staje się paletą gry albo jej części (np. poranek przy wsi, ponuro przy kurhanie).
-4. To, co odpadło, przechodzi do `archive.ts` (nie jest kasowane, dopóki styl nie jest zamknięty), a plac prób zostaje jako narzędzie.
+4. To, co odpadło, przechodzi do archiwum w `lineup.txt` (nie jest kasowane, dopóki styl nie jest zamknięty), a plac prób zostaje jako narzędzie.

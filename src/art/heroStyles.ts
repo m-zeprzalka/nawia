@@ -322,8 +322,10 @@ const MALOWANY: HeroStyle = {
     x: 0xa83a44, X: 0x6e2440, w: 0xf4f6ee, m: 0x9ea0ac, q: 0x4e3230, Q: 0x7a5238, o: 0x2f3858,
   }),
   ink: 'rim',
-  // the rim is the deep tone of each family: wine under red, umber under hair and skin, slate under linen
-  line: { ...lines('hHlsStekKyfFqQ', 0x4e3230), ...lines('rRcCdxXwm', 0x6e2440) },
+  // the rim is the deep tone of each family: wine under red, umber under leather, slate under linen; round the
+  // hair and the face it is the leather's own brown, a few shades lighter (the art lead found the edge of the
+  // head on the side he walks towards too dark)
+  line: { ...lines('kKyfFqQ', 0x4e3230), ...lines('hHlsSte', 0x7a5238), ...lines('rRcCdxXwm', 0x6e2440) },
 };
 
 // ================================================================== wysoki: the 16-bit manner, a tile and a quarter

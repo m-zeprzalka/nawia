@@ -11,7 +11,11 @@
 //
 // Two heights, and each has its own drawings (nothing is cut down from the other):
 //  - `small`: one tile, 16 x 16: eight rows of head, seven of body;
-//  - `tall`:  a tile and a half, 16 x 24: ten rows of head, thirteen of body.
+//  - `tall`:  a tile and a half, 16 x 24: ten rows of head, thirteen of body;
+// and a correction of the first:
+//  - `slim`:  one tile again, with the head the art lead asked for: seven rows and nine pixels wide instead of
+//             eight and eleven (it was "too round and too big for the body"); the trunk grows by the row the
+//             head gave up. Only some heads have it; the body and the gear are the small ones, lifted a row.
 // Everything a head wears (a helmet, a hood, the ears of a wolf pelt) is drawn inside the cell.
 //
 // Letters (the same everywhere, so a palette can be swapped under a drawing):
@@ -27,7 +31,7 @@ import { PixelBuffer, rgb, type Color } from '../core/PixelBuffer.ts';
 import { art, type Sheet } from './sheet.ts';
 
 export type View = 'down' | 'up' | 'side';
-export type Size = 'small' | 'tall';
+export type Size = 'small' | 'tall' | 'slim';
 /** 0 stands; 1 and 2 are the two strides of the walk */
 export type Pose = 0 | 1 | 2;
 type Views = Record<View, string[]>;
@@ -35,7 +39,7 @@ type Views = Record<View, string[]>;
 type Poses = readonly [string[], string[], string[]];
 
 const W = 16;
-const HEIGHT: Record<Size, number> = { small: 16, tall: 24 };
+const HEIGHT: Record<Size, number> = { small: 16, tall: 24, slim: 16 };
 
 /** `rows` placed `top` rows down a cell `h` rows tall; the rest is empty. */
 function cell(h: number, top: number, rows: string[]): string[] {
@@ -330,18 +334,37 @@ const SMALL_ROBE_SIDE = S(8, [
 const SMALL_ROBE: Record<View, Poses> = { down: still(SMALL_ROBE_DOWN), up: still(SMALL_ROBE_DOWN), side: still(SMALL_ROBE_SIDE) };
 
 type BodyKind = 'shirt' | 'robe';
+/**
+ * A small drawing made one row longer at the top: its first row is doubled and everything above it moves up,
+ * so the trunk gains a row and what is below it stays where it was. `from` is where the body starts.
+ */
+function lift(rows: string[], from = firstRow(rows)): string[] {
+  if (from <= 0) return rows;
+  return [...rows.slice(1, from + 1), rows[from], ...rows.slice(from + 1)];
+}
+function firstRow(rows: string[]): number {
+  const i = rows.findIndex((r) => /[^.]/.test(r));
+  return i < 0 ? 0 : i;
+}
+const lifted = (body: Record<View, Poses>): Record<View, Poses> => {
+  const each = (p: Poses): Poses => [lift(p[0]), lift(p[1]), lift(p[2])];
+  return { down: each(body.down), up: each(body.up), side: each(body.side) };
+};
+
 const BODY: Record<Size, Record<BodyKind, Record<View, Poses>>> = {
   tall: { shirt: TALL_SHIRT, robe: TALL_ROBE },
   small: { shirt: SMALL_SHIRT, robe: SMALL_ROBE },
+  slim: { shirt: lifted(SMALL_SHIRT), robe: lifted(SMALL_ROBE) },
 };
 /** the first row of the legs in a stride: above it, a stride and a stand differ only by the arms */
-const LEGS_FROM: Record<Size, number> = { tall: 18, small: 13 };
+const LEGS_FROM: Record<Size, number> = { tall: 18, small: 13, slim: 13 };
 
 // ================================================================== heads
 // Ten rows in the tall cell (rows 1-10), eight in the small one (rows 1-8); the last row is the chin,
 // which lies over the top row of the body. Seen a little from above: the crown takes the top third.
 
-type Heads = Record<Size, Views>;
+/** what a look wears in each height; a head without a `slim` drawing keeps its small one there */
+type Heads = { small: Views; tall: Views; slim?: Views };
 
 /** Fair hair to the jaw, a woven band (krajka) round the brow, knotted at the back. */
 const HEAD_WOJAK: Heads = {
@@ -413,6 +436,35 @@ const HEAD_WOJAK: Heads = {
       '..RhhhhhSstet...',
       '...HhhhhSsttS...',
       '....HHhHSssS....',
+    ]),
+  },
+  slim: {
+    down: S(1, [
+      '.....hhlhh......',
+      '...hhllhhhhH....',
+      '...hrrrrrrrR....',
+      '...hsBtttBsH....',
+      '...hsetttesH....',
+      '...HsttttsSH....',
+      '....HSsssSH.....',
+    ]),
+    up: S(1, [
+      '.....hhlhh......',
+      '...hhllhhhhH....',
+      '...hrrrrrrrR....',
+      '...hhlhrhhhH....',
+      '...hhhhRhhHH....',
+      '...HhhhhhhHH....',
+      '....HhhHhhH.....',
+    ]),
+    side: S(1, [
+      '.....hhlhh......',
+      '...hhllhhhhh....',
+      '..rrrrrrrrrr....',
+      '..rhhhhhstBt....',
+      '..RhhhhhSsett...',
+      '...HhhhhSstS....',
+      '....HHhHSsS.....',
     ]),
   },
 };
@@ -563,6 +615,35 @@ const HEAD_LOWCA: Heads = {
       '...CCCcCCsssS...',
     ]),
   },
+  slim: {
+    down: S(1, [
+      '......cdc.......',
+      '....cddccCC.....',
+      '...cdCCCCCcC....',
+      '...csBtttBsC....',
+      '...csetttesC....',
+      '...cCsttssCC....',
+      '....CCsssCC.....',
+    ]),
+    up: S(1, [
+      '......cdc.......',
+      '....cddccCC.....',
+      '...cdccccccC....',
+      '...cdcccccCC....',
+      '...ccdcccCCC....',
+      '...cCcccCcCC....',
+      '....CCcCCCC.....',
+    ]),
+    side: S(1, [
+      '.....cdc........',
+      '....cddcccc.....',
+      '...cdcccccccc...',
+      '...cccccCCsBt...',
+      '...cCcccCCset...',
+      '...cCCccCsttS...',
+      '....CCCcCCssS...',
+    ]),
+  },
 };
 
 /** A wolf's pelt over the head: its ears stand at the corners, its fangs hang at his temples. */
@@ -709,6 +790,35 @@ const HEAD_KOLPAK: Heads = {
       '..HHhhhhSstet...',
       '...HHhhhSsttS...',
       '....HHhHSssS....',
+    ]),
+  },
+  slim: {
+    down: S(1, [
+      '.....cdddc......',
+      '....cddcccC.....',
+      '..qQQqQQqQQqq...',
+      '...hsBtttBsH....',
+      '...hsetttesH....',
+      '...HsttttsSH....',
+      '....HSsssSH.....',
+    ]),
+    up: S(1, [
+      '.....cdddc......',
+      '....cddcccC.....',
+      '..qQQqQQqQQqq...',
+      '...hhlhhhhhH....',
+      '...hhhhhhhHH....',
+      '...HhhHhhHHH....',
+      '....HhhHhHH.....',
+    ]),
+    side: S(1, [
+      '.....cdddc......',
+      '....cddcccc.....',
+      '..qQQqQQqQQqq...',
+      '...hhhhhhstBt...',
+      '...HHhhhSstet...',
+      '....HhhhSsttS...',
+      '.....HhHSssS....',
     ]),
   },
 };
@@ -1310,7 +1420,7 @@ export function dollLetters(look: Look, size: Size, view: View, pose: Pose): str
   const kind = look.body ?? 'shirt';
   const bob = kind === 'robe' ? 0 : BOB[pose];
   const gear = (at: Layer): void => {
-    for (const g of look.gear ?? []) if (g.at[view] === at) lay(grid, g.art[drawn][view], drop + bob);
+    for (const g of look.gear ?? []) if (g.at[view] === at) lay(grid, gearArt(g.art, drawn, view), drop + bob);
   };
   gear('under');
   const poses = BODY[drawn][kind][view];
@@ -1321,9 +1431,15 @@ export function dollLetters(look: Look, size: Size, view: View, pose: Pose): str
   } else lay(grid, poses[pose], drop);
   if (look.weave) for (let y = 0; y < h; y++) for (let x = 0; x < W; x++) if (grid[y][x] !== '.') grid[y][x] = look.weave(grid[y][x], x, y - bob);
   gear('over');
-  lay(grid, look.head[drawn][view], drop + bob);
+  lay(grid, (look.head[drawn] ?? look.head.small)[view], drop + bob);
   gear('top');
   return grid;
+}
+
+/** Gear for a height; in `slim` it is the small drawing lifted with the body (the body starts on row 8). */
+function gearArt(art: Heads, size: Size, view: View): string[] {
+  if (size !== 'slim') return art[size][view];
+  return art.slim?.[view] ?? lift(art.small[view], 8);
 }
 
 /**

@@ -59,6 +59,7 @@ src/
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
     surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
     surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
+    concepts/           koncepty bohatera (C1...), każdy w swoim pliku *.concept.ts, rysowany w całości; format w concept.ts
     heroStyles.ts       bohater w wielu wersjach: cztery szkoły rysunku (R1-R4), cztery wcielenia (W1-W4), pięć rąk (V1-V5), cztery wykończenia (S1-S4)
     dolls.ts            ludzie placu prób, rysowani ręcznie jak lalki z papieru: ciała w dwóch wysokościach, głowy,
                         rzeczy w warstwach; pięć pomysłów na postać i mieszkańcy (jeszcze nie w grze)
@@ -76,7 +77,7 @@ src/
     surfacePainter.ts   malarz powierzchni: grunt liczony piksel po pikselu + stemple + warstwa nad głową + skaza
     interiorPainter.ts  malarz wnętrz chat: deski, ściany z bali, kilim, meble
     rooms/*.room.txt    pokoje (h* izby, s* powierzchnia, 01-11 gród)
-  lab/                  mapa placu prób i jej loader (poza światem gry)
+  lab/                  plac prób poza światem gry: mapa łąki i jej loader, lineup.txt (kto stoi na planszy, kto w archiwum)
   story/
     dialog.ts           format rozmów, parser i „maszyna” Talk, która je odtwarza (czysty moduł)
     dialogData.ts       wczytanie plików rozmów przez Vite
