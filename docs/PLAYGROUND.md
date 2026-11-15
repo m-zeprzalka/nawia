@@ -30,31 +30,38 @@ W4   Łowca potworów: odpada
 
 ## Teraz wybieramy: styl graficzny bohatera
 
-Bohater jest jeden: młody chłopak ze wsi, nieopierzony, który na początku boi się ruszyć w drogę (z miecza i tarczy).
-Bazą jest ten, który jest dziś w grze (**G1**). Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md).
+Bohater to (na 90%) **Sambor**: młody mężczyzna, 18–20 lat, już z męskimi rysami, który rusza szukać siostry; w drodze ma
+mężnieć. Trochę Thorgal, trochę wiedźmin, trochę hobbit i elfi łucznik, ale nigdy kopia któregoś z nich. Nosi miecz i okrągłą
+tarczę. Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md), świat i imiona w `nawia-lore.md`.
 
-### Nowe koncepty (C1–C6)
+### Koncepty na planszy
 
-Sześć osobnych koncepcji, każda narysowana od zera w pełnych klatkach (bez wspólnego szablonu), w wysokościach od 16 do 22
-pikseli, żeby było widać, jak wysoka postać pasuje do świata.
-
-![Od lewej: bohater z gry (G1), potem C1–C6](img/hero-concepts.png)
+![Od lewej: bohater z gry (G1), potem koncepty z planszy](img/hero-concepts.png)
 
 | Kod | Koncept | Rozmiar | Kto rysował | Na czym polega |
 |---|---|---|---|---|
-| **C1** | Najlepsze z wybranych | 16×16 | ja, z Twoich notatek | malowany jak S3 (bez konturu od strony światła, jaśniejszy brzeg głowy), tony S2, smukły jak A1 z mniejszą głową, oczy 2×2 (powieka, białko, tęczówka), bez opaski; czerwony płaszcz obramowuje sylwetkę, haft przy kołnierzu i mankietach |
-| **C2** | to samo, wyżej | 16×20 | ja | C1 o ćwierć kafla wyższy: ta sama głowa, dłuższe rękawy, koszula do pół uda, cholewy, płaszcz do kolan. C1 i C2 obok siebie odpowiadają na pytanie „kafel czy trochę więcej” |
-| **C3** | Miary SNES | 16×22 | ja | konstrukcja bohatera 16-bitowych przygodówek: duża głowa (10 wierszy), oczy 2×3, tarcza wysoka jak tułów, ciemny kontur, połysk na włosach; w kostiumie naszego chłopaka (patrz niżej) |
-| **C4** | Kożuszek | 16×18 | grafik 1 | żółtodziób w za dużym kożuchu po ojcu: rękawy zakrywają dłonie, runo wokół twarzy, łapcie i onuce, ojcowski miecz za długi, więc na plecach; plecionka zamiast tarczy; zmartwione oczy; bez czarnego konturu, każdy materiał obrysowany własnym ciemniejszym tonem |
-| **C5** | Naznaczony | 16×21 | grafik 2 | smukły chłopak, którego dotknęła Nawia: grzywka na oku, przez nią cyjanowy błysk; granatowy płaszcz, czerwony haft przy kołnierzu, kamień z dziurką na szyi; chłodna, księżycowa paleta, ciemna linia tylko w cieniu i drugie, cyjanowe światło na prawych krawędziach |
-| **C6** | Bartnik | 16×20 | grafik 3 | syn bartnika: czerwona filcowa czapka z futrzanym otokiem, skórzany kubrak, leziwo przez pierś, róg, tarcza z desek pod korą, ręka nerwowo na rękojeści; maniera domowych komputerów końca lat 80: dithering na dużych płaszczyznach, przygaszone barwy, ciemny kontur |
+| **C1b** | Najlepsze z wybranych | 16×16 | ja | C1 (malowany jak S3, tony S2, smukły jak A1 z mniejszą głową, oczy z powieką, białkiem i tęczówką, bez opaski) z nowym profilem: płytsza głowa, płaszcz przylega do pleców, tarcza widziana z boku; z boku ok. 9 px zamiast 12 |
+| **C2b** | to samo, niżej | 16×18 | ja | między C1 a C2: ta sama głowa, koszula za pas, dłuższe nogi, płaszcz do kolan; smukły profil jak C1b |
+| **C6b** | Bartnik, poprawiony bok | 16×20 | grafik 3 | C6 z wyprostowanym profilem: tarcza widziana z kantu (wąski owal), miecz pionowo przy biodrze (bez „ogona”), czysty krok; tarcza malowana czerwoną ochrą; ciemny kontur, dithering, przygaszone barwy |
+| **C7** | Sambor wędrowiec | 16×18 | ja | „kwadratowy” z przodu (płaszcz, ręce i tarcza na całą szerokość kafla, jak u klasyków), smukły z boku; młody mężczyzna z kanciastą szczęką, kasztanowe włosy, zielone oczy, skórzany kubrak, zielona opończa, miecz na plecach; **kontur w kolorze materiału** (brązowy przy skórze i skórze kubraka, zielony przy płaszczu) |
+| **C8** | Sambor z Północy | 16×20 | grafik 4 | barczysty (futrzany kołnierz na 14 z 16 px), płowe włosy do ramion, zarost, tunika w kolorze urzetu, czerwony tkany pas, łuk na plecach, okrągła tarcza z okuciem; **czarny kontur** i twarde trzy tony jak w komiksie |
+| **C9** | Uczeń zielarki | 16×16 | grafik 5 | chudy, długonogi, mała głowa (6 wierszy), jasne włosy w kucyk, kaftan na lnianej koszuli, sakwa z ziołem, kamień z dziurką, tarcza ze słońcem; **bez konturu**: ciepłe światło z lewej góry, chłodne cienie |
 
-Wszystkie mieszczą się w 15 kolorach i mają trzy widoki, stanie i dwa kroki. Żaden nie ma jeszcze ciosu ani gardy.
+Każdy koncept rysuje inaczej obrys, bo to on najbardziej zmienia charakter postaci: **C1b, C2b** ciemny brzeg tylko w cieniu
+(jak S3), **C7** kontur w kolorze materiału, **C8** czarny kontur, **C9** żadnego konturu, **C6b** ciemny kontur z ditheringiem.
 
-**O C3.** Prośba była o wariant jak najbardziej podobny do bohatera klasycznej przygodówki ze SNES-a. Wiernej kopii tej postaci
-nie rysuję: to cudzy bohater, a repozytorium jest publiczne. C3 bierze od niej tylko to, co sprawdza się w naszej grze, czyli
-miary i rzemiosło (wysokość ok. 22 pikseli, rozkład głowa / tułów / nogi, wielkość oczu i tarczy, kontur, liczba tonów), a twarz,
-strój i barwy ma nasze. Dzięki temu widać, jak taka sylwetka zachowuje się w naszym świecie.
+Werdykty z poprzedniej rundy (wszystkie w archiwum): C1 i C2 „za grube z boku” (poprawione w C1b, C2b), C3 fatalny,
+C4 bardzo słaby („od boku jak kurczak”), C5 nie ten klimat, C6 względnie ok, ale dziwny z boku (poprawiony w C6b).
+
+### Wzorce do porównań (lokalnie)
+
+Obrazki wrzucone do folderu **`src/lab/reference/`** (PNG, GIF, WebP, JPG) plac pokazuje w skali 1:1 w pierwszym wolnym
+rzędzie, z nazwą pliku nad każdym. Ten folder jest ignorowany przez git: nic z niego nie trafia do repozytorium ani do gry.
+To miejsce na zrzut ekranu z innej gry (najlepiej sama wycięta postać, w oryginalnej rozdzielczości, bez powiększenia),
+żeby postawić ją obok naszych bohaterów i porównać wielkość, proporcje i kontur. Po wrzuceniu pliku wystarczy odświeżyć stronę.
+
+Postaci z cudzych gier (np. bohatera klasycznej przygodówki ze SNES-a) nie rysuję jako kopii: to cudzy, chroniony bohater,
+a nasze repozytorium jest publiczne. Do porównania służy właśnie ten folder.
 
 ### Poprawki z DESIGN-DECISIONS
 
@@ -190,7 +197,7 @@ Które kody stoją na planszy, decyduje `src/lab/lineup.txt`; poniżej są wszys
 
 | Kody | Co | Zachowanie |
 |---|---|---|
-| **C1–C6** | nowe koncepty bohatera (patrz wyżej) | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **C1–C9**, **C1b, C2b, C6b** | koncepty bohatera; „b” to wersja poprawiona, oryginał jest w archiwum | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
 | **G1–G4** | bohater z gry i jego wyglądy spod klawisza H: Pastuszek, Góral, Wędrowiec | jak wyżej |
 | **R1–R4** | cztery postacie w czterech szkołach rysunku | jak wyżej |
 | **W1–W4** | cztery wcielenia z jednego szablonu | jak wyżej |

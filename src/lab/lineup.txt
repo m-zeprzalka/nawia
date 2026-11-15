@@ -11,12 +11,12 @@
 board:
 
 * Nowe koncepty | New concepts
-C1   najlepsze z wybranych, 16x16
-C2   to samo, 16x20
-C3   miary SNES, 16x22, w kostiumie naszego chłopaka
-C4   Kożuszek, 16x18 (grafik 1)
-C5   Naznaczony, 16x21 (grafik 2)
-C6   Bartnik, 16x20 (grafik 3)
+C1b  najlepsze z wybranych, 16x16, smukły bok
+C2b  to samo, 16x18 (między C1 a C2), smukły bok
+C6b  Bartnik z poprawionym bokiem, 16x20
+C7   Sambor wędrowiec, 16x18: kwadratowy z przodu, kontur w kolorze materiału
+C8   Sambor z Północy, 16x20: czarny kontur, cieniowanie jak w komiksie
+C9   uczeń zielarki, 16x16: bez konturu, światłocień
 
 * Wybrane z poprzednich rund | Chosen in earlier rounds
 G1   bohater z gry: baza
@@ -33,6 +33,12 @@ A3b  Łowca z mniejszą głową
 A5b  Kołpak z mniejszą głową
 
 archive:
+C1   najlepsze z wybranych: z boku za gruby ("kartofel"); poprawiony w C1b
+C2   to samo 16x20: za gruby z boku i za wysoki; poprawiony w C2b
+C3   miary SNES 16x22: fatalny
+C4   Kożuszek: bardzo słaby, od boku "jak kurczak"
+C5   Naznaczony: nie ten klimat
+C6   Bartnik: względnie ok, dziwny z boku; poprawiony w C6b
 W4   Łowca potworów: za bardzo kojarzy się ze znanym wiedźminem; bohater ma być młody
 A1   Wojak przed poprawką głowy
 A3   Łowca przed poprawką głowy

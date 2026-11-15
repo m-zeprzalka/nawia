@@ -1,5 +1,5 @@
 // Reads src/lab/lineup.txt: which exhibits stand on the playground board, in what order, under what headings,
-// and which are archived. Kept apart from the scene so the file can be read (and checked) without a browser.
+// and which are archived. Pure, so node tools can read the file too; the playground loads it through labData.ts.
 
 import type { Bilingual } from '../world/roomFormat.ts';
 
@@ -41,10 +41,4 @@ export function parseLineup(text: string): Lineup {
     } else if (part === 'archive') archive.push(code);
   }
   return { board, archive };
-}
-
-const files = import.meta.glob('./lineup.txt', { eager: true, query: '?raw', import: 'default' }) as Record<string, string>;
-
-export function loadLineup(): Lineup {
-  return parseLineup(Object.values(files)[0] ?? '');
 }

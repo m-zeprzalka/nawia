@@ -30,8 +30,7 @@ import { globalKeys } from '../core/globalKeys.ts';
 import { input, type Dir } from '../core/input.ts';
 import { DualCanvas } from '../fx/DualCanvas.ts';
 import { t, toggleLang } from '../i18n/strings.ts';
-import { loadLab } from '../lab/labData.ts';
-import { loadLineup } from '../lab/lineup.ts';
+import { loadLab, loadLineup } from '../lab/labData.ts';
 import { PixelText } from '../ui/PixelText.ts';
 import { Level } from '../world/Level.ts';
 import { paintEcho } from '../world/painter.ts';
@@ -84,6 +83,14 @@ const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.S
 /** Where the exhibits stand, in tiles. Heroes fill rows in the order of lineup.txt, six to a row. */
 const HERO_ROWS = [13, 18, 23, 28];
 const HERO_COLS = [2, 5, 8, 11, 14, 17];
+
+/**
+ * Pictures to compare against (a screenshot of another game, a sketch): whatever the art lead puts in
+ * src/lab/reference/ is shown here at one pixel to one pixel, on a row of its own. That folder is ignored
+ * by git, so nothing in it is ever published.
+ */
+const REFERENCES = import.meta.glob('../lab/reference/*.{png,gif,webp,jpg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const refKey = (path: string): string => `lab:ref:${path.split('/').pop()}`;
 const FOLK_SPOTS: [number, number][] = [[3, 8], [7, 8], [12, 8], [16, 8]];
 const CLASS_SPOTS: Record<string, [number, number][]> = {
   '1': [[22, 13], [25, 13], [28, 13], [33, 13], [37, 13], [41, 13]],
@@ -174,6 +181,7 @@ export class PlaygroundScene extends Phaser.Scene {
   private vy = 0;
   private exhibits: Exhibit[] = [];
   private titles: { text: PixelText; name: Bilingual }[] = [];
+  private refLabels: PixelText[] = [];
   private grid!: Phaser.GameObjects.TileSprite;
   private status: PixelText[] = [];
   private info!: PixelText;
@@ -198,6 +206,10 @@ export class PlaygroundScene extends Phaser.Scene {
     super('lab');
   }
 
+  preload(): void {
+    for (const [path, url] of Object.entries(REFERENCES)) if (!this.textures.exists(refKey(path))) this.load.image(refKey(path), url);
+  }
+
   create(): void {
     const dungeon = loadLab();
     this.level = new Level(dungeon);
@@ -205,6 +217,7 @@ export class PlaygroundScene extends Phaser.Scene {
     this.world = 'jawia';
     this.exhibits = [];
     this.titles = [];
+    this.refLabels = [];
     this.near = null;
     this.vx = 0;
     this.vy = 0;
@@ -294,6 +307,7 @@ export class PlaygroundScene extends Phaser.Scene {
       this.view.destroy();
       this.top.destroy();
       for (const e of this.exhibits) e.label.destroy();
+      for (const l of this.refLabels) l.destroy();
       for (const p of [...this.status, this.keys, this.info, ...this.titles.map((g) => g.text)]) p.destroy();
     });
     if (import.meta.env.DEV) (window as unknown as { __lab: PlaygroundScene }).__lab = this;
@@ -463,6 +477,23 @@ export class PlaygroundScene extends Phaser.Scene {
       }
     }
     FOLK_LOOKS.forEach((c, i) => add(`N${i + 1}`, c.name, c.name, c.note, FOLK_SPOTS[i], 'turn', () => this.folkSprites(i)));
+
+    // the reference pictures, on the first row the heroes left free, one after another
+    let rx = HERO_COLS[0] * TILE;
+    const refs = Object.keys(REFERENCES);
+    if (refs.length && row >= HERO_ROWS.length) console.warn('playground: no free row for the reference pictures; they share the last one');
+    const REFERENCE_ROW = HERO_ROWS[Math.min(row, HERO_ROWS.length - 1)];
+    if (refs.length) heading(HERO_COLS[0], REFERENCE_ROW, { pl: 'wzorce (lokalnie, src/lab/reference)', en: 'references (local, src/lab/reference)' });
+    for (const path of refs) {
+      const key = refKey(path);
+      if (!this.textures.exists(key)) continue;
+      const img = this.add.image(rx, REFERENCE_ROW * TILE + 14, key).setOrigin(0, 1).setDepth(DEPTH.entities + (REFERENCE_ROW * TILE + 14) / 1000);
+      const label = new PixelText(this, rx, img.y - img.height - 14, { width: Math.max(80, img.width), height: 13, color: 0xfff6d8 });
+      label.setText(path.split('/').pop() ?? '');
+      label.image.setDepth(DEPTH.fxWorld);
+      this.refLabels.push(label);
+      rx += img.width + TILE;
+    }
 
     const used: Record<string, number> = { '1': 0, '1.5': 0, '2': 0 };
     CREATURES.forEach((c, i) => {

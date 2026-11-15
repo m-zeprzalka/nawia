@@ -77,7 +77,8 @@ src/
     surfacePainter.ts   malarz powierzchni: grunt liczony piksel po pikselu + stemple + warstwa nad głową + skaza
     interiorPainter.ts  malarz wnętrz chat: deski, ściany z bali, kilim, meble
     rooms/*.room.txt    pokoje (h* izby, s* powierzchnia, 01-11 gród)
-  lab/                  plac prób poza światem gry: mapa łąki i jej loader, lineup.txt (kto stoi na planszy, kto w archiwum)
+  lab/                  plac prób poza światem gry: mapa łąki i jej loader, lineup.txt (kto stoi na planszy, kto w archiwum),
+                        reference/ (ignorowany przez git: obrazki do porównań, pokazywane 1:1 na planszy)
   story/
     dialog.ts           format rozmów, parser i „maszyna” Talk, która je odtwarza (czysty moduł)
     dialogData.ts       wczytanie plików rozmów przez Vite
