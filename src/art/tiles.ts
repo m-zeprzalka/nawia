@@ -85,10 +85,11 @@ function floorTile(p: WorldPalette, v: number, rng: Rng, world: World): PixelBuf
   }
   if (v === 6) {
     // worn, paler patch
-    for (let i = 0; i < 16; i++) {
-      const x = 5 + Math.floor(rng() * 6);
-      const y = 5 + Math.floor(rng() * 6);
-      b.set(x, y, p.floorLighter);
+    for (let i = 0; i < 7; i++) {
+      const x = 3 + Math.floor(rng() * 10);
+      const y = 3 + Math.floor(rng() * 10);
+      b.set(x, y, p.floorLight);
+      if (rng() < 0.4) b.set(x + 1, y, p.floorLight);
     }
   }
   if (v === 7) {

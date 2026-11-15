@@ -350,7 +350,7 @@ function bell(p: WorldPalette, tilt: number): PixelBuffer {
   // wooden frame
   const wood = PAL.jawia.plank, woodL = PAL.jawia.plankLight, woodD = PAL.jawia.plankEdge;
   for (let y = 2; y < 23; y++) {
-    b.set(1, y, woodL); b.set(2, y, wood); b.set(13, y, wood); b.set(14, y, woodD === wood ? wood : PAL.jawia.plankDark);
+    b.set(1, y, woodL); b.set(2, y, wood); b.set(13, y, woodL); b.set(14, y, wood);
   }
   for (let x = 0; x < 16; x++) { b.set(x, 1, woodL); b.set(x, 2, wood); b.set(x, 3, PAL.jawia.plankDark); }
   // bell body

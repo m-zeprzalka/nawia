@@ -41,6 +41,7 @@ export class Enemy {
   readonly shadow: Phaser.GameObjects.Image;
 
   private readonly spec: Spec;
+  private readonly bounds: { x: number; y: number; w: number; h: number };
   private kx = 0;
   private ky = 0;
   private t = Math.random() * 10;
@@ -52,7 +53,11 @@ export class Enemy {
   private visible: World;
   private fade = 1;
 
-  constructor(scene: Phaser.Scene, kind: EnemyKind, x: number, y: number, world: World) {
+  /**
+   * @param bounds the room it lives in (global px): enemies never follow you through a doorway
+   */
+  constructor(scene: Phaser.Scene, kind: EnemyKind, x: number, y: number, world: World, bounds: { x: number; y: number; w: number; h: number }) {
+    this.bounds = bounds;
     this.kind = kind;
     this.spec = SPECS[kind];
     this.home = this.spec.home;
@@ -120,8 +125,11 @@ export class Enemy {
     const box = this.box;
     const hit = level.move(this.home, box, (vx + this.kx) * dt, (vy + this.ky) * dt, s.mask);
     if (hit.hitX || hit.hitY) this.wanderT = Math.min(this.wanderT, 0.15);
-    this.x = box.x;
-    this.y = box.y;
+    const b = this.bounds;
+    const m = 10;
+    this.x = Math.min(b.x + b.w - m, Math.max(b.x + m, box.x));
+    this.y = Math.min(b.y + b.h - m, Math.max(b.y + m, box.y));
+    if (this.x !== box.x || this.y !== box.y) this.wanderT = 0;
 
     // echoes fade in and out instead of popping
     const target = this.visible === this.home ? 1 : 0;

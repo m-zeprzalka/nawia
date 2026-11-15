@@ -153,18 +153,18 @@ export function makeTitle(world: World): PixelBuffer {
     block(150, HORIZON - 19, 26, 19); roof(163, HORIZON - 19, 16, 10);
     block(104, HORIZON - 16, 16, 16); roof(112, HORIZON - 16, 10, 7);
     // bell tower
-    block(122, HORIZON - 40, 13, 40); roof(128, HORIZON - 40, 10, 13);
-    for (let y = HORIZON - 36; y < HORIZON - 27; y++) for (let x = 125; x < 132; x++) b.set(x, y, lit);
-    for (let y = HORIZON - 34; y < HORIZON - 29; y++) for (let x = 127; x < 130; x++) b.set(x, y, sil);
+    block(122, HORIZON - 33, 13, 33); roof(128, HORIZON - 33, 10, 11);
+    for (let y = HORIZON - 30; y < HORIZON - 22; y++) for (let x = 125; x < 132; x++) b.set(x, y, lit);
+    for (let y = HORIZON - 28; y < HORIZON - 24; y++) for (let x = 127; x < 130; x++) b.set(x, y, sil);
     // windows
-    for (const [wx, wy] of [[84, 12], [92, 12], [156, 10], [168, 10], [110, 8], [127, 20], [127, 12]]) {
+    for (const [wx, wy] of [[84, 12], [92, 12], [156, 10], [168, 10], [110, 8], [127, 16], [127, 9]]) {
       b.set(wx, HORIZON - wy, lit); b.set(wx + 1, HORIZON - wy, lit); b.set(wx, HORIZON - wy + 1, lit); b.set(wx + 1, HORIZON - wy + 1, lit);
     }
     // halo around the belfry light
     for (let y = -12; y <= 12; y++)
       for (let x = -12; x <= 12; x++) {
         const d = Math.hypot(x, y) / 12;
-        if (d < 1 && (1 - d) * (1 - d) * 0.8 > bayer(x + 128, y + 61)) b.plot(128 + x, HORIZON - 32 + y, withAlpha(lit, 70));
+        if (d < 1 && (1 - d) * (1 - d) * 0.8 > bayer(x + 128, y + 61)) b.plot(128 + x, HORIZON - 26 + y, withAlpha(lit, 70));
       }
   }
 

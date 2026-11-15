@@ -1,0 +1,43 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      # e.g. "your-itch-user/nawia" (Settings -> Secrets and variables -> Actions -> Variables)
+      ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # type-check, verify the dungeon can be finished, then build the static site into dist/
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nawia-html5
+          path: dist
+
+      - name: Push to itch.io
+        if: ${{ github.event_name != 'pull_request' && env.BUTLER_API_KEY != '' && env.ITCH_TARGET != '' }}
+        run: |
+          curl -sSL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler
+          chmod +x butler/butler
+          ./butler/butler push dist "$ITCH_TARGET:html5" --userversion "${GITHUB_SHA::7}"

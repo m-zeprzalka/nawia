@@ -44,7 +44,7 @@ export class TitleScene extends Phaser.Scene {
     this.page = 0;
     this.view = new DualCanvas(this, titleArt(), 'jawia');
 
-    this.subtitle = new PixelText(this, 0, 62, { width: GAME_W, height: 13, align: 'center', color: 0xe8dcc0 });
+    this.subtitle = new PixelText(this, 0, 46, { width: GAME_W, height: 13, align: 'center', color: 0xe8dcc0 });
     this.prompt = new PixelText(this, 0, 138, { width: GAME_W, height: 13, align: 'center', color: 0xffffff });
     this.langHint = new PixelText(this, 6, GAME_H - 14, { width: 120, height: 13, color: 0x9a94a6 });
     this.jam = new PixelText(this, GAME_W - 186, GAME_H - 14, { width: 180, height: 13, align: 'right', color: 0x9a94a6 });

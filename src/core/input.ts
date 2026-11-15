@@ -133,8 +133,11 @@ class InputManager {
     this.wantDir = want;
   }
 
-  /** True if `action` was pressed within the last `buffer` seconds. Consumes the press. */
-  consume(action: Action, buffer = 0): boolean {
+  /**
+   * True if `action` was pressed within the last `buffer` seconds. Consumes the press.
+   * (Presses are stamped between frames, so the buffer must cover at least one frame.)
+   */
+  consume(action: Action, buffer = 0.15): boolean {
     const t = this.pressedAt[action];
     if (t === undefined || this.now - t > buffer + 1e-4) return false;
     delete this.pressedAt[action];

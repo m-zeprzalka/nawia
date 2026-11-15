@@ -64,6 +64,7 @@ export class GameScene extends Phaser.Scene {
   private camX = 0;
   private camY = 0;
   private trauma = 0;
+  private kick = 0;
   private hitstop = 0;
   private shiftCd = 0;
   private animT = 0;
@@ -175,7 +176,7 @@ export class GameScene extends Phaser.Scene {
     const enemies: Enemy[] = [];
     for (const o of def.objects) {
       if (o.kind === 'enemy') {
-        if (!cleared) enemies.push(new Enemy(this, o.type, ox + o.tx * TILE + 8, oy + o.ty * TILE + 8, this.world));
+        if (!cleared) enemies.push(new Enemy(this, o.type, ox + o.tx * TILE + 8, oy + o.ty * TILE + 8, this.world, { x: ox, y: oy, w: painter.w, h: painter.h }));
       } else {
         const p = new Prop(this, o, ox, oy, this.world);
         if (p.kind === 'gate') {
@@ -273,7 +274,7 @@ export class GameScene extends Phaser.Scene {
         e.recoil(player.x, player.y);
         audio.sfx('hurt');
         this.hud.setHearts(player.hp);
-        this.hud.flash(0xc9323e, 0.4, 260);
+        this.hud.flash(0xc9323e, 0.28, 240);
         this.trauma = Math.max(this.trauma, 0.6);
         this.hitstop = 0.09;
         if (player.dead) {
@@ -326,7 +327,7 @@ export class GameScene extends Phaser.Scene {
       // something stands here on the other side: show exactly what
       audio.sfx('denied');
       this.hud.rattle();
-      this.trauma = Math.max(this.trauma, 0.3);
+      this.trauma = Math.max(this.trauma, 0.36);
       this.blockedHintT = 2.2;
       this.shiftCd = 0.14;
       for (const [tx, ty] of level.blockingTiles(to, b.x, b.y, b.hw, b.hh)) {
@@ -355,7 +356,7 @@ export class GameScene extends Phaser.Scene {
     this.fx.setAmbience(to, room.ox, room.oy, room.w, room.h);
     this.hud.flash(ACCENT[to], 0.2, 180);
     this.hud.setWorld(to, true);
-    this.trauma = Math.max(this.trauma, 0.32);
+    this.kick = 3;
     audio.setWorld(to);
     audio.sfx(to === 'nawia' ? 'shiftNawia' : 'shiftJawia');
   }
@@ -542,7 +543,7 @@ export class GameScene extends Phaser.Scene {
       this.fx.shiftBurst(bell.x, bell.y - 6, this.world);
       this.hud.setWorld(this.world, false);
       audio.setWorld(this.world);
-      this.trauma = Math.max(this.trauma, 0.35);
+      this.kick = 3;
       if (this.endStep === beats.length) this.hud.fadeOut(0xf4efe4, 1500, () => this.scene.start('end'));
     }
   }
@@ -584,15 +585,16 @@ export class GameScene extends Phaser.Scene {
     this.fogAlpha = lerp(this.fogAlpha, FOG[world].alpha, k);
 
     this.trauma = Math.max(0, this.trauma - rawDt * 2.2);
+    this.kick *= Math.exp(-rawDt * 22);
   }
 
   private render(): void {
-    // screen shake: whole pixels only
-    const amp = this.trauma * this.trauma * 5;
-    const sx = amp > 0.2 ? Math.round((Math.random() * 2 - 1) * amp) : 0;
-    const sy = amp > 0.2 ? Math.round((Math.random() * 2 - 1) * amp) : 0;
+    // screen shake: whole pixels only. `kick` is a single downward thump (the shift), trauma is a rattle (blows).
+    const amp = this.trauma * this.trauma * 8;
+    const sx = amp >= 0.5 ? Math.round((Math.random() * 2 - 1) * amp) : 0;
+    const sy = amp >= 0.5 ? Math.round((Math.random() * 2 - 1) * amp) : 0;
     const scrollX = this.camX + sx;
-    const scrollY = this.camY + sy;
+    const scrollY = this.camY + sy - Math.round(this.kick);
     this.cameras.main.setScroll(scrollX, scrollY);
 
     const lights: LightSource[] = [
