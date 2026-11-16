@@ -81,16 +81,24 @@ const INKS: { id: Ink; name: Bilingual }[] = [
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
 
 /** Where the exhibits stand, in tiles. Heroes fill rows in the order of lineup.txt, six to a row. */
-const HERO_ROWS = [13, 18, 23, 28];
+const HERO_ROWS = [13, 18, 23, 28, 33, 38];
 const HERO_COLS = [2, 5, 8, 11, 14, 17];
 
 /**
  * Pictures to compare against (a screenshot of another game, a sketch): whatever the art lead puts in
- * src/lab/reference/ is shown here at one pixel to one pixel, on a row of its own. That folder is ignored
- * by git, so nothing in it is ever published.
+ * src/lab/reference/ is shown on a row of its own. That folder is ignored by git, so nothing in it is ever
+ * published. A name ending in "@4" (e.g. hero@4.png) says the picture is blown up four times: it is shown
+ * at a quarter, so its pixels match the game's. Any other picture is fitted into REF_FIT.
  */
 const REFERENCES = import.meta.glob('../lab/reference/*.{png,gif,webp,jpg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const refKey = (path: string): string => `lab:ref:${path.split('/').pop()}`;
+const REF_FIT = { w: 96, h: 64 };
+/** How much a reference picture is shrunk: by its "@n", or to fit REF_FIT. */
+function refScale(path: string, w: number, h: number): number {
+  const m = /@(\d+)x?\.[a-z]+$/i.exec(path);
+  if (m) return 1 / Number(m[1]);
+  return Math.min(1, REF_FIT.w / w, REF_FIT.h / h);
+}
 const FOLK_SPOTS: [number, number][] = [[3, 8], [7, 8], [12, 8], [16, 8]];
 const CLASS_SPOTS: Record<string, [number, number][]> = {
   '1': [[22, 13], [25, 13], [28, 13], [33, 13], [37, 13], [41, 13]],
@@ -483,16 +491,27 @@ export class PlaygroundScene extends Phaser.Scene {
     const refs = Object.keys(REFERENCES);
     if (refs.length && row >= HERO_ROWS.length) console.warn('playground: no free row for the reference pictures; they share the last one');
     const REFERENCE_ROW = HERO_ROWS[Math.min(row, HERO_ROWS.length - 1)];
-    if (refs.length) heading(HERO_COLS[0], REFERENCE_ROW, { pl: 'wzorce (lokalnie, src/lab/reference)', en: 'references (local, src/lab/reference)' });
+    let tallest = 0;
     for (const path of refs) {
       const key = refKey(path);
       if (!this.textures.exists(key)) continue;
       const img = this.add.image(rx, REFERENCE_ROW * TILE + 14, key).setOrigin(0, 1).setDepth(DEPTH.entities + (REFERENCE_ROW * TILE + 14) / 1000);
-      const label = new PixelText(this, rx, img.y - img.height - 14, { width: Math.max(80, img.width), height: 13, color: 0xfff6d8 });
-      label.setText(path.split('/').pop() ?? '');
+      img.setScale(refScale(path, img.width, img.height));
+      const name = path.split('/').pop() ?? '';
+      // the name, cut to the width of the picture (about six pixels a letter)
+      const fits = Math.max(4, Math.floor(img.displayWidth / 6));
+      const label = new PixelText(this, rx, img.y - img.displayHeight - 14, { width: Math.max(24, Math.ceil(img.displayWidth)), height: 13, color: 0xfff6d8 });
+      label.setText(name.length > fits ? `${name.slice(0, fits - 2)}..` : name);
       label.image.setDepth(DEPTH.fxWorld);
       this.refLabels.push(label);
-      rx += img.width + TILE;
+      rx += Math.ceil(img.displayWidth) + TILE;
+      tallest = Math.max(tallest, img.displayHeight);
+    }
+    // the heading goes over the tallest picture, not over the row as for the figures
+    if (tallest) {
+      const text = new PixelText(this, HERO_COLS[0] * TILE - 8, REFERENCE_ROW * TILE + 14 - tallest - 30, { width: 300, height: 13, color: 0x9af4ff });
+      text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
+      this.titles.push({ text, name: { pl: 'wzorce (lokalnie, src/lab/reference)', en: 'references (local, src/lab/reference)' } });
     }
 
     const used: Record<string, number> = { '1': 0, '1.5': 0, '2': 0 };

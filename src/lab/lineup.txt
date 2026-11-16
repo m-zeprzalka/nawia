@@ -11,14 +11,15 @@
 board:
 
 * Nowe koncepty | New concepts
-C1b  najlepsze z wybranych, 16x16, smukły bok
-C2b  to samo, 16x18 (między C1 a C2), smukły bok
-C6b  Bartnik z poprawionym bokiem, 16x20
-C7   Sambor wędrowiec, 16x18: kwadratowy z przodu, kontur w kolorze materiału
-C8   Sambor z Północy, 16x20: czarny kontur, cieniowanie jak w komiksie
-C9   uczeń zielarki, 16x16: bez konturu, światłocień
+C1c  najlepszy, 16x16: profil bez nosa, grzywka do krawędzi
+C2c  to samo, 16x18
+C7b  wędrowiec, 16x18: płaski profil
+C8b  z Północy, 16x20: bez konturu
+C10  Kudłacz, 16x20: budowa jak w Moonlighterze, tarcza na plecach
+C11  Kołpak, 16x18: malowany, bez konturu
 
 * Wybrane z poprzednich rund | Chosen in earlier rounds
+C6b  Bartnik z poprawionym bokiem (bez werdyktu)
 G1   bohater z gry: baza
 W2   Śmiałek (w notatkach "K2": W2 czy R2? jeden z nich do archiwum)
 R2   Śmiałek ze szkół rysunku (drugi kandydat na "K2")
@@ -33,6 +34,11 @@ A3b  Łowca z mniejszą głową
 A5b  Kołpak z mniejszą głową
 
 archive:
+C1b  najlepszy: z boku fatalnie przez wystający nos; poprawiony w C1c
+C2b  to samo 16x18: jw.; poprawiony w C2c
+C7   wędrowiec: od boku do spłaszczenia; poprawiony w C7b
+C8   z Północy: lepszy bez obrysu; poprawiony w C8b
+C9   uczeń zielarki: za mały, za chudy
 C1   najlepsze z wybranych: z boku za gruby ("kartofel"); poprawiony w C1b
 C2   to samo 16x20: za gruby z boku i za wysoki; poprawiony w C2b
 C3   miary SNES 16x22: fatalny

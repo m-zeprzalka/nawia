@@ -38,27 +38,37 @@ tarczę. Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md),
 
 ![Od lewej: bohater z gry (G1), potem koncepty z planszy](img/hero-concepts.png)
 
-| Kod | Koncept | Rozmiar | Kto rysował | Na czym polega |
-|---|---|---|---|---|
-| **C1b** | Najlepsze z wybranych | 16×16 | ja | C1 (malowany jak S3, tony S2, smukły jak A1 z mniejszą głową, oczy z powieką, białkiem i tęczówką, bez opaski) z nowym profilem: płytsza głowa, płaszcz przylega do pleców, tarcza widziana z boku; z boku ok. 9 px zamiast 12 |
-| **C2b** | to samo, niżej | 16×18 | ja | między C1 a C2: ta sama głowa, koszula za pas, dłuższe nogi, płaszcz do kolan; smukły profil jak C1b |
-| **C6b** | Bartnik, poprawiony bok | 16×20 | grafik 3 | C6 z wyprostowanym profilem: tarcza widziana z kantu (wąski owal), miecz pionowo przy biodrze (bez „ogona”), czysty krok; tarcza malowana czerwoną ochrą; ciemny kontur, dithering, przygaszone barwy |
-| **C7** | Sambor wędrowiec | 16×18 | ja | „kwadratowy” z przodu (płaszcz, ręce i tarcza na całą szerokość kafla, jak u klasyków), smukły z boku; młody mężczyzna z kanciastą szczęką, kasztanowe włosy, zielone oczy, skórzany kubrak, zielona opończa, miecz na plecach; **kontur w kolorze materiału** (brązowy przy skórze i skórze kubraka, zielony przy płaszczu) |
-| **C8** | Sambor z Północy | 16×20 | grafik 4 | barczysty (futrzany kołnierz na 14 z 16 px), płowe włosy do ramion, zarost, tunika w kolorze urzetu, czerwony tkany pas, łuk na plecach, okrągła tarcza z okuciem; **czarny kontur** i twarde trzy tony jak w komiksie |
-| **C9** | Uczeń zielarki | 16×16 | grafik 5 | chudy, długonogi, mała głowa (6 wierszy), jasne włosy w kucyk, kaftan na lnianej koszuli, sakwa z ziołem, kamień z dziurką, tarcza ze słońcem; **bez konturu**: ciepłe światło z lewej góry, chłodne cienie |
+| Kod | Koncept | Rozmiar | Na czym polega |
+|---|---|---|---|
+| **C1c** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, smukły, oczy z powieką, białkiem i tęczówką) z nowym profilem: grzywka schodzi na czoło do samej krawędzi, oko piksel od przodu, twarz płaska, **bez nosa** |
+| **C2c** | Najlepszy 16×18 | 16×18 | to samo, między C1 a C2 |
+| **C7b** | Wędrowiec | 16×18 | C7 („kwadratowy” z przodu, kontur w kolorze materiału) z płaskim profilem: bez nosa, płytsza głowa, tarcza bliżej ciała |
+| **C8b** | Z Północy, bez konturu | 16×20 | C8 bez obrysu: trzyma się własnymi tonami jak C1 i S3; z boku bez wystającego nosa |
+| **C10** | Kudłacz | 16×20 | budowa jak we wzorcu z Moonlightera: duża, kudłata głowa, ale ciało z rękami tak samo szerokie, krótkie nogi, płaski profil; płowe włosy, bordowy kaftan z kremowym kołnierzem, kamień z dziurką, drewniana tarcza z czerwonym krzyżem słonecznym na plecach (z tyłu to ją widać najpierw); kontur w kolorze materiału |
+| **C11** | Kołpak | 16×18 | dorosła wersja lalki A5 w tej samej budowie: kołpak z kuny z czerwonym denkiem, granatowy kożuszek z kremowym kołnierzem, czerwony pas, tarcza z krzyżem; **malowany, bez konturu** |
 
-Każdy koncept rysuje inaczej obrys, bo to on najbardziej zmienia charakter postaci: **C1b, C2b** ciemny brzeg tylko w cieniu
-(jak S3), **C7** kontur w kolorze materiału, **C8** czarny kontur, **C9** żadnego konturu, **C6b** ciemny kontur z ditheringiem.
+Wszystkie mają trzy widoki, stanie i dwa kroki, i mieszczą się w 15 kolorach.
 
-Werdykty z poprzedniej rundy (wszystkie w archiwum): C1 i C2 „za grube z boku” (poprawione w C1b, C2b), C3 fatalny,
-C4 bardzo słaby („od boku jak kurczak”), C5 nie ten klimat, C6 względnie ok, ale dziwny z boku (poprawiony w C6b).
+**Czego nauczyły Twoje wzorce** (miary i rzemiosło, nie postaci):
+- **Profil.** Ani bohater 16-bitowej przygodówki, ani Will z Moonlightera nie mają z boku nosa. Twarz to tylko przednia dolna ćwiartka
+  głowy: grzywka schodzi na czoło do krawędzi, oko jest piksel od przodu, przód twarzy jest płaski, broda zaokrąglona do tyłu.
+  Wystający piksel nosa robił z głowy dziób; stąd C1c, C2c, C7b, C8b.
+- **„Kwadratowość”.** Głowa może być duża, jeśli ciało z rękami jest tak samo szerokie. Żarówka powstaje wtedy, gdy szeroka głowa
+  stoi na wąskim tułowiu. Nogi są krótkie, a z boku cała postać jest o połowę płytsza niż z przodu.
+- **Kontur** nigdy nie jest czarny: to ciemny odcień tego, co obrysowuje, albo nie ma go wcale.
+
+Werdykty z poprzedniej rundy (w archiwum): C1b i C2b fatalne z boku przez wystający nos (poprawione w C1c, C2c), C7 do lekkiego
+spłaszczenia z boku (C7b), C8 lepszy bez obrysu (C8b), C9 za mały i za chudy. C6b nie dostał werdyktu i stoi w drugiej grupie.
 
 ### Wzorce do porównań (lokalnie)
 
-Obrazki wrzucone do folderu **`src/lab/reference/`** (PNG, GIF, WebP, JPG) plac pokazuje w skali 1:1 w pierwszym wolnym
-rzędzie, z nazwą pliku nad każdym. Ten folder jest ignorowany przez git: nic z niego nie trafia do repozytorium ani do gry.
-To miejsce na zrzut ekranu z innej gry (najlepiej sama wycięta postać, w oryginalnej rozdzielczości, bez powiększenia),
-żeby postawić ją obok naszych bohaterów i porównać wielkość, proporcje i kontur. Po wrzuceniu pliku wystarczy odświeżyć stronę.
+Obrazki wrzucone do folderu **`src/lab/reference/`** (PNG, GIF, WebP, JPG) plac pokazuje w pierwszym wolnym rzędzie, z nazwą
+pliku nad każdym. Ten folder jest ignorowany przez git: nic z niego nie trafia do repozytorium ani do gry. Po wrzuceniu pliku
+wystarczy odświeżyć stronę.
+
+- Zwykły obrazek (ilustracja, zrzut w dowolnym powiększeniu) jest zmniejszany, żeby zmieścił się w 96×64 pikselach gry: do oglądania obok.
+- Jeśli nazwa kończy się na **`@n`** (np. `link@4.png`), plac wie, że obrazek jest powiększony n razy, i pokazuje go w 1/n:
+  wtedy jego piksele są tej samej wielkości co piksele gry i da się porównać wysokość postaci co do piksela.
 
 Postaci z cudzych gier (np. bohatera klasycznej przygodówki ze SNES-a) nie rysuję jako kopii: to cudzy, chroniony bohater,
 a nasze repozytorium jest publiczne. Do porównania służy właśnie ten folder.
@@ -197,7 +207,7 @@ Które kody stoją na planszy, decyduje `src/lab/lineup.txt`; poniżej są wszys
 
 | Kody | Co | Zachowanie |
 |---|---|---|
-| **C1–C9**, **C1b, C2b, C6b** | koncepty bohatera; „b” to wersja poprawiona, oryginał jest w archiwum | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
+| **C1–C11** i wersje z literą (**C1b, C1c, C2b, C2c, C6b, C7b, C8b**) | koncepty bohatera; litera to kolejna poprawka, poprzednie wersje są w archiwum | obracają się; w każdą stronę najpierw stoją, potem idą w miejscu |
 | **G1–G4** | bohater z gry i jego wyglądy spod klawisza H: Pastuszek, Góral, Wędrowiec | jak wyżej |
 | **R1–R4** | cztery postacie w czterech szkołach rysunku | jak wyżej |
 | **W1–W4** | cztery wcielenia z jednego szablonu | jak wyżej |
