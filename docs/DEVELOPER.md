@@ -207,10 +207,17 @@ Malarz powierzchni traktuje kafel drzwi w prostokącie chaty jak ścianę z otwa
 4. `updateAtmosphere`: animacja wody, pierścień, zmiana wyglądu obiektów, powietrze miejsca;
 5. `hud.update`, `render` (wstrząs kamery, mapa światła, mgła).
 
-`updatePlay()` w kolejności: obrót → początek rozmowy (klawisz ciosu obok rozmówcy) → bohater → trafienia miecza (`resolveAttack`) →
-wrogowie i kontakt z nimi → pociski → boss → słupy → rekwizyty → kury → serca → napis → drzwi → wyjście z pokoju → podpowiedzi → kamera.
+`updatePlay()` w kolejności: obrót → początek rozmowy (klawisz ciosu obok rozmówcy) → najbliższy wróg (cel auto-celowania) → bohater i jego
+zdarzenia (`playerEvents`: dźwięk ciosu, kurz) → trafienia miecza (`resolveAttack`) → zamknięcie areny (`tryLock`) i kolejna fala
+(`spawnWave`) → wrogowie (żetony ataku, zdarzenia, ich ciosy) → rozpychanie ciał (`separate`) → pociski → boss → słupy → rekwizyty →
+kury → serca → napis → drzwi → wyjście z pokoju → podpowiedzi → kamera.
 
-Pokój jest „załatwiony” (`checkCleared`), gdy zadzwonił jego mały dzwon albo, jeśli dzwonu nie ma, gdy nie został żaden wróg w żadnym świecie.
+Hit-stop zatrzymuje też cząstki (`Fx.update(dt)` dostaje `dt = 0`). Spowolnienie (`this.slowmo`, czas ×0,3) włącza się przy
+ostatnim ciosie walki w pokoju i przy śmierci bohatera.
+
+Pokój jest „załatwiony” (`checkCleared`), gdy zadzwonił jego mały dzwon albo, jeśli dzwonu nie ma, gdy nie został żaden wróg w żadnym świecie
+i nie czeka już żadna fala (`wave N:` w pliku pokoju). Pokój z `lock: yes` zamyka wszystkie wyjścia kratami (na powierzchni
+wrotami), gdy bohater zejdzie z kafla wejścia (`tryLock`); kraty są zwykłymi bramami, więc otwiera je to samo `checkCleared`.
 Wtedy otwierają się jego bramy i id pokoju trafia do `this.cleared` (do końca rozgrywki). Stan nie jest zapisywany na dysk.
 
 Śmierć: bohater wraca tam, gdzie wszedł do pokoju, z pełnym zdrowiem; pokój buduje się od nowa.
@@ -219,8 +226,8 @@ Wtedy otwierają się jego bramy i id pokoju trafia do `this.cleared` (do końca
 
 | Plik | Co robi | Najważniejsze |
 |---|---|---|
-| `Player.ts` | ruch z przyspieszeniem, zamach, tarcza, odrzut | `box` (10×8 px u stóp), `attackBox()`, `blocks(skąd)`, `hurt/drain/heal/shove`, `sync()` |
-| `Enemy.ts` | wszyscy zwykli wrogowie | tabela `SPECS`; maszyna stanów `roam → windup → dash → rest` (+ `rising` u strzygi); `home` = świat, w którym jest groźny i wrażliwy. Wyjątki od schematu: zjawa i wilk krążą przed atakiem, ognik i morownik strzelają zamiast skakać, dzik po zderzeniu ze ścianą długo stoi |
+| `Player.ts` | ruch, trzy ciosy, przewrót, tarcza, zachwianie, śmierć | `box` (10×8 px u stóp: ściany), `hurtBox` (ciało: w nie trafiają ciosy i pociski), `attackBox()` (z sierpa smugi), `strike` (siła bieżącego ciosu), `blocks(skąd)`, `perfect`, `hurt/drain/heal/shove/halt/revive`, kolejka `events`, `sync()` |
+| `Enemy.ts` | wszyscy zwykli wrogowie | tabela `SPECS` (zdrowie, waga, `armor`, `ranged`…); stany `roam → windup → dash → rest` (+ `hurt` po trafieniu, `rising` u strzygi i fal); `home` = świat, w którym jest groźny i wrażliwy; `box` (stopy), `hurtBox` (ciało z rysunku), `attackBox` (tylko w czasie ciosu); `allowAttack` ustawia scena; kolejka `events` |
 | `Critter.ts` | kury | chodzą, uciekają przed bohaterem i mieczem; nie da się ich skrzywdzić; w Nawi są echem |
 | `Boss.ts` | strażnik | stany `sleep, stalk, windup, charge, stunned, recover, dying`; kolejka `events`, którą scena zamienia na dźwięk i efekty |
 | `Shot.ts` | ogień ognika, ciernie morownika, kule serca | `reflect()` odsyła do właściciela (tylko ogień ognika) |
@@ -263,12 +270,12 @@ podnosi tarczy bez tarczy, a `GameScene.tryShift()` bez kamienia pokazuje tylko 
 ### Wygląd bohatera
 
 Gra rysuje bohatera arkuszami z `src/art/heroGame.ts` (`GAME_LOOKS`): `sambor` to C2f z placu prób (16×18), `sambor-s3` to S3
-Malowany (16×16). Każdy ma też wersję bez tarczy (`…-bare`), na początek gry. Arkusz ma układ `HERO` z `actors.ts`: rzędy
-to dół, góra i bok, kolumny to stanie, dwa kroki, zamach, cios, tarcza i podskok uniku (`HOP`). Klatki C2f są narysowane w jego
-pliku konceptu (`GAME` w `najlepszy-wysoki-f.concept.ts`, typ `GamePoses` z `concept.ts`), a klatki S3 składa `heroGame.ts`
-z części stylu (`lay`, `paintStyle` z `heroStyles.ts`). `Player.setLook(klucz)` zmienia teksturę, a klawisz H przełącza wygląd.
-Sprite ma środek u stóp (`setOrigin(0.5, 1)`), więc wyższa postać rośnie w górę, a kolizja (`TUNE.player.hitW/hitH`) się nie
-zmienia.
+Malowany (16×16). Każdy ma też wersję bez tarczy (`…-bare`), na początek gry. Układ arkusza opisuje `src/art/hero/layout.ts`:
+komórki 32×32 (stopy w wierszu 27, środek w kolumnie 16), rzędy dół, góra, bok, a kolumny to kolejne animacje: `idle` 4, `run` 6,
+`atkA` 4, `atkB` 4, `atkC` 5, `guard` 2, `roll` 6, `hurt` 2, `death` 5. `ANIMS` podaje czasy klatek, klatki, w których miecz tnie
+(`active`), i klatki przewrotu, w których nic go nie rani (`safe`). Miecz jest wrysowany w klatki ciosów. Wygląd, który ma tylko
+siedem dawnych póz, wypełnia ten układ `fromPoses()` (z dawnym mieczem wklejonym tam, gdzie kładł go stary zamach).
+`Player.setLook(klucz)` zmienia teksturę, a klawisz H przełącza wygląd. Kolizja (`TUNE.player.hitW/hitH`) się nie zmienia.
 
 Dawne warianty (`HERO_LOOKS` w `actors.ts`: Wojak, Pastuszek, Góral, Wędrowiec; arkusze `hero`, `hero1`…) zostały bez zmian.
 Gra ich nie używa, ale plac prób pokazuje je jako G1–G4.
@@ -277,15 +284,34 @@ Gra ich nie używa, ale plac prób pokazuje je jako G1–G4.
 
 `src/art/gameBeasts.ts` (`GAME_BEASTS`) mówi, którego potwora rysowanego w całości (`src/art/beasts`) nosi każdy rodzaj
 wroga, i robi z nich arkusze `beast:<id>:jawia` i `beast:<id>:nawia`. `Enemy.sync()` bierze arkusz świata, w którym jest
-bohater: podczas marszu klatki chodu, przy ostrzeżeniu klatkę zamachu, przy ataku klatkę ciosu. Środek sprite'a jest w
-przedostatnim wierszu komórki, więc większe potwory też stoją na swoim cieniu. `Enemy.newLooks = false` (klawisz B w grze)
-wraca do dawnego arkusza `mobs`. Rozmiary kolizji i zachowanie wrogów (`SPECS` w `Enemy.ts`) się nie zmieniły.
+bohater. Fazy (`beastSheet().frameOf`): 0 stoi, 1–4 chód, 5 zamach, 6 cios, 7 powrót po ciosie (gdy stwór jest odsłonięty),
+8 zachwianie po trafieniu; brakującą klatkę zastępuje najbliższa. Środek sprite'a jest w przedostatnim wierszu komórki, więc
+większe potwory też stoją na swoim cieniu. Ciało, w które trafia miecz (`Enemy.hurtBox`), liczy się z narysowanej klatki stania
+(prostokąt jej pikseli, trochę zwężony). `Enemy.newLooks = false` (klawisz B w grze) wraca do dawnego arkusza `mobs`.
 
-### Unik
+### Walka
 
-`Player.dodgeT` liczy czas podskoku. Kierunek to ruch w chwili naciśnięcia (albo kierunek patrzenia), prędkość, wysokość i
-czasy są w `TUNE.player.dodge*`. Przez `dodgeSafe` sekund `Player.airborne` jest prawdą i `Player.hurt()` niczego nie przyjmuje.
-Sprite unosi się po sinusie nad cieniem i pokazuje klatkę `HOP`. Akcja `dodge` w `core/input.ts`: C, I, lewy Alt, a na padzie X.
+Wszystkie liczby są w `TUNE.player` (`src/config.ts`) i w `SPECS` (`src/entities/Enemy.ts`).
+
+- **Trzy ciosy.** Klawisz ciosu zaczyna `atkA`; naciśnięcie w trakcie ciosu (`comboBuffer`) przechodzi w `atkB`, a potem w ciężki
+  `atkC` (2 obrażenia, mocniejszy odrzut i hit-stop), gdy tylko ostrze minie cel. Krótka przerwa po ciosie (`comboWindow`) też
+  ciągnie serię dalej. Każdy cios popycha bohatera do przodu (`attackLunge`, `heavyLunge`). Bez wciśniętego kierunku cios
+  obraca się do najbliższego wroga w zasięgu `aimReach`.
+- **Przewrót** (akcja `dodge`: C, I, lewy Alt, na padzie X): `rollSpeed` na starcie, zwalnia pod koniec, w klatkach `safe`
+  (`Player.airborne`) `hurt()` niczego nie przyjmuje. Można nim przerwać koniec ciosu, ale nie zamach.
+- **Tarcza**: blokuje ciosy i pociski od frontu (`guardArc`). Podniesiona w ostatniej chwili (`perfectGuard`, `Player.perfect`)
+  wybija wroga z rytmu na dłużej (`Enemy.bash(…, true)`), z dźwiękiem `parry` i błyskiem.
+- **Wrogowie ranią tylko ciosem**: `Enemy.attackBox` istnieje tylko w stanie `dash` i sprawdza się z `Player.hurtBox`. Sam kontakt
+  tylko rozpycha (`GameScene.separate`). Atakować (zamach albo cios) może naraz najwyżej `MAX_ATTACKERS` (2) wrogów walczących
+  wręcz; reszta krąży dalej i czeka (`Enemy.allowAttack`).
+- **Trafiony wróg** dostaje odrzut zależny od wagi (`weight`) i zachwianie (`hurt`), które przerywa mu zamach. Wyjątek: cios z
+  `armor` (szarża dzika, skok strzygi) trwa dalej. Dzik ogłuszony po zderzeniu ze ścianą bierze podwójne obrażenia.
+  Nad wrogiem przez chwilę widać pasek zdrowia.
+- **Oprawa** (`GameScene.strike`, `hurtPlayer`, `blocked`): hit-stop i wstrząs zależne od ciosu, szarpnięcie obrazu w stronę
+  ciosu (`punch`), gwiazda i iskry, krople w kolorze stwora (`BLOOD`), a przy śmierci rozpad stwora na jego własne piksele
+  (`Fx.disintegrate`). Przed atakiem wróg rozgrzewa się (dodawany kolor w `Enemy.sync`) i błyska nad głową (`Fx.glint`, dźwięk `warn`).
+- Smugi i gwiazdy rysuje kod (`src/art/combatFx.ts`): `ARCS` opisuje sierp każdego ciosu w każdym widoku, `arcBox()` liczy z niego
+  pole, w którym ostrze rani.
 
 ## 9. Światło, mgła, dźwięk, wejście, teksty
 
