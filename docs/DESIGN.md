@@ -75,9 +75,9 @@ Strażnik (boss) ma swój dawny wygląd.
 |---|---|---|
 | Ruch | WASD / strzałki | lewa gałka / krzyżak |
 | Obrót kamienia | **Shift** lub Spacja | Y, lewy bumper, lewy spust |
-| Cios | Z, J lub Enter | A, X |
+| Cios (trzy razy: seria trzech ciosów) | Z, J lub Enter | A |
 | Tarcza (trzymaj) | X lub K | B, prawy bumper, prawy spust |
-| Unik (podskok) | C, I lub lewy Alt | X |
+| Przewrót (unik) | C, I lub lewy Alt | X |
 | Rozmowa (obok mieszkańca) | Z, J lub Enter | A |
 | Pauza | Esc / P | Start |
 | Wyciszenie / pełny ekran / język | M / F / L | |
@@ -110,13 +110,24 @@ do miejsca, którym wszedł do pokoju. Gra pokazuje przez chwilę, które kafle 
 tylko zaczyna rozmowę, bez tarczy nie ma gardy, a bez kamienia nie ma obrotu. Pierwsze miejsce, gdzie trzeba obrócić świat,
 to most na skraju wsi, więc bez kamienia nie da się wyjść do lasu.
 
-**Unik.** Krótki podskok w stronę, w którą bohater idzie (albo patrzy, jeśli stoi): około 50 px w ćwierć sekundy. Przez
-pierwsze 0,22 s nic go nie rani, ani cios, ani pocisk. Potem jest krótka przerwa (0,45 s). Unik nie przeskakuje wody ani
-przepaści: kolizja działa jak w marszu. Liczby: `dodge*` w `TUNE.player` (`src/config.ts`). To próba: dobry unik zależy od
-wielkości bohatera i jego kolizji, więc wróci przy wyborze ostatecznej postaci.
+**Przewrót.** Szybki przewrót z lekkim podskokiem w stronę, w którą bohater idzie (albo patrzy): około 50 px w 0,3 s. Od
+zwinięcia do rozwinięcia (około 0,2 s) nic go nie rani, ani cios, ani pocisk. Przewrotem można przerwać koniec ciosu (gdy ostrze
+już minęło cel), ale nie zamach. Nie przeskakuje wody ani przepaści.
 
-**Walka.** Zdrowie: 3 serca liczone połówkami. Cios wroga zabiera całe serce, pocisk pół. Miecz ma krótki zamach z wypadem.
-Podniesiona tarcza zatrzymuje cios od frontu i odsyła ogień ognika. Każdy wróg ostrzega przed atakiem (mruga na biało i drży), potem atakuje po prostej.
+**Walka.** Wzorem są Moonlighter i Children of Morta: każdy cios ma wagę, każdy atak wroga da się przeczytać i ominąć.
+- Zdrowie bohatera: 3 serca liczone połówkami. Cios wroga zabiera całe serce, pocisk pół. Ranny bohater zostaje odrzucony,
+  przez chwilę traci panowanie, potem przez sekundę miga i nic go nie rani.
+- **Trzy ciosy**: cięcie, cięcie z powrotem i ciężkie cięcie z góry (podwójne obrażenia, mocny odrzut). Każdy krok w serii to
+  kolejne naciśnięcie. Każdy cios popycha bohatera do przodu, a bez kierunku cios sam obraca się do najbliższego wroga.
+- **Tarcza** zatrzymuje cios od frontu i odsyła ogień ognika. Podniesiona w ostatniej chwili wybija wroga z rytmu na dłużej
+  (dźwięczy i błyska).
+- **Wrogowie ranią tylko ciosem**, nigdy samym dotykiem. Przed każdym atakiem stwór się rozgrzewa (żarzy się od środka), nad głową
+  błyska mu iskra i słychać syk. Dzik i strażnik pokazują na ziemi tor, którym ruszą. Naraz atakować mogą najwyżej dwa stwory
+  walczące wręcz; reszta krąży i czeka.
+- Trafiony stwór odskakuje i się chwieje, co przerywa mu zamach. Tylko szarża dzika i skok strzygi idą dalej mimo ciosu.
+  Po pierwszym ciosie nad stworem widać pasek jego zdrowia. Zabity rozpada się na piksele, z których był narysowany.
+- **Areny i fale.** Niektóre pokoje zamykają za bohaterem wyjścia (kraty, na powierzchni wrota) do końca walki, a w niektórych po
+  pierwszej grupie z ziemi wychodzą kolejne. Ranny bohater czasem znajduje serce tam, gdzie padł stwór.
 
 **Bramy.** Otwierają się, gdy w pokoju zapadnie cisza po obu stronach (nie ma wrogów w żadnym świecie) albo gdy zadzwoni mały dzwon.
 
@@ -126,14 +137,14 @@ Podniesiona tarcza zatrzymuje cios od frontu i odsyła ogień ognika. Każdy wr�
 
 | Wróg | Świat | Zdrowie | Zachowanie | Jak go pokonać |
 |---|---|---|---|---|
-| Utopiec | Jawia | 3 | podchodzi, przykuca, skacze po prostej | zejść z linii albo przyjąć na tarczę, potem cios |
-| Zjawa | Nawia | 2 | krąży, potem przelatuje przez bohatera; lata nad wodą i otchłanią | tarcza w jej stronę, cios po przelocie |
+| Utopiec | Jawia | 4 | podchodzi, przykuca, skacze po prostej | zejść z linii albo przyjąć na tarczę, potem seria |
+| Zjawa | Nawia | 3 | krąży, potem przelatuje przez bohatera; lata nad wodą i otchłanią | tarcza w jej stronę albo przewrót, cios po przelocie |
 | Ognik | Jawia | 1 | wisi nad wodą i pluje ogniem | tarcza odsyła mu jego własny ogień |
-| Strzyga | oba | 3 + 3 | szybka, kluczy i skacze; zabita w Jawi wstaje w Nawi | pójść za nią na drugą stronę |
-| Dzik | Jawia | 3 | grzebie racicą, potem szarżuje daleko po prostej | zejść z linii; gdy wpadnie na ścianę albo drzewo, długo stoi ogłuszony |
-| Wilk (skażony) | Jawia | 2 | krąży po ziemi jak zjawa w powietrzu, skacze, odskakuje | tarcza w jego stronę, cios zaraz po skoku; zwykle są dwa |
-| Morownik (kwiat skazy) | Jawia | 2 | nie rusza się; otwiera się i pluje trzema cierniami w wachlarzu | podejść między salwami i ciąć; tarcza zatrzymuje ciernie |
-| Strażnik (boss) | granica | 9 | w Jawi kamień, którego stal nie rani; w Nawi serce w skorupie | sprowokować szarżę w ścianę lub gruz, obrócić kamień i bić w odsłonięte serce (3 ciosy na ogłuszenie, 3 fazy) |
+| Strzyga | oba | 4 + 4 | szybka, kluczy i skacze (skoku nie przerwie żaden cios); zabita w Jawi wstaje w Nawi | przewrót przez skok, seria w plecy; pójść za nią na drugą stronę |
+| Dzik | Jawia | 6 | grzebie racicą (na ziemi widać tor), potem szarżuje daleko po prostej; ciosy go nie zatrzymują | zejść z toru; gdy wpadnie na ścianę albo drzewo, długo stoi ogłuszony i bierze podwójne obrażenia |
+| Wilk (skażony) | Jawia | 4 | krąży po ziemi jak zjawa w powietrzu, skacze, odskakuje | tarcza w jego stronę, seria zaraz po skoku; zwykle są dwa |
+| Morownik (kwiat skazy) | Jawia | 3 | nie rusza się; otwiera się i pluje trzema cierniami w wachlarzu | podejść między salwami i ciąć; tarcza zatrzymuje ciernie |
+| Strażnik (boss) | granica | 9 | w Jawi kamień, którego stal nie rani (rani tylko szarżą, poza nią odpycha); w Nawi serce w skorupie | sprowokować szarżę w ścianę lub gruz, obrócić kamień i bić w odsłonięte serce (3 ciosy na ogłuszenie, 3 fazy) |
 
 Liczby: tabela `SPECS` w `src/entities/Enemy.ts` i `TUNE.boss` w `src/config.ts`.
 
