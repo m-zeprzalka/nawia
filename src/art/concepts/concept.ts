@@ -110,10 +110,13 @@ export function conceptFrame(c: Concept, view: View, pose: Pose, strict = true):
 }
 
 /** Rows: facing down, up, side (right). Columns: stand, stride, stand, other stride, stand. */
-export function conceptSheet(c: Concept): Sheet {
+/** The walk sheet: rows down, up, side; columns stand, 1, stand, 2, stand. `strict` as in conceptFrame. */
+export function conceptSheet(c: Concept, strict = true): Sheet {
   const buf = new PixelBuffer(W * 5, c.h * 3);
   VIEWS.forEach((view, row) => {
-    ([0, 1, 0, 2, 0] as Pose[]).forEach((pose, col) => buf.copy(conceptFrame(c, view, pose), col * W, row * c.h));
+    ([0, 1, 0, 2, 0] as Pose[]).forEach((pose, col) => {
+      if (c.frames[view]?.[pose]) buf.copy(conceptFrame(c, view, pose, strict), col * W, row * c.h);
+    });
   });
   return { key: '', buf, fw: W, fh: c.h };
 }

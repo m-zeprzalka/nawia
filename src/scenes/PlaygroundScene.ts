@@ -18,7 +18,7 @@ import { HERO as GAME_HERO, HERO_LOOKS as GAME_LOOKS } from '../art/actors.ts';
 import { BUILDS as OLD_BUILDS, HEROES as OLD_HEROES, OLD_BEASTS } from '../art/archive.ts';
 import { CREATURES } from '../art/cast.ts';
 import { FOLK_LOOKS, HERO_LOOKS, dollSheet, type Ink, type Size } from '../art/dolls.ts';
-import { conceptSheet } from '../art/concepts/concept.ts';
+import { checkConcept, conceptSheet } from '../art/concepts/concept.ts';
 import { CONCEPTS } from '../art/concepts/index.ts';
 import { HERO_HANDS, HERO_SCHOOLS, HERO_STYLES, HERO_TYPES, styleSheet } from '../art/heroStyles.ts';
 import { RIG, figureSheet, type FigureStyle } from '../art/rig.ts';
@@ -66,6 +66,8 @@ interface Entry {
   note: Bilingual | null;
   walk: boolean;
   sprites: () => Sprites;
+  /** what is wrong with a concept's drawing (it is still drawn, as well as it can be) */
+  errors?: string[];
 }
 
 /** Monsters are inked one way: a single dark line, the way a 16-bit sprite spends one colour on its outline. */
@@ -354,7 +356,16 @@ export class PlaygroundScene extends Phaser.Scene {
       if (out.has(code)) console.warn(`playground: two exhibits share the code ${code}`);
       out.set(code, { code, name, note, walk, sprites });
     };
-    for (const c of CONCEPTS) put(c.code, c.name, c.note, () => this.sheet(`concept:${c.id}`, () => conceptSheet(c)));
+    // a concept with a mistake in it (a row too short, a letter with no colour) is drawn as well as it can be,
+    // and its mistakes are listed in the browser console and flagged in the status line
+    for (const c of CONCEPTS) {
+      put(c.code, c.name, c.note, () => this.sheet(`concept:${c.id}`, () => conceptSheet(c, false)));
+      const errors = checkConcept(c);
+      if (errors.length) {
+        out.get(c.code)!.errors = errors;
+        console.warn(`playground: ${c.code} (${c.id}.concept.ts) has mistakes:\n  ${errors.join('\n  ')}`);
+      }
+    }
     GAME_LOOKS.forEach((look, i) =>
       put(
         `G${i + 1}`,
@@ -520,7 +531,9 @@ export class PlaygroundScene extends Phaser.Scene {
     const c = this.walkers[this.picked];
     const s = this.hero.set;
     this.status[0].setText(`[Q/E] ${c.code} ${t(c.name)} (${s.fw}x${s.fh})   [N] ${t(MOODS[this.mood].name)}`);
-    this.status[1].setText(t({ pl: `[1/2] mieszkańcy ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] lalki: ${INKS[this.ink].name.pl}`, en: `[1/2] villagers ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] dolls: ${INKS[this.ink].name.en}` }));
+    // a drawing with mistakes says so in place of the second line
+    if (c.errors) this.status[1].setText(t({ pl: `! ${c.code}: błędy w rysunku: ${c.errors.length}, opis w konsoli (F12)`, en: `! ${c.code}: mistakes in the drawing: ${c.errors.length}, listed in the console (F12)` }));
+    else this.status[1].setText(t({ pl: `[1/2] mieszkańcy ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] lalki: ${INKS[this.ink].name.pl}`, en: `[1/2] villagers ${SIZES[this.size === 'small' ? 0 : 1].short}   [O] dolls: ${INKS[this.ink].name.en}` }));
     this.keys.setText(t({ pl: '[SHIFT] świat  [G] siatka  [T] podpisy  [ESC] menu', en: '[SHIFT] world  [G] grid  [T] labels  [ESC] menu' }));
   }
 

@@ -11,9 +11,9 @@
 board:
 
 * Nowe koncepty | New concepts
-C1e  najlepszy, 16x16: bok narysowany od nowa (szyja, płaszcz z tyłu, tarcza przy biodrze, bez "brody")
-C1f  najlepszy, 16x16: druga, niezależna wersja boku (inny grafik)
-C2e  to samo co C1e, 16x18
+C1g  najlepszy, 16x16: bok C1e, oko z boku takie jak z przodu (powieka, białko, tęczówka)
+C1h  najlepszy, 16x16: bok C1f (bardzo smukły), oko z boku takie jak z przodu
+C2f  to samo co C1g, 16x18
 C7c  wędrowiec, 16x18: bez obrysu, wąski profil
 C11b Kołpak, 16x18: wąski profil
 C12  Czupryna, 16x18: wzorzec Moonlightera, malowany jak C1
@@ -36,6 +36,9 @@ A3b  Łowca z mniejszą głową
 A5b  Kołpak z mniejszą głową
 
 archive:
+C1e  najlepszy: oko z boku za wysoko i niepodobne do oka z przodu; poprawione w C1g
+C1f  najlepszy (drugi bok): jw.; poprawione w C1h
+C2e  to samo 16x18: jw.; poprawione w C2f
 C1d  najlepszy: bok nadal słaby; poprawiony w C1e i C1f
 C2d  to samo 16x18: jw.; poprawiony w C2e
 C1c  najlepszy: głowa z boku jak jajko ("ET"); poprawiony w C1d

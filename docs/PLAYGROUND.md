@@ -40,9 +40,9 @@ tarczę. Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md),
 
 | Kod | Koncept | Rozmiar | Na czym polega |
 |---|---|---|---|
-| **C1e** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, oczy z powieką, białkiem i tęczówką) z **bokiem narysowanym od nowa**: okrągła czaszka z grzywką do przodu, krótka szyja cofnięta za brodę, płaszcz zakrywa tylną połowę tułowia, biała koszula tylko z przodu, tarcza jako mały krążek przy biodrze, dłuższy krok. Twarz z boku cieniowana samą skórą: cień skóry C1 ma kolor cienia włosów i na szczęce wyglądał jak broda |
-| **C1f** | Najlepszy | 16×16 | druga, niezależna wersja boku C1 od innego grafika (przód i tył bez zmian) |
-| **C2e** | Najlepszy 16×18 | 16×18 | C1e w wysokości między C1 a C2 |
+| **C1g** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, oczy z powieką, białkiem i tęczówką) z bokiem z C1e: okrągła czaszka z grzywką do przodu, krótka szyja cofnięta za brodę, płaszcz zakrywa tylną połowę tułowia, tarcza jako mały krążek przy biodrze, dłuższy krok. **Oko z boku jest tym samym okiem co z przodu**: w tych samych rzędach, powieka nad białkiem i niebieską tęczówką, tęczówka z przodu. Cały rysunek jest w jednym pliku (patrz [HERO-DRAWING.md](HERO-DRAWING.md)) |
+| **C1h** | Najlepszy | 16×16 | druga, niezależna wersja boku (z C1f: bardzo smukły, tarcza schowana za nim, szeroki krok), z tym samym okiem |
+| **C2f** | Najlepszy 16×18 | 16×18 | C1g w wysokości między C1 a C2 |
 | **C7c** | Wędrowiec, bez obrysu | 16×18 | C7 bez obrysu i z wąskim profilem; płaszcz ciemniejszy i chłodniejszy, żeby bez obrysu nie zlewał się z trawą |
 | **C11b** | Kołpak | 16×18 | C11 z wąskim profilem: czapka i głowa z boku 8 px zamiast 11 |
 | **C12** | Czupryna | 16×18 | **na wzorcu Moonlightera**: głowę robi postrzępiona, oświetlona pasmami czupryna, twarz osadzona nisko, ciało tak szerokie jak głowa, krótkie nogi; malowany jak C1, wąski profil; lniana koszula z haftem, kożuszany serdak, ciemnoczerwony pas, drewniana tarcza w okuciu |
@@ -54,10 +54,16 @@ Wszystkie mają trzy widoki, stanie i dwa kroki, i mieszczą się w 15 kolorach.
 - głowa z boku nie jest głębsza niż tułów z płaszczem pod nią (7–8 px); szersza wygląda jak jajko albo ET;
 - obrys głowy z boku łamią włosy albo nakrycie (płaski tył, kosmyki, ogon kaptura), nie gładki owal;
 - twarz to przednia dolna ćwiartka głowy, z płaskim przodem: bez nosa;
-- oko w profilu to jeden ciemny piksel pod cieniem grzywki, bez białka (białko w profilu robiło wytrzeszcz).
+- oko w profilu to **to samo oko co z przodu**: te same rzędy (powieka, pod nią białko i tęczówka), te same kolory; tęczówka z
+  przodu, białko za nią, przed tęczówką jeden piksel skóry. Jeden ciemny piksel w rzędzie powieki (C1e, C1f) siedział za wysoko
+  i nie przypominał oka z przodu.
 
 Werdykty z poprzednich rund (w archiwum): C1c, C2c i C11 z boku jak jajka (poprawione w C1d, C2d, C11b), C7b do zwężenia
-i bez obrysu (C7c), C10 do wyrzucenia; C1d i C2d z boku nadal słabe (poprawione w C1e, C1f, C2e).
+i bez obrysu (C7c), C10 do wyrzucenia; C1d i C2d z boku nadal słabe (poprawione w C1e, C1f, C2e); w C1e, C1f i C2e oko z boku za wysoko i niepodobne do
+oka z przodu (poprawione w C1g, C1h, C2f).
+
+**Chcesz poprawić bohatera sam, piksel po pikselu?** Wszystko o tym, jak zapisany jest rysunek, jak go zmienić i jak
+obejrzeć zmianę, jest w [HERO-DRAWING.md](HERO-DRAWING.md).
 
 Twoje obrazki wzorcowe leżą w `src/lab/reference/` (folder ignorowany przez git). Plac ich nie pokazuje: służą mi do nauki miar
 i rzemiosła; postaci z nich nie kopiuję.

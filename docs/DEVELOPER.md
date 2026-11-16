@@ -30,6 +30,7 @@ Narzędzia pomocnicze:
 | `npm run art:preview` | zapisuje do `art-template/preview/` PNG wszystkich arkuszy i każdego pokoju (Jawia nad Nawią) |
 | `npm run art:export` | zapisuje arkusze 1:1 do `art-template/` jako szablony do przemalowania |
 | `node tools/preview.ts <katalog> <skala> <fragment id>` | podgląd tylko pokoi, których id zawiera podany fragment |
+| `npm run hero:preview -- C1g [C1h …]` | duży podgląd konceptów bohatera do rysowania ręcznie: głowy ×24 z numerami rzędów i kolumn, 9 klatek, chód; do `art-template/hero/` (patrz [HERO-DRAWING.md](HERO-DRAWING.md)) |
 
 Skróty w trybie deweloperskim (`npm run dev`):
 
@@ -59,7 +60,8 @@ src/
     tiles.ts            zestaw kafli lochu (jeden układ, dwie palety)
     surface.ts          POWIERZCHNIA: palety, szum, stemple (drzewa, chata, studnia, płoty, głazy, stóg, ule, skaza...)
     surfaceProps.ts     rekwizyty powierzchni i izb, które są sprite'ami (drogowskaz, ognisko, piec, garnek, bożek, brama)
-    concepts/           koncepty bohatera (C1...), każdy w swoim pliku *.concept.ts, rysowany w całości; format w concept.ts
+    concepts/           koncepty bohatera (C1...), każdy w swoim pliku *.concept.ts, rysowany w całości; format w concept.ts,
+                        jak rysować ręcznie w docs/HERO-DRAWING.md
     heroStyles.ts       bohater w wielu wersjach: cztery szkoły rysunku (R1-R4), cztery wcielenia (W1-W4), pięć rąk (V1-V5), cztery wykończenia (S1-S4)
     dolls.ts            ludzie placu prób, rysowani ręcznie jak lalki z papieru: ciała w dwóch wysokościach, głowy,
                         rzeczy w warstwach; pięć pomysłów na postać i mieszkańcy (jeszcze nie w grze)
@@ -92,7 +94,7 @@ src/
   audio/audio.ts        cały dźwięk syntezowany w WebAudio: efekty, tło grodu, melodie powierzchni
   i18n/strings.ts       teksty poza pokojami (PL/EN)
   scenes/               BootScene, TitleScene (menu + intro), GameScene, EndScene, PlaygroundScene (plac prób)
-tools/                  check-rooms, preview, export-art, rooms i story (wczytywanie z dysku), png (zapis PNG)
+tools/                  check-rooms, preview, export-art, hero-preview, rooms i story (wczytywanie z dysku), png (zapis PNG)
 docs/                   ten katalog
 assets/                 pusty; PNG wrzucone tutaj zastępują generowane arkusze
 art-template/           eksport arkuszy do przemalowania
