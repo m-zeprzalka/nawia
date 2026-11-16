@@ -77,7 +77,7 @@ src/
     dungeonData.ts      wczytanie wszystkich plików pokoi przez Vite
     Level.ts            kolizje całego świata w obu światach naraz
     painter.ts          interfejs RoomPicture + wybór malarza + warstwa powidoku
-    roomPainter.ts      malarz lochu: stemple z zestawu kafli
+    roomPainter.ts      malarz lochu: CryptPainter (piksel po pikselu) i dawny RoomPainter (stemple z zestawu kafli)
     surfacePainter.ts   malarz powierzchni: grunt liczony piksel po pikselu + stemple + warstwa nad głową + skaza
     interiorPainter.ts  malarz wnętrz chat: deski, ściany z bali, kilim, meble
     rooms/*.room.txt    pokoje (h* izby, s* powierzchnia, 01-11 gród)
@@ -148,13 +148,19 @@ Cała mapa poza izbą to `#`; ściana, która nie dotyka podłogi, jest ciemnoś
 
 Dwaj pozostali:
 
-| | `RoomPainter` (loch, `biome: crypt`) | `SurfacePainter` (`biome: village` / `forest`) |
+| | `CryptPainter` (loch, `biome: crypt`) | `SurfacePainter` (`biome: village` / `forest`) |
 |---|---|---|
-| Jak rysuje | stemple 16×16 z zestawu kafli + nakładki (cienie, fugi, brzegi) | grunt liczony dla każdego piksela, na nim stemple dowolnej wielkości |
-| Skąd kształty | z sąsiedztwa kafli | z pól odległości: maska kafli jest rozmywana i odczytywana jako odległość od brzegu, plus szum; stąd zaokrąglone ścieżki i brzegi |
+| Jak rysuje | piksel po pikselu: rzędy płyt różnej długości liczone we współrzędnych świata, cienie od ścian z lewej i z góry, zużycie (brud, wilgoć, mech, pęknięcia, kałuże) pod ścianami i w kątach, środek pokoju spokojny | grunt liczony dla każdego piksela, na nim stemple dowolnej wielkości |
+| Skąd kształty | z sąsiedztwa kafli i szumu zależnego od miejsca | z pól odległości: maska kafli jest rozmywana i odczytywana jako odległość od brzegu, plus szum; stąd zaokrąglone ścieżki i brzegi |
 | Animacja | przemalowanie kafli wody i gwiazd | 4 gotowe klatki gruntu; ruszają się tylko piksele wody i gwiazd |
 | Warstwa nad głową | brak | korony drzew, dach studni, końce palisady, śparogi chat |
-| Podmiana na PNG | tak (`tiles_jawia.png`, `tiles_nawia.png`) | nie dla gruntu; tak dla sprite'ów (`surface.png`, `folk.png`) |
+| Podmiana na PNG | tylko w dawnej technice (`tiles_jawia.png`, `tiles_nawia.png`) | nie dla gruntu; tak dla sprite'ów (`surface.png`, `folk.png`) |
+
+Dawne techniki zostały i wracają przełącznikami: `CRYPT_TECHNIQUE = 'tiles'` w `painter.ts` (loch ze stempli, `RoomPainter`),
+`BLIGHT_STYLE = 'speckle'` i `NAWIA_CALM = false` w `surface.ts` (dawna skaza z kropek, dawna gęsta Nawia). Pęknięcia-podpowiedzi
+w lochu są tylko na kaflach, które naprawdę różnią się między światami: włoskowate rysy wzdłuż fug świecące kolorem drugiej
+strony; woda i mosty podpowiedzi nie mają. Malowanie pokoju lochu kosztuje 15–40 ms, więc `paintRoom` przy pierwszym wywołaniu
+maluje w tle trzy pokoje lochu (`warmStronghold`).
 
 Kolejność pracy `SurfacePainter.paint(world)`:
 
