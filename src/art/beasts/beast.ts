@@ -12,7 +12,8 @@
 //    empty (the line under the feet goes there);
 //  - one view: 'side' is drawn facing right and mirrored when it goes left; 'front' faces us whichever way it
 //    goes (a flame, a wraith, a thing that floats);
-//  - frames: standing, the walk (two or four), the attack (one or two: the wind-up, then the blow);
+//  - frames: standing, the walk (two or four), the attack (one to three: the wind-up, the blow, the recovery),
+//    and, if it has one, the flinch when a blade lands (`hurt`);
 //  - it may have a second form for Nawia (another palette over the same frames, or frames of its own): the
 //    playground shows it when the world is shifted;
 //  - at most 15 colours in each form, the line included.
@@ -27,8 +28,10 @@ export interface BeastFrames {
   stand: string[];
   /** the walk (or the drift): 2 frames (played stand, 1, stand, 2) or 4 (played 1, 2, 3, 4) */
   walk: string[][];
-  /** the attack: 1 or 2 frames (the wind-up, then the blow) */
+  /** the attack: 1 to 3 frames (the wind-up, the blow, the recovery) */
   attack: string[][];
+  /** the flinch when a blade lands; without it the game shows the standing frame, flashed white */
+  hurt?: string[];
 }
 
 /** How it looks in Nawia: what differs from its form in Jawia. */
@@ -63,7 +66,7 @@ export interface Beast extends Ink {
 }
 
 export type BeastWorld = 'jawia' | 'nawia';
-export type BeastPose = 'stand' | 'walk' | 'attack';
+export type BeastPose = 'stand' | 'walk' | 'attack' | 'hurt';
 
 /** Its size class, in tiles, from its height. */
 export const beastTiles = (b: Beast): 1 | 1.5 | 2 => (b.h <= 16 ? 1 : b.h <= 24 ? 1.5 : 2);
@@ -74,21 +77,31 @@ export function beastForm(b: Beast, world: BeastWorld): { pal: Record<string, nu
   const n = b.nawia;
   return {
     pal: { ...b.pal, ...n.pal },
-    frames: { stand: n.frames?.stand ?? b.frames.stand, walk: n.frames?.walk ?? b.frames.walk, attack: n.frames?.attack ?? b.frames.attack },
+    frames: {
+      stand: n.frames?.stand ?? b.frames.stand,
+      walk: n.frames?.walk ?? b.frames.walk,
+      attack: n.frames?.attack ?? b.frames.attack,
+      hurt: n.frames?.hurt ?? b.frames.hurt,
+    },
     ink: n.ink ?? b,
   };
 }
 
-/** Every frame of a form, in order: stand, the walk, the attack. */
+/** Every frame of a form, in order: stand, the walk, the attack, the flinch. */
 export function beastFrameRows(b: Beast, world: BeastWorld): { pose: BeastPose; i: number; rows: string[] }[] {
   const f = beastForm(b, world).frames;
-  return [{ pose: 'stand', i: 0, rows: f.stand }, ...(f.walk ?? []).map((rows, i) => ({ pose: 'walk' as const, i, rows })), ...(f.attack ?? []).map((rows, i) => ({ pose: 'attack' as const, i, rows }))];
+  return [
+    { pose: 'stand', i: 0, rows: f.stand },
+    ...(f.walk ?? []).map((rows, i) => ({ pose: 'walk' as const, i, rows })),
+    ...(f.attack ?? []).map((rows, i) => ({ pose: 'attack' as const, i, rows })),
+    ...(f.hurt ? [{ pose: 'hurt' as const, i: 0, rows: f.hurt }] : []),
+  ];
 }
 
 /** One frame, coloured and lined. With `strict` a bad drawing throws instead of drawing what it can. */
 export function beastFrame(b: Beast, world: BeastWorld, pose: BeastPose, i = 0, strict = true): PixelBuffer {
   const form = beastForm(b, world);
-  const rows = pose === 'stand' ? form.frames.stand : form.frames[pose]?.[i];
+  const rows = pose === 'stand' ? form.frames.stand : pose === 'hurt' ? form.frames.hurt : form.frames[pose]?.[i];
   return paintRows(rows ?? [], b.w, b.h, form.pal, form.ink, strict, `monster "${b.id}"`);
 }
 
@@ -103,10 +116,10 @@ export function checkBeast(b: Beast): string[] {
     const frames = beastFrameRows(b, world);
     if (!form.frames.stand) errors.push(`${world}: no standing frame`);
     if (![2, 4].includes(form.frames.walk?.length ?? 0)) errors.push(`${world}: the walk has ${form.frames.walk?.length ?? 0} frames, expected 2 or 4`);
-    if (![1, 2].includes(form.frames.attack?.length ?? 0)) errors.push(`${world}: the attack has ${form.frames.attack?.length ?? 0} frames, expected 1 or 2`);
+    if (![1, 2, 3].includes(form.frames.attack?.length ?? 0)) errors.push(`${world}: the attack has ${form.frames.attack?.length ?? 0} frames, expected 1 to 3`);
     const used = new Set<number>();
     for (const { pose, i, rows } of frames) {
-      const at = `${world} ${pose}${pose === 'stand' ? '' : ' ' + (i + 1)}`;
+      const at = `${world} ${pose}${pose === 'stand' || pose === 'hurt' ? '' : ' ' + (i + 1)}`;
       if (rows.length !== b.h) errors.push(`${at}: ${rows.length} rows, expected ${b.h}`);
       rows.forEach((r, y) => {
         if (r.length !== b.w) errors.push(`${at}, row ${y}: ${r.length} wide, expected ${b.w}: "${r}"`);
@@ -121,8 +134,10 @@ export function checkBeast(b: Beast): string[] {
 }
 
 /**
- * The sheet the playground walks it with, for one form: stand, the walk, the attack in a row. `frameOf(phase)`
- * maps the playground's phases (0 stands, 1-4 walk, 5-6 attack) to a column.
+ * The sheet a form is played from: stand, the walk, the attack, the flinch, in a row. `frameOf(phase)` maps the
+ * phases the game and the playground ask for to a column:
+ *   0 stands; 1-4 the walk; 5 the wind-up, 6 the blow, 7 the recovery (an attack with fewer frames repeats its
+ *   last); 8 the flinch (the standing frame when it has none).
  */
 export function beastSheet(b: Beast, world: BeastWorld, strict = true): { buf: PixelBuffer; fw: number; fh: number; colors: number; frameOf: (phase: number) => number } {
   const frames = beastFrameRows(b, world);
@@ -135,7 +150,9 @@ export function beastSheet(b: Beast, world: BeastWorld, strict = true): { buf: P
   });
   const walks = beastForm(b, world).frames.walk?.length ?? 0;
   const attacks = beastForm(b, world).frames.attack?.length ?? 0;
+  const hurt = beastForm(b, world).frames.hurt ? 1 + walks + attacks : 0;
   const frameOf = (phase: number): number => {
+    if (phase >= 8) return hurt;
     if (phase >= 5) return attacks ? 1 + walks + Math.min(phase - 5, attacks - 1) : 0;
     if (phase <= 0 || !walks) return 0;
     // two walk frames: 1, stand, 2, stand; four: 1, 2, 3, 4

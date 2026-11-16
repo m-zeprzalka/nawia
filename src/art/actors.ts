@@ -466,6 +466,17 @@ function swordFrame(diagonal: boolean): PixelBuffer {
   return b.outlined(INK.outline);
 }
 
+/** The sword pointing one of the eight ways (SWORD.N ... SWORD.NW), 16 x 16. */
+export function swordPicture(frame: number): PixelBuffer {
+  let n = swordFrame(false);
+  let ne = swordFrame(true);
+  for (let i = 0; i < frame >> 1; i++) {
+    n = n.rotateCW();
+    ne = ne.rotateCW();
+  }
+  return frame % 2 ? ne : n;
+}
+
 function swordSheet(): Sheet {
   const frames: PixelBuffer[] = [];
   let n = swordFrame(false);

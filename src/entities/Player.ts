@@ -7,24 +7,14 @@
 import Phaser from 'phaser';
 import { DEPTH, TUNE, type World } from '../config.ts';
 import { input, type Dir } from '../core/input.ts';
-import { HERO, SWORD } from '../art/actors.ts';
+import { ANIMS, CELL, frameAt, heroFrame, type HeroView } from '../art/hero/layout.ts';
 import { SLASH } from '../art/sprites.ts';
 import type { Box, Level } from '../world/Level.ts';
 
 export const DIR_VEC: Record<Dir, [number, number]> = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] };
 const SLASH_ROW: Record<Dir, number> = { right: SLASH.RIGHT, down: SLASH.DOWN, left: SLASH.LEFT, up: SLASH.UP };
-const WALK_CYCLE = [HERO.WALK_A, HERO.STAND, HERO.WALK_B, HERO.STAND];
-const STRIDE = 6; // px travelled per animation frame: feet stay planted at any speed
-/**
- * The swing: sword frame and where its cell sits relative to the middle of the hero's cell.
- * A quarter circle from his sword side to straight ahead.
- */
-const SWING: Record<Dir, [number, number, number][]> = {
-  right: [[SWORD.N, 5, -10], [SWORD.NE, 11, -7], [SWORD.E, 12, 1]],
-  left: [[SWORD.N, -5, -10], [SWORD.NW, -11, -7], [SWORD.W, -12, 1]],
-  down: [[SWORD.W, -10, 1], [SWORD.SW, -8, 9], [SWORD.S, -2, 10]],
-  up: [[SWORD.E, 10, -2], [SWORD.NE, 9, -10], [SWORD.N, 2, -12]],
-};
+const STRIDE = 5; // px travelled per frame of the run: feet stay planted at any speed
+const VIEW: Record<Dir, HeroView> = { down: 'down', up: 'up', left: 'side', right: 'side' };
 
 const approach = (v: number, target: number, step: number): number =>
   v < target ? Math.min(target, v + step) : Math.max(target, v - step);
@@ -74,7 +64,7 @@ export class Player {
     this.x = x;
     this.y = y;
     this.shadow = scene.add.image(x, y, 'shadow');
-    this.sprite = scene.add.sprite(x, y, 'hero', 0).setOrigin(0.5, 1);
+    this.sprite = scene.add.sprite(x, y, 'sambor', 0).setOrigin(CELL.cx / CELL.w, CELL.foot / CELL.h);
     this.sword = scene.add.sprite(x, y, 'sword', 0).setVisible(false);
     this.slash = scene.add.sprite(x, y, 'slash', 0).setVisible(false);
     this.sync();
@@ -290,15 +280,16 @@ export class Player {
   sync(): void {
     const px = Math.round(this.x);
     const py = Math.round(this.y);
-    const row = this.facing === 'down' ? HERO.DOWN : this.facing === 'up' ? HERO.UP : HERO.SIDE;
-    let col: number = HERO.STAND;
-    if (this.dodging) col = HERO.HOP;
-    else if (this.attacking) col = this.attackT < 0.06 ? HERO.ATK0 : HERO.ATK1;
-    else if (this.guarding) col = HERO.GUARD;
-    else if (this.wasMoving) col = WALK_CYCLE[Math.floor(this.walkPhase) % 4];
+    const view = VIEW[this.facing];
+    let frame: number;
+    if (this.dodging) frame = heroFrame('roll', view, Math.floor((this.dodgeT / TUNE.player.dodgeTime) * ANIMS.roll.frames));
+    else if (this.attacking) frame = heroFrame('atkA', view, frameAt('atkA', this.attackT));
+    else if (this.guarding) frame = heroFrame('guard', view, 1);
+    else if (this.wasMoving) frame = heroFrame('run', view, Math.floor(this.walkPhase) % ANIMS.run.frames);
+    else frame = heroFrame('idle', view, frameAt('idle', (performance.now() / 1000) % 1.16));
     const depth = DEPTH.entities + (this.y + 4) / 1000;
 
-    this.sprite.setFrame(row * HERO.cols + col);
+    this.sprite.setFrame(frame);
     this.sprite.setFlipX(this.facing === 'left');
     // the hop: up and down again over his shadow, which stays on the ground
     const hop = this.dodging ? Math.round(Math.sin((this.dodgeT / TUNE.player.dodgeTime) * Math.PI) * TUNE.player.dodgeHeight) : 0;
@@ -312,12 +303,8 @@ export class Player {
     if (this.flash > 0) this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     else this.sprite.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0xffffff);
 
-    // the blade: up, across, out, and it stays out for the rest of the swing
-    this.sword.setVisible(this.attacking && this.fade > 0.5);
-    if (this.attacking) {
-      const [frame, ox, oy] = SWING[this.facing][this.attackT < 0.04 ? 0 : this.attackT < 0.085 ? 1 : 2];
-      this.sword.setFrame(frame).setPosition(px + ox, py - 3 + oy).setDepth(this.facing === 'up' ? depth - 0.0003 : depth + 0.0003);
-    }
+    // the blade is drawn into his frames now
+    this.sword.setVisible(false);
 
     const showSlash = this.attacking && this.attackT < 0.15;
     this.slash.setVisible(showSlash);
