@@ -22,7 +22,7 @@ W4   Łowca potworów: odpada
 
 - **Zdjąć coś z planszy**: przenieść jego linijkę pod `archive:` i odświeżyć stronę. Nic nie jest kasowane.
 - **Przywrócić**: przenieść linijkę z powrotem nad `archive:`.
-- **Zmienić kolejność**: przestawić linijki. Rząd mieści sześć postaci; dłuższa grupa przechodzi do następnego rzędu.
+- **Zmienić kolejność**: przestawić linijki. Rząd mieści siedem postaci; dłuższa grupa przechodzi do następnego rzędu.
 - Notatki za kodem plac pomija, więc można tam pisać werdykty („za duża głowa”, „odpada”).
 - Kod, którego plac nie zna, i bohater, którego nie ma w żadnej części, są wypisywane w konsoli przeglądarki.
 - Mieszkańców (N) i potworów (P) ten plik na razie nie dotyczy: stoją na swoich miejscach.
@@ -40,8 +40,9 @@ tarczę. Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md),
 
 | Kod | Koncept | Rozmiar | Na czym polega |
 |---|---|---|---|
-| **C1d** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, oczy z powieką, białkiem i tęczówką) z **wąskim profilem**: głowa z boku ma 7 px (tyle co tułów z płaszczem), płaski tył, oko jednym ciemnym pikselem pod grzywką, bez nosa |
-| **C2d** | Najlepszy 16×18 | 16×18 | to samo, między C1 a C2 |
+| **C1e** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, oczy z powieką, białkiem i tęczówką) z **bokiem narysowanym od nowa**: okrągła czaszka z grzywką do przodu, krótka szyja cofnięta za brodę, płaszcz zakrywa tylną połowę tułowia, biała koszula tylko z przodu, tarcza jako mały krążek przy biodrze, dłuższy krok. Twarz z boku cieniowana samą skórą: cień skóry C1 ma kolor cienia włosów i na szczęce wyglądał jak broda |
+| **C1f** | Najlepszy | 16×16 | druga, niezależna wersja boku C1 od innego grafika (przód i tył bez zmian) |
+| **C2e** | Najlepszy 16×18 | 16×18 | C1e w wysokości między C1 a C2 |
 | **C7c** | Wędrowiec, bez obrysu | 16×18 | C7 bez obrysu i z wąskim profilem; płaszcz ciemniejszy i chłodniejszy, żeby bez obrysu nie zlewał się z trawą |
 | **C11b** | Kołpak | 16×18 | C11 z wąskim profilem: czapka i głowa z boku 8 px zamiast 11 |
 | **C12** | Czupryna | 16×18 | **na wzorcu Moonlightera**: głowę robi postrzępiona, oświetlona pasmami czupryna, twarz osadzona nisko, ciało tak szerokie jak głowa, krótkie nogi; malowany jak C1, wąski profil; lniana koszula z haftem, kożuszany serdak, ciemnoczerwony pas, drewniana tarcza w okuciu |
@@ -55,8 +56,8 @@ Wszystkie mają trzy widoki, stanie i dwa kroki, i mieszczą się w 15 kolorach.
 - twarz to przednia dolna ćwiartka głowy, z płaskim przodem: bez nosa;
 - oko w profilu to jeden ciemny piksel pod cieniem grzywki, bez białka (białko w profilu robiło wytrzeszcz).
 
-Werdykty z poprzedniej rundy (w archiwum): C1c, C2c i C11 z boku jak jajka (poprawione w C1d, C2d, C11b), C7b do zwężenia
-i bez obrysu (C7c), C10 do wyrzucenia.
+Werdykty z poprzednich rund (w archiwum): C1c, C2c i C11 z boku jak jajka (poprawione w C1d, C2d, C11b), C7b do zwężenia
+i bez obrysu (C7c), C10 do wyrzucenia; C1d i C2d z boku nadal słabe (poprawione w C1e, C1f, C2e).
 
 Twoje obrazki wzorcowe leżą w `src/lab/reference/` (folder ignorowany przez git). Plac ich nie pokazuje: służą mi do nauki miar
 i rzemiosła; postaci z nich nie kopiuję.

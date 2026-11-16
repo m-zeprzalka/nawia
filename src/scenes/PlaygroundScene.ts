@@ -80,9 +80,9 @@ const INKS: { id: Ink; name: Bilingual }[] = [
 
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
 
-/** Where the exhibits stand, in tiles. Heroes fill rows in the order of lineup.txt, six to a row. */
+/** Where the exhibits stand, in tiles. Heroes fill rows in the order of lineup.txt, seven to a row. */
 const HERO_ROWS = [13, 18, 23, 28];
-const HERO_COLS = [2, 5, 8, 11, 14, 17];
+const HERO_COLS = [2, 5, 8, 11, 14, 17, 20];
 
 const FOLK_SPOTS: [number, number][] = [[3, 8], [7, 8], [12, 8], [16, 8]];
 const CLASS_SPOTS: Record<string, [number, number][]> = {

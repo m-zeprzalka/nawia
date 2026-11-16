@@ -2,7 +2,7 @@
 //
 // "* title | title in English" starts a new row of the board, with a heading over it.
 // Then one exhibit a line: its code first; the rest of the line is a note for you (the playground ignores it).
-// A row holds six; a longer group goes on in the next row.
+// A row holds seven; a longer group goes on in the next row.
 //
 // To take something off the board, move its line below "archive:". Nothing is deleted: to bring it back,
 // move the line up again and reload the page. Codes the playground does not know are reported in the
@@ -11,8 +11,9 @@
 board:
 
 * Nowe koncepty | New concepts
-C1d  najlepszy, 16x16: wąski profil (głowa z boku 7 px), oko jednym pikselem
-C2d  to samo, 16x18
+C1e  najlepszy, 16x16: bok narysowany od nowa (szyja, płaszcz z tyłu, tarcza przy biodrze, bez "brody")
+C1f  najlepszy, 16x16: druga, niezależna wersja boku (inny grafik)
+C2e  to samo co C1e, 16x18
 C7c  wędrowiec, 16x18: bez obrysu, wąski profil
 C11b Kołpak, 16x18: wąski profil
 C12  Czupryna, 16x18: wzorzec Moonlightera, malowany jak C1
@@ -35,6 +36,8 @@ A3b  Łowca z mniejszą głową
 A5b  Kołpak z mniejszą głową
 
 archive:
+C1d  najlepszy: bok nadal słaby; poprawiony w C1e i C1f
+C2d  to samo 16x18: jw.; poprawiony w C2e
 C1c  najlepszy: głowa z boku jak jajko ("ET"); poprawiony w C1d
 C2c  to samo 16x18: jw.; poprawiony w C2d
 C7b  wędrowiec: głowa z boku za szeroka, bez obrysu lepiej; poprawiony w C7c
