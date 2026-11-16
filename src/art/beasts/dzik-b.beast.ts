@@ -1,17 +1,29 @@
 // M2: an old boar (24 x 16), in place of P6 and E5.
 //
 // The idea: a wedge, not a loaf. Everything heavy is at the front: the back climbs in a straight line from a
-// small, low rump to the withers, where a ridge of black bristles stands up in a saw edge with grizzled tips;
-// then it drops behind the ear into a long head that slopes down to a snout carried below the belly line,
-// with a grey jowl, a small red eye, a tusk curling up out of the lip and the pink disc of the snout. Under all
-// that the legs are thin and dark, set in pairs, with a hock behind.
-// It trots: the diagonal pairs swing together, the body a row lower when the legs reach.
-// It attacks with a charge (the mane raised, the head dropped two rows almost to the ground, the hind legs
-// driving, the forelegs reaching) and then a toss: the head snaps up with the tusks bared, the forelegs
-// come off the ground.
-// In Nawia it is a black shape: only the bristles, the tusks, the snout's edge and the eye hold a cold light.
+// small, low rump to the withers, where a ridge of black bristles stands up in a saw edge with grizzled tips
+// (the tips catch the light from the upper left, the rim of the whole beast); then it drops behind the ear into
+// a long head that slopes down to a snout carried below the belly line, with a grey jowl, a small red eye, a
+// tusk curling up out of the lip and the pink disc of the snout. Under all that the legs are thin and dark,
+// set in pairs, the hind ones bent at the hock.
 //
-// Composed from parts (see docs/HERO-DRAWING.md, part 4): the trunk, the head and a set of legs per frame.
+// Frames:
+//  - stand, and the trot in four: the diagonal pairs swing together, the body a row lower when the legs reach;
+//  - the wind-up: it paws the ground: the mane bristles up into a tall grizzled ridge, the back humps, the
+//    head drops until the snout is at the grass, a foreleg comes up to scrape, the eye flares yellow and the
+//    snort kicks up dust in front of it;
+//  - the blow: the charge, a gallop at full stretch: the body two rows lower and long, the hind legs thrown
+//    back with dust off the hooves, the forelegs reaching, the head down and both tusks leading;
+//  - the recovery: the stop (the wall, or the end of the run): the legs splayed, the belly sagging, the snout
+//    on the ground, the eye shut: dazed, the opening for the hero;
+//  - hurt: a squeal: thrown back a few columns and squashed, the rump down and the back hunched, the forelegs
+//    braced out stiff in front, the head jerked up so the snout lifts, the mouth a little open on the tusk,
+//    the eye shut.
+// In Nawia it is the same frames in other colours: a dusk-blue shape a little lighter than the floor, only
+// the bristle tips, the tusks, the snout's edge and the eye holding a cold light.
+//
+// Composed from parts (see docs/HERO-DRAWING.md, part 4): the trunk, the head and a set of legs per walk frame;
+// the attack and the flinch are whole frames.
 
 import type { Beast } from './beast.ts';
 
@@ -62,34 +74,6 @@ const HEAD = [
   '................DDDDD...',
 ];
 
-// the trunk with the mane raised, for the charge
-const BRISTLE = [
-  '........................',
-  '.........c.c.c..........',
-  '..........DcDD..........',
-  '.......c.DDDDDD.........',
-  '.....c.DDBBBBBD.........',
-  '...cDDDBBbbbbbD.........',
-  '..cBBbbbbbbbbbb.........',
-  '.tBbbbbbbbbbbbb.........',
-  '.tbbbbbbbbbbbbd.........',
-  '.tDdddddddddddD.........',
-];
-
-// the head tossed up: the snout lifted, both tusks bared
-const HEAD_UP = [
-  '........................',
-  '................B.......',
-  '...............BBBB.....',
-  '..............DbDBBBBB..',
-  '..............DbbebbbBn.',
-  '..............dggbbbbbn.',
-  '..............dgggbwbDn.',
-  '..............dggbwwD...',
-  '..............DggDDw....',
-  '...............DD.......',
-];
-
 // legs, rows 10-14 of the cell: near legs b, far legs x
 const LEGS = {
   stand: [
@@ -127,29 +111,9 @@ const LEGS = {
     '....b......x............',
     '....x......x............',
   ],
-
-  // the charge: hind legs drive back, fore legs reach under the lowered head
-  charge: [
-    '........................',
-    '...bb.x.....xb..........',
-    '..b..x.......b..........',
-    '.b...x.......xb.........',
-    '.x..x.........xx........',
-  ],
-  // the toss: the forelegs come off the ground, the hind legs take the weight
-  toss: [
-    '...bb.x....xbb..........',
-    '....b.x.....x.b.........',
-    '....b.x......x.b........',
-    '...b.x..................',
-    '...x.x..................',
-  ],
 };
 
 const body = (dy: number) => [[0, dy, TRUNK], [0, dy, HEAD]] as [number, number, string[]][];
-
-const CHARGE = stack([0, 10, LEGS.charge], [0, 1, BRISTLE], [0, 3, HEAD]);
-const TOSS = stack([0, 10, LEGS.toss], [0, 0, BRISTLE], [0, 0, HEAD_UP]);
 
 const STAND = stack([0, 10, LEGS.stand], ...body(0));
 const WALK = [
@@ -159,14 +123,94 @@ const WALK = [
   stack([0, 10, LEGS.passB], ...body(0)),
 ];
 
+// the wind-up: it paws the ground, the mane up, the head down, the eye flaring, a snort of dust
+const PAW = [
+  '.......c.c.c.c..........',
+  '......cDcDcDcDc.........',
+  '....c.DDDDDDDDDc........',
+  '...cDDBBBBBBBBDDB.......',
+  '..cBBbbbbbbbbbbDbB......',
+  '.tBbbbbbbbbbbbbDbbB.....',
+  '.tbbbbbbbbbbbbbdgbbB....',
+  '.tbbbbbbbbbbbbbdggbbB...',
+  '.tDddddddddddddDgEgbbB..',
+  '.D..bb.x......dDgggbbbB.',
+  '....bbx......xb.DggwbbBn',
+  '.....bx......x.b.DgbwbDn',
+  '....b.x......xb...DDDD..',
+  '....b.x......x.......c.c',
+  '....x.x......x......c.c.',
+  '........................',
+];
+
+// the blow: the charge at full stretch, the tusks leading
+const GORE = [
+  '........................',
+  '........................',
+  '........................',
+  '..........c.c.c.........',
+  '......c.c.DcDcDDB.......',
+  '....c.DDDDDDDDDDbBB.....',
+  '..cDDBBBBBBBBBBDbbBB....',
+  '.cBBbbbbbbbbbbbdbEbbBB..',
+  'tBbbbbbbbbbbbbbdggbbbbB.',
+  'tbbbbbbbbbbbbbddgggbbbBn',
+  'tDdddddddddddDD.DggwwbBn',
+  'bb..........bb..DgwwbDDn',
+  '.bx........b..b..DDDD...',
+  'c.bx......b....b........',
+  'cc..x....x......bx......',
+  '........................',
+];
+
+// the recovery: stopped dead, splayed and dazed, the snout in the dirt, the eye shut
+const SKID = [
+  '........................',
+  '........................',
+  '........................',
+  '.........c.c............',
+  '.......c.DcDD...........',
+  '.....c.DDDDDDB..........',
+  '...c.DDBBBBBDbBB........',
+  '..cDDBbbbbbbDbbbB.......',
+  '.tBbbbbbbbbbdbbbbB......',
+  '.tbbbbbbbbbbdgbDbbB.....',
+  '.tDdddddddddDggbbbbB....',
+  'bb.x........DgggbbbbB...',
+  'b...x......xbDgwbbbDn...',
+  'b....x....x..bDgwbDnn...',
+  'x.....x..x....b.DDD.b...',
+  '........................',
+];
+
+// the flinch: a squeal, thrown back and squashed, the forelegs braced, the snout jerked up, the eye shut
+const SQUEAL = [
+  '........................',
+  '........................',
+  '.......c.c..............',
+  '.....c.DcDDBBBB.........',
+  '...c.DDDDDDbbbBBBBn.....',
+  '..cDDBBBBBDbbDDbbbBn....',
+  '.cBBbbbbbbDbggbbbbM.....',
+  '.tBbbbbbbbbdgggbbwM.....',
+  '.tbbbbbbbbbdDggDw.......',
+  '.tbbbbbbbbbbDDD.........',
+  '.tDdddddddddDb..........',
+  '...bb.x....x.b..........',
+  '...b..x.....x.b.........',
+  '..b...x......x.b........',
+  '..xx..x.......x.xx......',
+  '........................',
+];
+
 export const BEAST: Beast = {
   code: 'M2',
   id: 'dzik-b',
   kind: { pl: 'Dzik', en: 'Boar' },
   name: { pl: 'odyniec', en: 'old boar' },
   note: {
-    pl: 'Klin: wysoki kark z grzywą szczeciny, długi ryj, szable. Kłusuje, szarżuje z łbem przy ziemi i podrzuca szablami.',
-    en: 'A wedge: a high bristled nape, a long snout, tusks. It trots, charges with its head down and tosses its tusks.',
+    pl: 'Klin: wysoki kark z grzywą szczeciny, długi ryj, szable. Kłusuje; grzebie racicą z jeżącą się grzywą, szarżuje z łbem przy ziemi, a po szarży stoi ogłuszony z ryjem w ziemi. Trafiony kwiczy i odskakuje w tył na zapartych przednich nogach, z ryjem w górze.',
+    en: 'A wedge: a high bristled nape, a long snout, tusks. It trots; it paws the ground with its mane up, charges with its head down and stands dazed after, snout in the dirt. Struck, it squeals and jerks back on braced forelegs, snout up.',
   },
   alt: ['P6', 'E5'],
   w: W,
@@ -175,7 +219,7 @@ export const BEAST: Beast = {
   pal: {
     k: 0x1a1018, // the line
     c: 0xb0a088, // the grizzled tips of the bristles
-    B: 0x7e6a58, // bristles, the light
+    B: 0x8c7660, // bristles, the light
     b: 0x5a4a3e, // bristles; the near legs
     t: 0x5a4a3e, // the tail
     d: 0x463830, // bristles, the shade
@@ -185,13 +229,15 @@ export const BEAST: Beast = {
     n: 0x9a7470, // the snout's disc
     w: 0xeee2c4, // the tusks
     e: 0xe85a30, // the eye
+    E: 0xffd070, // the eye flaring
+    M: 0x5a1a20, // the open mouth
   },
-  frames: { stand: STAND, walk: WALK, attack: [CHARGE, TOSS] },
+  frames: { stand: STAND, walk: WALK, attack: [PAW, GORE, SKID], hurt: SQUEAL },
   ink: 'dark',
   outline: 0x1a1018,
   nawia: {
     note: { pl: 'Czarny kształt; zimnym światłem świecą tylko szczecina, szable, ryj i oko.', en: 'A black shape; only the bristles, the tusks, the snout and the eye hold a cold light.' },
-    pal: { k: 0x0a0816, t: 0x302e4c, c: 0x8ee8d8, B: 0x5a7c98, b: 0x302e4c, d: 0x26243e, D: 0x1c1a32, x: 0x16142a, n: 0x6a8aa0, w: 0xeefff8, e: 0xd8ffff, g: 0x3e4668 },
+    pal: { k: 0x0a0816, t: 0x46487a, c: 0x8ee8d8, B: 0x6a8cbc, b: 0x46487a, d: 0x383a68, D: 0x2c2c56, x: 0x22224a, n: 0x7a9ac0, w: 0xeefff8, e: 0xd8ffff, E: 0xffffff, g: 0x5a6494, M: 0x2a1838 },
     ink: { ink: 'dark', outline: 0x0a0816 },
   },
 };
