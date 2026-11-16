@@ -218,3 +218,63 @@ plansza bohaterów i ma wspólne archiwum. Kody na planszy potworów:
 - **E** to przeciwnicy z gry, tacy, jacy są teraz;
 - **P** to pierwsze potwory z placu prób;
 - **M** to potwory rysowane w całości.
+
+## 11. Arkusz animacji (Sambor w grze)
+
+Gra nie gra już dziewięcioma klatkami konceptu. Sambor (C2f) ma w grze pełny arkusz animacji: oddech, bieg, trzy
+ciosy, tarczę, przewrót, trafienie i śmierć, w trzech widokach, z mieczem i tarczą albo bez nich.
+
+**Gdzie co leży.**
+
+| Plik | Co w nim jest |
+|---|---|
+| `src/art/hero/layout.ts` | układ arkusza: rozmiar komórki, kolejność animacji, liczba klatek, czasy (`ms`), opisy klatek (`keys`) |
+| `src/art/hero/sambor.anim.ts` | **wszystkie klatki Sambora**, z części, literami jak w punkcie 2 |
+| `src/art/heroGame.ts` | składa z nich dwa arkusze gry: `sambor` (z mieczem i tarczą) i `sambor-bare` (bez) |
+
+**Układ.** Każda klatka to komórka 32×32. Dawna klatka 16×18 stoi w niej w kolumnach 8–23 i rzędach 9–26, czyli
+podeszwy są w rzędzie 25 komórki, a środek postaci w kolumnie 16. Wokół jest miejsce na miecz, pochylenie i upadek.
+Rzędy arkusza to widoki: `down` (do nas), `up` (plecami), `side` (w prawo; w lewo gra odbija klatkę, więc miecz
+przechodzi wtedy do drugiej ręki). Kolumny to animacje po kolei: `idle` 4, `run` 6, `atkA` 4, `atkB` 4, `atkC` 5,
+`guard` 2, `roll` 6, `hurt` 2, `death` 5. Liczby klatek i ich kolejności nie zmieniamy, bo gra na nich polega. Czasy
+(`ms`) można zmieniać.
+
+**Jak zapisana jest klatka.** Klatka to lista części: `[część, x, y]`. `x` i `y` liczy się w dawnej klatce 16×18
+(kolumny 0–15, rzędy 0–17, podeszwy w rzędzie 16), ale część może wystawać w lewo (`x` ujemne), w prawo i do góry.
+Głowy, tułów i nogi do stania są z C1g i C2f (`HEAD_D`, `TRUNK_S`, `LEGS_U`…), nowe części są w `sambor.anim.ts`:
+nogi w biegu (`RUN_LEGS_S`…), postawy (`STANCE_D`…), kula przewrotu (`BALL_S`…), leżenie (`LYING`) i inne. Jak w
+punkcie 4: część dalej na liście przykrywa wcześniejsze, kropka nie przykrywa niczego, a `_` wymazuje piksel pod
+spodem. Głów się tu nie rysuje od nowa: klatka może je tylko przesunąć albo zasłonić ręką lub mieczem.
+
+Część może mieć czwarty element, znacznik: `'shield'` (tarcza), `'sheath'` (miecz w pochwie przy prawym biodrze).
+Arkusz `sambor-bare` je pomija. Bez broni ciosy i tarcza pokazują pierwszą klatkę oddechu.
+
+**Miecz w ręce** nie jest rysowany literami. Rysuje go `blade(x, y, kierunek, długość)`: pięść w punkcie (x, y),
+kierunek od 0 do 15 (0 w prawo, 4 w dół, 8 w lewo, 12 w górę, co 22,5 stopnia, zawsze czystymi schodkami pikseli),
+długość ostrza w pikselach. Głowica z kamieniem (cyjan) rysuje się tylko na pustym tle, żeby nie wyglądała jak broszka
+na piersi. Z tego samego rachunku plik wylicza `BLADE_TIP`: gdzie jest czubek ostrza w każdej klatce ciosów (dla
+smugi, którą dorysowuje gra).
+
+**Kolory.** Te same co C2f. Miecz ma własne litery (`e`, `i` stal, `o`, `u` brąz, `g` skóra rękojeści), ale ich
+kolory są wzięte z koszuli, włosów i skóry, więc się nie liczą osobno. Nowy jest tylko kamień w głowicy (`c`). Arkusz z
+mieczem ma przez to 16 kolorów, bez miecza 15.
+
+**Podgląd.** W terminalu:
+
+```
+npm run hero:anim                  wszystkie animacje
+npm run hero:anim -- run atkA      tylko wybrane
+npm run hero:anim -- roll --text   do tego litery klatek z numerami kolumn
+```
+
+Obrazki trafiają do `art-template/hero-anim/` (ten folder nie trafia do gita):
+
+- `<animacja>-<widok>.png`, np. `atkA-side.png`: klatki powiększone 8 razy z numerem i opisem z `keys` (jasne linie
+  to środek komórki i rząd stóp, różowa ramka to czubek ostrza); dla biegu, ciosów i przewrotu ten sam rząd jeszcze raz
+  z poprzednią klatką pod spodem (widać, co się ruszyło); na dole klatki w wielkości z gry (×3) na trawie, na
+  kamieniu, bez broni, a z boku także w lewo;
+- `sheet.png` i `sheet-bare.png`: oba arkusze w całości;
+- `game.png`: wszystkie animacje we wszystkich widokach w wielkości z gry.
+
+Skrypt wypisuje też liczbę kolorów obu arkuszy i czubki ostrza; ostrzega, gdy czubek wyjdzie poza komórkę.
+W grze arkusz widać od razu po `npm run dev` (H przełącza wygląd bohatera).
