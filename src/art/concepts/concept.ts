@@ -22,6 +22,13 @@ export type View = 'down' | 'up' | 'side';
 export type Pose = 0 | 1 | 2;
 export type Frames = readonly [string[], string[], string[]];
 
+/**
+ * What the game itself needs of a hero, beyond the walk: every pose of its hero sheet, in each view
+ * (see HERO in art/actors.ts): standing, the two strides, the swing (wind-up, blow), the raised shield, the hop.
+ */
+export type GamePose = 'stand' | 'walkA' | 'walkB' | 'atk0' | 'atk1' | 'guard' | 'hop';
+export type GamePoses = Record<View, Record<GamePose, string[]>>;
+
 export interface Concept {
   /** the code it is known by on the board (C1, C2...) */
   code: string;

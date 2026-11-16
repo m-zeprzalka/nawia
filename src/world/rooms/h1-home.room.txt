@@ -1,6 +1,7 @@
 // The hero's own room: the game starts here, in bed, with the morning coming in through the windows.
 // Everything outside the walls is '#'. The door (4) leads out into the village.
-// In Nawia one of the family's dead still sits by the fire.
+// The other bed is Dobrawa's, empty: standing by it (1) tells what happened in the night. In Nawia their
+// mother's shade sits there, and says what she saw.
 room: home
 biome: house
 at: -1,-5
@@ -10,8 +11,8 @@ map:
 ####################
 ####################
 #####W#FF##W#MM#####
-#####b...T...s.#####
-#####b..,,,,...#####
+#####b...T...sb#####
+#####b..,,,,.1b#####
 #####@..,,,,..R#####
 #####.tt.......#####
 #####..S....o.O#####
@@ -20,3 +21,7 @@ map:
 ####################
 
 door 4: village
+
+sign 1:
+  jawia: Łóżko Dobrawy. Pościel zimna, okno otwarte, a na progu mokre ślady, za wąskie na ludzkie. | Dobrawa's bed. The sheets are cold, the window open, and wet footprints on the sill, too narrow for a person's.
+  nawia: Cień matki siedzi przy pustym łóżku. »Przyszła oknem. Dobrawa poszła za nią. Przyprowadź ją, synku.« | Your mother's shade sits by the empty bed. »It came through the window. Dobrawa followed it. Bring her back, son.«

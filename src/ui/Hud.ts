@@ -132,6 +132,12 @@ export class Hud {
     this.hearts.forEach((h, i) => h.setFrame(hp >= i * 2 + 2 ? UI.HEART : hp === i * 2 + 1 ? UI.HEART_HALF : UI.HEART_EMPTY));
   }
 
+  /** The stone shows only once he has it (Radochna gives it to him); it pops in when it arrives. */
+  setStone(has: boolean): void {
+    if (has && !this.stone.visible) this.stoneKick = 0.18;
+    this.stone.setVisible(has);
+  }
+
   /** Update the stone and (optionally) announce the world by name. */
   setWorld(world: World, announce: boolean): void {
     this.world = world;

@@ -19,8 +19,8 @@ map:
 ####################
 
 sign 1:
-  jawia: Kamień w rękojeści obraca świat. Co w Jawi zasypane, w Nawi stoi otworem. | The stone in the hilt turns the world. What lies buried in Jawia stands open in Nawia.
-  nawia: ...pamiętamy ten korytarz. Zawsze był otwarty... | ...we remember this corridor. It was always open...
+  jawia: Na kamieniu czerwona wstążka. Dobrawa nosiła taką we włosach. Co w Jawi zasypane, w Nawi stoi otworem. | A red ribbon on the stone. Dobrawa wore one like it in her hair. What lies buried in Jawia stands open in Nawia.
+  nawia: ...żywa tędy szła, z otwartymi oczami, a nic nie widziała. Dawno nikt żywy tu nie chodził... | ...a living girl walked here, eyes open, seeing nothing. No one living has come this way in a long time...
 
 sign 2:
   jawia: Nie obracaj kamienia tam, gdzie po drugiej stronie coś stoi. Granica odrzuca i bierze krew. | Do not turn the stone where something stands on the other side. The border throws you back, and takes blood.

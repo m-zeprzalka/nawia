@@ -40,6 +40,12 @@ export const TUNE = {
     guardArc: 0.2, // how squarely he must face a blow to stop it (dot product)
     /** What a wisp's fire or a soul orb costs (half hearts). */
     shotDamage: 1,
+    /** The dodge: a quick hop that nothing can touch while he is in the air. */
+    dodgeSpeed: 200, // px/s
+    dodgeTime: 0.26,
+    dodgeSafe: 0.22, // seconds of it nothing can hurt him
+    dodgeHeight: 5, // px he leaves the ground at the top of the hop
+    dodgeCooldown: 0.45,
   },
   /** The guardian. Three phases of `hitsPerPhase` blows each. */
   boss: {

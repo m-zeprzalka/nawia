@@ -26,7 +26,7 @@ C13  Kaptur, 16x18: wzorzec bohatera 16-bitowego, bez obrysu
 * Wybrane z poprzednich rund | Chosen in earlier rounds
 C8b  z Północy bez konturu (bez werdyktu)
 C6b  Bartnik z poprawionym bokiem (bez werdyktu)
-G1   bohater z gry: baza
+G1   dawny bohater z gry: baza (gra nosi teraz C2f, a pod H S3)
 W2   Śmiałek (w notatkach "K2": W2 czy R2? jeden z nich do archiwum)
 R2   Śmiałek ze szkół rysunku (drugi kandydat na "K2")
 W3   Północny

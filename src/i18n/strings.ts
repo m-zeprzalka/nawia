@@ -42,6 +42,21 @@ export const STR = {
 
   intro: [
     {
+      pl: 'Zabłocie, wieś na skraju bagien Rojsty.\nDzwon Budzisław w zatopionym Zwonigrodzie od lat milczy,\na granica między Jawią a Nawią pęka.',
+      en: 'Zabłocie, a village on the edge of the Rojsty marshes.\nBudzisław, the bell of drowned Zwonigród, is silent,\nand the border between Jawia and Nawia is cracking.',
+    },
+    {
+      pl: 'Tej nocy coś przyszło od strony kurhanu.\nNikt nie krzyczał. Psy nie szczekały.\n\nRano łóżko twojej siostry Dobrawy było puste.',
+      en: 'That night something came from the barrow.\nNo one screamed. The dogs did not bark.\n\nIn the morning your sister Dobrawa\'s bed was empty.',
+    },
+    {
+      pl: 'Jesteś Sambor, uczeń starej zielarki Radochny.\nNie masz miecza ani tarczy,\na o Nawii wiesz tyle, co z bajek.\n\nWstań. Dobrawa czeka.',
+      en: 'You are Sambor, apprentice of old Radochna the herbalist.\nYou have no sword and no shield,\nand of Nawia you know only what the tales say.\n\nGet up. Dobrawa is waiting.',
+    },
+  ] as Bilingual[],
+  /** the intro of the earlier demo, kept for reference (not shown) */
+  introV1: [
+    {
       pl: 'Dzwon w zatopionym grodzie od lat milczy.\nGranica między Jawią a Nawią pęka.\nNocami we wsi pojawiają się rzeczy, których być nie powinno.',
       en: 'The bell of the drowned stronghold has been silent for years.\nThe border between Jawia and Nawia is cracking.\nAt night, things that should not be walk the village.',
     },
@@ -76,6 +91,9 @@ export const STR = {
     en: 'Something stands here on the other side. The border threw you back.',
   },
   hintBell: { pl: 'Uderz w dzwon.', en: 'Strike the bell.' },
+  hintNoStone: { pl: 'Nie masz czego przekręcić. Kurzy bóg jest u Radochny.', en: 'You have nothing to turn. The hag stone is with Radochna.' },
+  hintDodge: { pl: '[C] lub [I] — unik: podskok, którego nic nie trafi', en: '[C] or [I] — dodge: a hop nothing can hit' },
+  hintDodgePad: { pl: '(X) — unik: podskok, którego nic nie trafi', en: '(X) — dodge: a hop nothing can hit' },
   hintReflect: { pl: 'Tarcza [X] odsyła błędny ogień tam, skąd przyszedł.', en: 'The shield [X] sends a wisp\'s fire back where it came from.' },
   hintReflectPad: { pl: 'Tarcza (B) odsyła błędny ogień tam, skąd przyszedł.', en: 'The shield (B) sends a wisp\'s fire back where it came from.' },
   hintTwoSouls: { pl: 'Strzyga ma dwie dusze. Druga wstała po tamtej stronie.', en: 'A strzyga has two souls. The second one rose on the other side.' },
@@ -87,6 +105,8 @@ export const STR = {
   hintMove: { pl: '[WASD] lub strzałki — ruch', en: '[WASD] or arrows — move' },
   hintMovePad: { pl: 'lewa gałka — ruch', en: 'left stick — move' },
   look: { pl: 'Wygląd', en: 'Look' },
+  beastsNew: { pl: 'Przeciwnicy: nowi (M)', en: 'Enemies: new (M)' },
+  beastsOld: { pl: 'Przeciwnicy: dawni', en: 'Enemies: the first ones' },
   /** Names for villagers who only have a single line in a room file (conversations name their own speakers). */
   npcName: {
     herbalist: { pl: 'Zielarka', en: 'Herbalist' },
@@ -97,10 +117,10 @@ export const STR = {
 
   dead: { pl: 'Nawia cię nie chce. Jeszcze nie.', en: 'Nawia does not want you. Not yet.' },
 
-  endTitle: { pl: 'Dzwon odpowiedział.', en: 'The bell answered.' },
+  endTitle: { pl: 'Budzisław odpowiedział.', en: 'Budzisław answered.' },
   endBody: {
-    pl: 'Wielki dzwon bije pod jeziorem, a granica się domyka.\nStrażnik leży w gruzach po obu jej stronach.\nDusze grodu odchodzą tam, gdzie ich miejsce.\n\nTo koniec dema. Dziękuję za grę.',
-    en: 'The great bell rings beneath the lake, and the border closes.\nThe guardian lies in rubble on both sides of it.\nThe souls of the stronghold go where they belong.\n\nThis is the end of the demo. Thank you for playing.',
+    pl: 'Dzwon bije pod jeziorem, a granica się domyka.\nNa brzegu Głuchego Jeziora budzi się Dobrawa:\nmokra, zziębnięta, żywa.\nDusze Zwonigrodu odlatują do Wyraju jako żurawie.\n\nTo koniec dema. Dziękuję za grę.',
+    en: 'The bell rings beneath the lake, and the border closes.\nOn the shore of Głuche Lake Dobrawa wakes:\nwet, cold, alive.\nThe souls of Zwonigród fly off to Wyraj as cranes.\n\nThis is the end of the demo. Thank you for playing.',
   },
   endAgain: { pl: '[SHIFT] od nowa', en: '[SHIFT] play again' },
   paused: { pl: 'PAUZA', en: 'PAUSED' },

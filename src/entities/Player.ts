@@ -1,5 +1,7 @@
-// The hero: one tile tall, sword in the right hand, round shield on the left arm.
+// The hero: a tile (or a tile and a bit) tall, sword in the right hand, round shield on the left arm.
 // The sword is its own sprite, laid next to him through the three steps of a swing.
+// He may not have them yet: at the start of the game he has neither, nor the stone (see `gear`).
+// The dodge is a quick hop in the way he is going (or facing): while he is in the air nothing can hurt him.
 // All the "feel" numbers live in TUNE.player (src/config.ts).
 
 import Phaser from 'phaser';
@@ -50,6 +52,10 @@ export class Player {
   flash = 0;
   /** 0..1 fade used when the border throws him back. */
   fade = 1;
+  /** What he has: the old man's sword and shield, the herbalist's stone. Without them he cannot strike, guard or shift. */
+  gear = { sword: true, shield: true, stone: true };
+  /** Seconds since the dodge started, or -1. */
+  dodgeT = -1;
 
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly shadow: Phaser.GameObjects.Image;
@@ -57,6 +63,9 @@ export class Player {
   readonly slash: Phaser.GameObjects.Sprite;
 
   private attackCd = 0;
+  private dodgeCd = 0;
+  private dodgeX = 0;
+  private dodgeY = 1;
   private lunge = 0;
   private walkPhase = 0;
   private wasMoving = false;
@@ -74,6 +83,15 @@ export class Player {
   /** Changes his clothes: `key` is the texture of one of the hero sheets (see HERO_LOOKS). */
   setLook(key: string): void {
     this.sprite.setTexture(key, this.sprite.frame.name);
+  }
+
+  get dodging(): boolean {
+    return this.dodgeT >= 0;
+  }
+
+  /** In the air: nothing can touch him. */
+  get airborne(): boolean {
+    return this.dodgeT >= 0 && this.dodgeT < TUNE.player.dodgeSafe;
   }
 
   get attacking(): boolean {
@@ -116,15 +134,36 @@ export class Player {
 
     this.invuln = Math.max(0, this.invuln - dt);
     this.attackCd = Math.max(0, this.attackCd - dt);
+    this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     this.flash = Math.max(0, this.flash - dt);
 
-    if (this.attacking) {
+    // the dodge: a hop the way he is going (or facing), committed once started
+    if (this.dodging) {
+      this.dodgeT += dt;
+      if (this.dodgeT >= P.dodgeTime) {
+        this.dodgeT = -1;
+        this.dodgeCd = P.dodgeCooldown;
+      }
+    } else if (control && this.dodgeCd <= 0 && !this.attacking && input.consume('dodge', TUNE.inputBuffer)) {
+      const len = Math.hypot(mx, my);
+      if (len > 0.1) {
+        this.dodgeX = mx / len;
+        this.dodgeY = my / len;
+        if (input.wantDir) this.facing = input.wantDir;
+      } else [this.dodgeX, this.dodgeY] = DIR_VEC[this.facing];
+      this.dodgeT = 0;
+      this.guarding = false;
+    }
+
+    if (this.dodging) {
+      // nothing else while he is in the air
+    } else if (this.attacking) {
       this.attackT += dt;
       if (this.attackT >= P.attackTime) {
         this.attackT = -1;
         this.attackCd = P.attackCooldown;
       }
-    } else if (control && this.attackCd <= 0 && input.consume('attack', TUNE.inputBuffer)) {
+    } else if (control && this.gear.sword && this.attackCd <= 0 && input.consume('attack', TUNE.inputBuffer)) {
       // a strike always wins over the shield: lower it, swing
       if (input.wantDir && !this.guarding) this.facing = input.wantDir;
       this.attackT = 0;
@@ -132,16 +171,22 @@ export class Player {
       this.lunge = P.attackLunge;
       swung = true;
     }
-    this.guarding = control && !this.attacking && input.isDown('shield');
+    this.guarding = control && this.gear.shield && !this.attacking && !this.dodging && input.isDown('shield');
     // he turns freely, unless he is busy: a raised shield keeps facing the threat (so he can back away)
-    if (control && !this.attacking && !this.guarding && input.wantDir) this.facing = input.wantDir;
+    if (control && !this.attacking && !this.guarding && !this.dodging && input.wantDir) this.facing = input.wantDir;
 
     // velocity: quick to start, quicker to stop; a swing plants his feet, a raised shield slows him
     const speed = P.speed * (this.attacking ? 0.2 : this.guarding ? P.guardSpeed : 1);
     const tx = mx * speed;
     const ty = my * speed;
-    this.vx = approach(this.vx, tx, (tx !== 0 ? P.accel : P.decel) * dt);
-    this.vy = approach(this.vy, ty, (ty !== 0 ? P.accel : P.decel) * dt);
+    if (this.dodging) {
+      // the hop carries him at its own speed; he lands still moving, at a walk
+      this.vx = this.dodgeX * P.dodgeSpeed;
+      this.vy = this.dodgeY * P.dodgeSpeed;
+    } else {
+      this.vx = approach(this.vx, tx, (tx !== 0 ? P.accel : P.decel) * dt);
+      this.vy = approach(this.vy, ty, (ty !== 0 ? P.accel : P.decel) * dt);
+    }
 
     this.lunge *= Math.exp(-dt * 16);
     const decay = Math.exp(-dt * 9);
@@ -168,7 +213,7 @@ export class Player {
     this.y = box.y;
 
     // animation follows the distance actually walked
-    const moving = (mx !== 0 || my !== 0) && !this.attacking;
+    const moving = (mx !== 0 || my !== 0) && !this.attacking && !this.dodging;
     if (moving) {
       if (!this.wasMoving) this.walkPhase = 0;
       this.walkPhase += (Math.hypot(this.vx, this.vy) * dt) / STRIDE;
@@ -208,11 +253,12 @@ export class Player {
 
   /** Loses `amount` half hearts and gets shoved away from (fromX, fromY). */
   hurt(fromX: number, fromY: number, amount: number): boolean {
-    if (this.invuln > 0 || this.dead) return false;
+    if (this.invuln > 0 || this.dead || this.airborne) return false;
     const d = Math.hypot(this.x - fromX, this.y - fromY) || 1;
     this.kx = ((this.x - fromX) / d) * TUNE.player.knockback;
     this.ky = ((this.y - fromY) / d) * TUNE.player.knockback;
     this.attackT = -1;
+    this.dodgeT = -1;
     this.drain(amount);
     this.invuln = TUNE.player.hurtInvuln;
     return true;
@@ -246,14 +292,17 @@ export class Player {
     const py = Math.round(this.y);
     const row = this.facing === 'down' ? HERO.DOWN : this.facing === 'up' ? HERO.UP : HERO.SIDE;
     let col: number = HERO.STAND;
-    if (this.attacking) col = this.attackT < 0.06 ? HERO.ATK0 : HERO.ATK1;
+    if (this.dodging) col = HERO.HOP;
+    else if (this.attacking) col = this.attackT < 0.06 ? HERO.ATK0 : HERO.ATK1;
     else if (this.guarding) col = HERO.GUARD;
     else if (this.wasMoving) col = WALK_CYCLE[Math.floor(this.walkPhase) % 4];
     const depth = DEPTH.entities + (this.y + 4) / 1000;
 
     this.sprite.setFrame(row * HERO.cols + col);
     this.sprite.setFlipX(this.facing === 'left');
-    this.sprite.setPosition(px, py + 5);
+    // the hop: up and down again over his shadow, which stays on the ground
+    const hop = this.dodging ? Math.round(Math.sin((this.dodgeT / TUNE.player.dodgeTime) * Math.PI) * TUNE.player.dodgeHeight) : 0;
+    this.sprite.setPosition(px, py + 5 - hop);
     this.sprite.setDepth(depth);
     this.shadow.setPosition(px, py + 3).setDepth(depth - 0.0005).setAlpha(this.fade);
 

@@ -1,65 +1,154 @@
-// Rozmowy we wsi. Format: docs/DIALOGS.md.
-// To są teksty robocze: pokazują, co potrafi system (wybory, powroty, pamiętanie), i czekają na scenariusz.
+// Rozmowy we wsi Zabłocie. Format: docs/DIALOGS.md. Świat i imiona: docs/nawia-lore.md.
+//
+// Początek gry: w nocy strzyga wyprowadziła Dobrawę, siostrę Sambora, ku kurhanowi i dalej, pod ziemię,
+// do zatopionego Zwonigrodu. Sambor budzi się w izbie bez niczego. Staś widział, co się stało; Sulichna
+// posyła go do starego Racibora; Racibor daje mu miecz i tarczę ojca i posyła do Radochny; Radochna daje mu
+// kurzego boga, ale dopiero, gdy ma już broń.
+//
+// Przedmioty dają znaczniki: [+ma.miecz], [+ma.tarcza], [+ma.kurzy-bog] (patrz docs/DIALOGS.md, „Przedmioty”).
+// Poprzednie, robocze rozmowy są w docs/archive/village.dialog.v1.txt.
+
+// ------------------------------------------------------------------ dziad Racibor: miecz i tarcza
+
+# dziad
+-> dziad.znowu if ma.miecz
+@ Racibor | Racibor
+Sambor. Wiem już. Cała wieś wie. | Sambor. I know. The whole village knows.
+Strzyga. Widziałem jedną raz, za młodu, pod kurhanem. Drugi raz nie chciałem. | A strzyga. I saw one once, when I was young, under the barrow. I never wanted a second time.
+? Gdzie ją zabrała? | Where did she take her? -> dziad.gdzie
+? Daj mi broń. | Give me a weapon. -> dziad.bron
+
+# dziad.gdzie
+@ Racibor | Racibor
+Pod kurhanem jest zejście. Na dole Zwonigród, gród, co poszedł pod wodę razem z dzwonem. | Under the barrow there is a way down. Below lies Zwonigród, the town that sank with its bell.
+Strzyga ciągnie żywych na dno, do Nawi. Póki dzwon milczy, granica ją puszcza. | The strzyga drags the living to the bottom, into Nawia. While the bell is silent, the border lets her through.
+-> dziad.bron
+
+# dziad.bron
+@ Racibor | Racibor
+Gołymi rękami jej nie ruszysz. Masz: mój miecz i tarczę twojego ojca. | You will not touch her bare-handed. Here: my sword, and your father's shield.
+Leżały w skrzyni od jego pogrzebu. Myślałem, że już nikomu się nie przydadzą. | They have lain in a chest since his funeral. I thought no one would need them again.
+[+ma.miecz]
+[+ma.tarcza]
+@
+Racibor daje ci miecz i okrągłą tarczę. | Racibor gives you a sword and a round shield.
+@ Racibor | Racibor
+Strzyga ma dwie dusze. Zabijesz jedną, druga wstanie po tamtej stronie. | A strzyga has two souls. Kill one, and the other gets up on the far side.
+Tam stal nie sięga bez kamienia. Idź do Radochny, niech ci da kurzego boga. | Steel does not reach there without the stone. Go to Radochna, have her give you the hag stone.
+-> dziad.pytania
+
+# dziad.znowu
+@ Racibor | Racibor
+Jeszcze tu? Dzień krótki, a do kurhanu kawał drogi. | Still here? The day is short, and the barrow is a long way off.
+-> dziad.pytania
+
+# dziad.pytania
+? Jak z nimi walczyć? | How do I fight them? -> dziad.walka
+? Kto stoi pod lipą? | Who stands by the linden? -> dziad.lipa
+? Idę. | I am going. -> dziad.zegnaj
+
+# dziad.walka
+@ Racibor | Racibor
+Każde bydlę się zamierza, zanim skoczy. Wtedy tarcza w górę. Cios, kiedy się odsłoni. | Every beast winds up before it leaps. That is when the shield goes up. Strike when it opens.
+A jak cię przyprze, uskocz. Lepiej dać nura w błoto niż w pazury. | And if it corners you, hop aside. Better a dive in the mud than into its claws.
+-> dziad.pytania
+
+# dziad.lipa
+@ Racibor | Racibor
+Odkąd dzwon milczy, umarli nie odchodzą. Stoją pod starą lipą i patrzą na wieś. | Since the bell fell silent, the dead do not leave. They stand under the old linden, watching the village.
+Oczami żywych ich nie zobaczysz. Przekręć kamień. | You will not see them with the eyes of the living. Turn the stone.
+-> dziad.pytania
+
+# dziad.zegnaj
+@ Racibor | Racibor
+Idź. Ojciec byłby rad, że to jego tarcza. | Go. Your father would be glad it is his shield.
+
+// ------------------------------------------------------------------ babka Radochna: kurzy bóg
 
 # zielarka
--> zielarka.znowu if zielarka.poznana
-@ Zielarka | Herbalist
-Wstałeś wreszcie. Słońce już wysoko. | Up at last. The sun is high already.
-Kurzy bóg siedzi w rękojeści twojego miecza. Osadziłam go w nocy, kiedy spałeś. | The hag stone sits in the hilt of your sword. I set it there last night, while you slept.
-[+zielarka.poznana]
+-> zielarka.znowu if ma.kurzy-bog
+-> zielarka.bezbroni unless ma.miecz
+@ Radochna | Radochna
+No, jest. Wlazł bez pukania, jak co dzień. | There he is. Walked in without knocking, as every day.
+Nie gap się tak. Wiem, po co przyszedłeś. | Do not stare like that. I know why you came.
+-> zielarka.kamien
+
+# zielarka.bezbroni
+@ Radochna | Radochna
+A ty dokąd z gołymi rękami? Strzygę chcesz pięścią straszyć? | And where are you off to, bare-handed? Going to scare a strzyga with your fist?
+Idź najpierw do Racibora. Jak wrócisz z żelazem, pogadamy. | Go to Racibor first. Come back with iron and we will talk.
+
+# zielarka.kamien
+@ Radochna | Radochna
+Masz. Kurzy bóg: kamień z dziurą, z dna Głuchego Jeziora. | Here. The hag stone: a stone with a hole, from the bottom of Głuche Lake.
+Czterdzieści lat wisiał mi w kurniku i żadna kikimora mi kur nie tknęła. | It hung in my henhouse for forty years, and no kikimora ever touched my hens.
+[+ma.kurzy-bog]
+@
+Radochna wciska ci w dłoń kamień z dziurą. Osadzasz go w rękojeści miecza. | Radochna presses a holed stone into your hand. You set it in the hilt of your sword.
+@ Radochna | Radochna
+Spojrzysz przez dziurę, zobaczysz Nawię. Przekręcisz, staniesz w niej. | Look through the hole and you will see Nawia. Turn it, and you will stand in it.
 -> zielarka.pytania
 
 # zielarka.znowu
-@ Zielarka | Herbalist
-Jeszcze tu jesteś? Dzwon sam się nie rozkołysze. | Still here? The bell will not swing by itself.
+@ Radochna | Radochna
+Jeszcze tu? Ona tam czeka, a ty mi podłogę wycierasz. | Still here? She is waiting down there, and you are wearing out my floor.
 -> zielarka.pytania
 
 # zielarka.pytania
-? Co mam z nim zrobić? | What do I do with it? -> zielarka.kamien
+? Jak ją uratować? | How do I save her? -> zielarka.dzwon
+? Czego się strzec? | What should I beware of? -> zielarka.granica
 ? Co jest w lesie? | What is in the forest? -> zielarka.las
 ? Idę. | I am going. -> zielarka.zegnaj
 
-# zielarka.kamien
-@ Zielarka | Herbalist
-Przekręć go, a zobaczysz Nawię: to samo miejsce, jakim pamiętają je umarli. | Turn it and you will see Nawia: the same place, as the dead remember it.
-Tylko nie tam, gdzie po drugiej stronie coś stoi. Granica odrzuca i bierze krew. | Just not where something stands on the other side. The border throws you back, and takes blood.
+# zielarka.dzwon
+@ Radochna | Radochna
+Strzyga zaniesie ją na dno, pod dzwon. Budzisław milczy, więc granica stoi otworem. | The strzyga will carry her to the bottom, under the bell. Budzisław is silent, so the border stands open.
+Rozkołysz go, a granica się zamknie. Co żywe, wróci na swoją stronę. Co martwe, odejdzie. | Make it swing and the border closes. What lives goes back to its side. What is dead moves on.
+-> zielarka.pytania
+
+# zielarka.granica
+@ Radochna | Radochna
+Nie przekręcaj kamienia tam, gdzie po drugiej stronie coś stoi. Granica odrzuca i bierze krew. | Do not turn the stone where something stands on the other side. The border throws you back and takes blood.
+I jeszcze jedno. Kiedy będziecie wracać, nie oglądaj się. Kto się obejrzy, zostaje. | And one more thing. When the two of you come back, do not look back. Whoever looks back, stays.
 -> zielarka.pytania
 
 # zielarka.las
-@ Zielarka | Herbalist
-Przy wsi las jest zdrowy. Dalej, ku kurhanowi, rośnie skaza. | Near the village the forest is healthy. Further on, towards the barrow, the blight grows.
-Fioletowy cierń wszędzie tam, gdzie Nawia przecieka. | Violet thorn wherever Nawia seeps through.
-Co skaza dotknie, to dziczeje. Trzymaj tarczę pod ręką. | What the blight touches turns wild. Keep your shield close.
+@ Radochna | Radochna
+Przy wsi las zdrowy. Dalej, ku kurhanowi, rośnie skaza: fioletowy cierń, gdzie Nawia przecieka. | Near the village the forest is healthy. Towards the barrow the blight grows: violet thorn where Nawia seeps in.
+Co skaza dotknie, dziczeje. Dziki, wilki, nawet kwiaty. | What the blight touches turns wild. Boars, wolves, even flowers.
 -> zielarka.pytania
 
 # zielarka.zegnaj
-@ Zielarka | Herbalist
-Idź. I wróć, zanim zakwitnie paproć. | Go. And be back before the fern blooms.
+@ Radochna | Radochna
+Idź już. I przyprowadź mi ją całą, bo kto mi będzie zioła zbierał. | Go on. And bring her back whole, or who will pick my herbs?
 
-# starzec
-@ Starzec | Elder
-Odkąd dzwon milczy, umarli nie odchodzą. Stoją pod starą lipą. | Since the bell fell silent, the dead do not leave. They stand under the old linden.
-? Nikogo tam nie widzę. | I see no one there. -> starzec.lipa
-? Niech stoją. | Let them stand. -> end
-
-# starzec.lipa
-@ Starzec | Elder
-Bo patrzysz oczami żywych. Przekręć kamień. | Because you are looking with the eyes of the living. Turn the stone.
+// ------------------------------------------------------------------ Staś: widział, jak to się stało
 
 # dziecko
+-> dziecko.potem if ma.miecz
 @ Staś | Staś
-Idziesz do lasu? Dziadek mówi, że pod kurhanem jest zejście do zatopionego grodu! | Are you going to the forest? Grandpa says there is a way down to the drowned stronghold under the barrow!
-? A ty skąd wiesz? | And how would you know? -> dziecko.skad
-? Wracaj do kur. | Go back to your hens. -> dziecko.kury
+Sambor! Ja ją widziałem! W nocy, przez szparę w płocie! | Sambor! I saw her! Last night, through a gap in the fence!
+? Kogo widziałeś? | Who did you see? -> dziecko.widzial
+? Opowiadaj. | Tell me. -> dziecko.widzial
 
-# dziecko.skad
+# dziecko.widzial
 @ Staś | Staś
-Bo dziki tam ryją i nikt ich nie goni. A kury od tygodnia nie chcą iść za płot. | Because the boars root there and nobody chases them off. And the hens have refused to go past the fence for a week.
+Dobrawę. Szła boso po rosie, jak we śnie. A przed nią szło takie... wysokie, zgięte. | Dobrawa. She was walking barefoot through the dew, as if asleep. And in front of her went something... tall, bent.
+Włosy miało na twarzy, a stopy jak u ptaka. Poszły ku kurhanowi. | Hair over its face, and feet like a bird's. They went towards the barrow.
+Dziadek Racibor mówi, że mi się przyśniło. Ale mi się nie przyśniło! | Grandpa Racibor says I dreamt it. But I did not dream it!
 
-# dziecko.kury
+# dziecko.potem
 @ Staś | Staś
-Same wracają. Tylko ich nie strasz! | They come back by themselves. Just don't scare them!
+To miecz dziadka! Dziadek nikomu go nie daje! Musisz ją przyprowadzić. | That is Grandpa's sword! Grandpa never lets anyone have it! You have to bring her back.
+
+// ------------------------------------------------------------------ Sulichna, sąsiadka
 
 # gospodyni
-@ Gospodyni | Housewife
-Malwy w tym roku wysokie, pszczoły ciężkie. Dobry rok, gdyby nie ten las. | The hollyhocks are tall this year, the bees heavy. A good year, if not for that forest.
+-> gospodyni.potem if ma.miecz
+@ Sulichna | Sulichna
+Sambor, dziecko... Słyszałam. Przy studni od rana pióra i mokre ślady. | Sambor, child... I heard. Feathers and wet footprints by the well since morning.
+Idź do starego Racibora. On jeden we wsi pamięta, jak się trzyma miecz. | Go to old Racibor. He is the only one in the village who remembers how to hold a sword.
+
+# gospodyni.potem
+@ Sulichna | Sulichna
+Niech cię dziady prowadzą. Postawię na progu dwie miski: dla ciebie i dla niej. | May the forefathers guide you. I will set two bowls on the threshold: one for you, one for her.

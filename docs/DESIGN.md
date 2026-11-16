@@ -34,19 +34,40 @@ a pisanie rozmów w [DIALOGS.md](DIALOGS.md).
 - **Jawia** – tu i teraz, świat żywych. Na powierzchni jasny poranek; pod ziemią mokra ruina oświetlona ogniem.
 - **Nawia** – świat duchów: to samo miejsce, jakim pamiętają je umarli. Ciemne powierzchnie, świecące krawędzie, zamiast ziemi poza światem gwiazdy.
 
-Dzwon zatopionego grodu milczy od lat, więc umarli nie odchodzą, a granica pęka. Zielarka osadziła w rękojeści miecza bohatera
-kurzego boga (kamień z dziurą). Kto go przekręci, obraca świat. Bohater budzi się w swojej izbie, wychodzi ze wsi,
-idzie przez las do kurhanu, schodzi do grodu pod jeziorem i ma rozkołysać dzwon.
+Dzwon Budzisław w zatopionym Zwonigrodzie milczy od lat, więc umarli nie odchodzą, a granica pęka. Imiona, istoty i mity
+są w [nawia-lore.md](nawia-lore.md).
+
+**Fabuła dema.** W nocy strzyga przyszła od strony kurhanu i wyprowadziła Dobrawę, siostrę bohatera. Dobrawa szła za nią
+boso, jak we śnie, a strzyga zaniosła ją pod ziemię, do Zwonigrodu. Rano Sambor, uczeń starej zielarki Radochny, budzi się
+w izbie bez niczego: bez miecza, tarczy i kamienia.
+- Przy pustym łóżku widać mokre ślady, a w Nawii siedzi tam cień matki.
+- We wsi Staś opowiada, co widział: wysoką, zgiętą postać z włosami na twarzy i ptasimi stopami. Sulichna posyła Sambora do
+  starego Racibora.
+- Dziad Racibor daje mu swój miecz i tarczę ojca. Mówi mu, że strzyga ma dwie dusze, i posyła po kamień do Radochny.
+- Radochna, zgryźliwa, daje kamień tylko komuś z bronią: kurzego boga, kamień z dziurą z dna Głuchego Jeziora. Mówi, jak
+  uratować Dobrawę: rozkołysać Budzisława, bo kiedy granica się zamknie, co żywe, wróci na swoją stronę. Dodaje: „Kiedy
+  będziecie wracać, nie oglądaj się”.
+- Dalej droga wiedzie przez las do kurhanu i w dół, do grodu. Po drodze są ślady Dobrawy: przy kurhanie mówią o niej umarli,
+  a w Przedsionku na kamieniu leży jej czerwona wstążka.
+- W Sali Dwóch Dusz czekają strzygi, a niżej strażnik granicy. Po uderzeniu w wielki dzwon Dobrawa budzi się na brzegu
+  jeziora, a dusze grodu odlatują do Wyraju jako żurawie.
 
 **Skaza.** Tam, gdzie granica pęka, Nawia przecieka do Jawi. Widać to jako fioletowe plamy na ziemi, martwe drzewa i cierń.
 Przy wsi las jest zdrowy; im bliżej kurhanu, tym skazy więcej i tym ciemniejsze powietrze.
 Co skaza dotknie, dziczeje: stąd wilki o oczach w kolorze drugiej strony i kwiaty, które plują cierniami.
 
-Teksty rozmów w grze są robocze: pokazują możliwości systemu i czekają na scenariusz.
+Teksty powierzchni są już z prawdziwego scenariusza pierwszego zadania (`src/story/village.dialog.txt`); napisy w grodzie
+są jeszcze w większości robocze.
 
-Bohater: młody wojownik z mieczem i okrągłą tarczą. Łuk jest planowany, jeszcze go nie ma.
-Jego wygląd jest w trakcie wyboru: klawisz **H** przełącza w grze cztery warianty (Wojak, Pastuszek w słomkowym kapeluszu,
-Góral w futrzanej czapie, Wędrowiec w kapturze).
+Bohater: Sambor, 18–20 lat, z mieczem i okrągłą tarczą (od Racibora). Łuk jest planowany, jeszcze go nie ma.
+W grze nosi wygląd **C2f** (16×18) z placu prób. Klawisz **H** przełącza go na **S3 Malowany** (16×16), żeby porównać.
+Kolizja jest u stóp i w obu wyglądach taka sama (10×8 px); wyższa postać tylko więcej zasłania.
+Dawne wyglądy (Wojak, Pastuszek, Góral, Wędrowiec) zostały w kodzie i na placu prób (G1–G4).
+
+Przeciwnicy noszą w grze nowe wyglądy z placu prób (M): wilk M1, dzik M2, topielec M5, zjawa M9, strzyga M11, ognik M13,
+morownik M14. Każdy jest widziany w postaci świata, w którym jest bohater. Topielec w Jawi to mokry czarny kot, a z Nawii widać
+jego prawdziwą postać. Strzyga w Jawi to ciało, a w Nawii jej druga dusza. Klawisz **B** przywraca dawne wyglądy.
+Strażnik (boss) ma swój dawny wygląd.
 
 ## Sterowanie
 
@@ -56,10 +77,12 @@ Góral w futrzanej czapie, Wędrowiec w kapturze).
 | Obrót kamienia | **Shift** lub Spacja | Y, lewy bumper, lewy spust |
 | Cios | Z, J lub Enter | A, X |
 | Tarcza (trzymaj) | X lub K | B, prawy bumper, prawy spust |
+| Unik (podskok) | C, I lub lewy Alt | X |
 | Rozmowa (obok mieszkańca) | Z, J lub Enter | A |
 | Pauza | Esc / P | Start |
 | Wyciszenie / pełny ekran / język | M / F / L | |
-| Następny wygląd bohatera (na czas testów) | H | |
+| Wygląd bohatera: C2f albo S3 (na czas testów) | H | |
+| Wygląd przeciwników: nowe albo dawne (na czas testów) | B | |
 
 Napisy na kamieniach i drogowskazach czytają się same, gdy bohater stanie obok. Rozmowę z mieszkańcem zaczyna klawisz ciosu.
 W rozmowie: góra/dół wybiera odpowiedź, klawisz ciosu albo Shift potwierdza.
@@ -82,6 +105,15 @@ do miejsca, którym wszedł do pokoju. Gra pokazuje przez chwilę, które kafle 
 | wrogowie | groźni i wrażliwi tylko w swoim świecie; z drugiej strony widać echo | |
 | mieszkańcy wsi, kury | żyją swoim życiem | ledwie widoczne echo |
 | dusze | nie widać ich (pod ziemią kości, na powierzchni gęściej rosną białe kwiaty) | stoją |
+
+**Przedmioty.** Gra zaczyna się bez niczego. Miecz i tarczę daje Racibor, a kurzego boga Radochna. Bez miecza klawisz ciosu
+tylko zaczyna rozmowę, bez tarczy nie ma gardy, a bez kamienia nie ma obrotu. Pierwsze miejsce, gdzie trzeba obrócić świat,
+to most na skraju wsi, więc bez kamienia nie da się wyjść do lasu.
+
+**Unik.** Krótki podskok w stronę, w którą bohater idzie (albo patrzy, jeśli stoi): około 50 px w ćwierć sekundy. Przez
+pierwsze 0,22 s nic go nie rani, ani cios, ani pocisk. Potem jest krótka przerwa (0,45 s). Unik nie przeskakuje wody ani
+przepaści: kolizja działa jak w marszu. Liczby: `dodge*` w `TUNE.player` (`src/config.ts`). To próba: dobry unik zależy od
+wielkości bohatera i jego kolizji, więc wróci przy wyborze ostatecznej postaci.
 
 **Walka.** Zdrowie: 3 serca liczone połówkami. Cios wroga zabiera całe serce, pocisk pół. Miecz ma krótki zamach z wypadem.
 Podniesiona tarcza zatrzymuje cios od frontu i odsyła ogień ognika. Każdy wróg ostrzega przed atakiem (mruga na biało i drży), potem atakuje po prostej.
@@ -134,9 +166,9 @@ Izba ⇄ Wieś ⇄ Chata zielarki          (⇄ to drzwi)
 
 | Pokój | Plik | Czego uczy |
 |---|---|---|
-| **Izba** | `h1-home` | Początek gry: bohater otwiera oczy we własnej izbie. Ruch. W Nawi przy piecu siedzi ktoś z umarłych rodziny. |
-| **Wieś** | `s1-village` | Rozmowy i drzwi. Nic tu nie rani: kury, stóg, malwy, ule. Starzec mówi, że umarli stoją pod lipą: po obrocie widać ich. Ogródek za płotem jest dostępny tylko z Nawi (płotu tam nie ma). |
-| **Chata zielarki** | `h2-hut` | Pierwsza prawdziwa rozmowa, z wyborem: skąd kamień, co robi, co jest w lesie. |
+| **Izba** | `h1-home` | Początek gry: bohater otwiera oczy we własnej izbie, bez niczego. Ruch. Puste łóżko Dobrawy mówi, co się stało; w Nawii siedzi przy nim cień matki. |
+| **Wieś** | `s1-village` | Rozmowy i drzwi. Nic tu nie rani: kury, stóg, malwy, ule. Staś widział strzygę, Sulichna posyła do Racibora, Racibor daje miecz i tarczę. Pod lipą stoją umarli (widać ich po obrocie). Ogródek za płotem jest dostępny tylko z Nawi. |
+| **Chata zielarki** | `h2-hut` | Radochna daje kurzego boga (tylko komuś z bronią) i mówi, jak uratować Dobrawę. Rozmowa z wyborem. |
 | **Skraj wsi** | `s2-shrine` | Pierwszy obrót, który jest potrzebny: kładki nie ma, stary most stoi tylko w Nawi. Obrót z powrotem na moście to pierwsze spotkanie z karą. Bożek, przed nim ogień. |
 | **Stary gościniec** | `s3-forest-road` | Pierwsza walka, jeszcze z niczym nienaturalnym: dzik przy strudze. Potem zapora z dwóch warstw: ciernie skazy blokują w Jawi, a deski na strudze są tylko w Jawi. Trzeba przejść ciernie w Nawi i wrócić do Jawi. Za cierniami zaczyna się skaza: zjawa po stronie Nawi, morownik po stronie Jawi. |
 | **Uroczysko** | `s4-forest-pond` | Opcjonalne. Tarcza: brama otwiera się po zabiciu dwóch ogników, a miecz ich nie sięga. Za bramą stary most na wyspę (tylko w Nawi), na wyspie serce. |

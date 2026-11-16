@@ -255,12 +255,37 @@ Rejestracja: `BootScene` woła `registerArt()` (`textures.ts`), które generuje 
 `GameScene.talkerNear()` szuka obok bohatera mieszkańca albo napisu z rozmową; klawisz ciosu woła `startTalk()`, gra przechodzi
 w stan `talk`, a `updateTalk()` obsługuje klawisze i przekazuje widok do `Hud.setTalk()` (tabliczka z imieniem, tekst, okno odpowiedzi).
 Żeby rozmowa zmieniała świat (otwierała bramę, dawała przedmiot), wystarczy w odpowiednim miejscu `GameScene` sprawdzić `this.flags.has('nazwa')`.
+Tak działają przedmioty: `GameScene.applyGear()` po każdej rozmowie przepisuje znaczniki `ma.miecz`, `ma.tarcza`, `ma.kurzy-bog`
+do `Player.gear` i ubiera bohatera w arkusz z tarczą albo bez niej. `Player.update()` nie zaczyna ciosu bez miecza i nie
+podnosi tarczy bez tarczy, a `GameScene.tryShift()` bez kamienia pokazuje tylko podpowiedź. Start od razu w pokoju
+(`?room=`) dodaje wszystkie trzy znaczniki.
 
 ### Wygląd bohatera
 
-`HERO_LOOKS` w `actors.ts` to lista wariantów: każdy podmienia głowę (8 górnych wierszy komórki dla trzech kierunków) i część kolorów,
-a ciało i wszystkie pozy dziedziczy. Każdy wariant ma własny arkusz (`hero`, `hero1`, …). `Player.setLook(klucz)` zmienia teksturę.
-Nowy wariant to nowy wpis w `HERO_LOOKS`. Docelowo zostanie jeden; lista jest po to, żeby dało się je porównać w ruchu.
+Gra rysuje bohatera arkuszami z `src/art/heroGame.ts` (`GAME_LOOKS`): `sambor` to C2f z placu prób (16×18), `sambor-s3` to S3
+Malowany (16×16). Każdy ma też wersję bez tarczy (`…-bare`), na początek gry. Arkusz ma układ `HERO` z `actors.ts`: rzędy
+to dół, góra i bok, kolumny to stanie, dwa kroki, zamach, cios, tarcza i podskok uniku (`HOP`). Klatki C2f są narysowane w jego
+pliku konceptu (`GAME` w `najlepszy-wysoki-f.concept.ts`, typ `GamePoses` z `concept.ts`), a klatki S3 składa `heroGame.ts`
+z części stylu (`lay`, `paintStyle` z `heroStyles.ts`). `Player.setLook(klucz)` zmienia teksturę, a klawisz H przełącza wygląd.
+Sprite ma środek u stóp (`setOrigin(0.5, 1)`), więc wyższa postać rośnie w górę, a kolizja (`TUNE.player.hitW/hitH`) się nie
+zmienia.
+
+Dawne warianty (`HERO_LOOKS` w `actors.ts`: Wojak, Pastuszek, Góral, Wędrowiec; arkusze `hero`, `hero1`…) zostały bez zmian.
+Gra ich nie używa, ale plac prób pokazuje je jako G1–G4.
+
+### Wygląd przeciwników
+
+`src/art/gameBeasts.ts` (`GAME_BEASTS`) mówi, którego potwora rysowanego w całości (`src/art/beasts`) nosi każdy rodzaj
+wroga, i robi z nich arkusze `beast:<id>:jawia` i `beast:<id>:nawia`. `Enemy.sync()` bierze arkusz świata, w którym jest
+bohater: podczas marszu klatki chodu, przy ostrzeżeniu klatkę zamachu, przy ataku klatkę ciosu. Środek sprite'a jest w
+przedostatnim wierszu komórki, więc większe potwory też stoją na swoim cieniu. `Enemy.newLooks = false` (klawisz B w grze)
+wraca do dawnego arkusza `mobs`. Rozmiary kolizji i zachowanie wrogów (`SPECS` w `Enemy.ts`) się nie zmieniły.
+
+### Unik
+
+`Player.dodgeT` liczy czas podskoku. Kierunek to ruch w chwili naciśnięcia (albo kierunek patrzenia), prędkość, wysokość i
+czasy są w `TUNE.player.dodge*`. Przez `dodgeSafe` sekund `Player.airborne` jest prawdą i `Player.hurt()` niczego nie przyjmuje.
+Sprite unosi się po sinusie nad cieniem i pokazuje klatkę `HOP`. Akcja `dodge` w `core/input.ts`: C, I, lewy Alt, a na padzie X.
 
 ## 9. Światło, mgła, dźwięk, wejście, teksty
 

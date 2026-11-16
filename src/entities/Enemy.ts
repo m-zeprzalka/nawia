@@ -13,6 +13,7 @@
 import Phaser from 'phaser';
 import { DEPTH, otherWorld, type World } from '../config.ts';
 import { MOB } from '../art/actors.ts';
+import { GAME_BEASTS, beastFrameOf, beastKey } from '../art/gameBeasts.ts';
 import type { EnemyKind } from '../world/roomFormat.ts';
 import { BLOCK_FLY, BLOCK_WALK, type Box, type Level } from '../world/Level.ts';
 
@@ -85,6 +86,12 @@ export interface Bounds {
 type Mode = 'roam' | 'windup' | 'dash' | 'rest' | 'rising';
 
 export class Enemy {
+  /**
+   * Which looks enemies wear: the monsters drawn whole (src/art/beasts, M on the playground), each in the form
+   * of the world the hero is in; or, with false, their first looks (the `mobs` sheet). B in the game flips it.
+   */
+  static newLooks = true;
+
   readonly kind: EnemyKind;
   /** The world it is real in. A strzyga changes sides once. */
   home: World;
@@ -387,11 +394,21 @@ export class Enemy {
     const bob = this.hover ? Math.round(Math.sin(this.t * 3) * 1.5) : 0;
     const depth = DEPTH.entities + (this.y + s.hh) / 1000;
 
-    let frame: number;
-    if (this.kind === 'ognik') frame = Math.floor(this.t * (warning ? s.fps * 2 : s.fps)) % 4;
-    else frame = warning || this.mode === 'dash' ? 2 : Math.floor(this.t * s.fps) % 2;
+    const beast = Enemy.newLooks ? GAME_BEASTS[this.kind] : null;
+    if (beast) {
+      // the walk all the time it moves (or breathes, or flickers); the wind-up, then the blow, when it strikes
+      const phase = warning ? 5 : this.mode === 'dash' ? 6 : 1 + (Math.floor(this.t * Math.min(s.fps * 2, 7)) % 4);
+      const key = beastKey(beast, this.visible);
+      if (this.sprite.texture.key !== key) this.sprite.setTexture(key).setOrigin(0.5, (beast.h - 1) / beast.h);
+      this.sprite.setFrame(beastFrameOf(beast, this.visible, phase));
+    } else {
+      let frame: number;
+      if (this.kind === 'ognik') frame = Math.floor(this.t * (warning ? s.fps * 2 : s.fps)) % 4;
+      else frame = warning || this.mode === 'dash' ? 2 : Math.floor(this.t * s.fps) % 2;
+      if (this.sprite.texture.key !== 'mobs') this.sprite.setTexture('mobs').setOrigin(0.5, 15 / 16);
+      this.sprite.setFrame(this.frameBase + frame);
+    }
     this.sprite
-      .setFrame(this.frameBase + frame)
       .setFlipX(this.faceLeft)
       .setPosition(px, py + s.hh + 2 - this.hover + bob)
       .setDepth(depth);

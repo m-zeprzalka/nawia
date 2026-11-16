@@ -97,6 +97,8 @@ export class Prop {
   /** Does it stand in the way? */
   get solid(): boolean {
     if (this.kind === 'torch' || this.kind === 'soul') return false;
+    // an inscription indoors is only a place in the room that speaks: nothing to bump into
+    if (this.kind === 'sign' && this.indoors) return false;
     return !((this.kind === 'urn' || this.kind === 'gate' || this.kind === 'post') && this.open);
   }
 
@@ -111,6 +113,7 @@ export class Prop {
       case 'torch':
         return { x: this.x, y: this.y + 6, radius: 68, color: FIRE[w], intensity: 0.72, flicker: 1, phase: this.phase };
       case 'sign':
+        if (this.indoors) return null;
         return w === 'nawia' ? { x: this.x, y: this.y, radius: 30, color: [0.35, 0.9, 0.85], intensity: 0.4, flicker: 0.4, phase: this.phase } : null;
       case 'idol':
         return w === 'nawia' ? { x: this.x, y: this.y - 10, radius: 40, color: [0.4, 0.95, 0.95], intensity: 0.5, flicker: 0.3, phase: this.phase } : null;
@@ -254,7 +257,9 @@ export class Prop {
     const row = nawia ? SOBJ.ROW_NAWIA : 0;
     switch (this.kind) {
       case 'sign':
-        s.setTexture('surface', row + SOBJ.SIGN);
+        // indoors an inscription has no post: it is a thing in the room (an empty bed) that speaks when he stands by it
+        if (this.indoors) s.setVisible(false);
+        else s.setTexture('surface', row + SOBJ.SIGN);
         return true;
       case 'brazier':
         s.setTexture('surface', row + (this.indoors ? SOBJ.HEARTH : SOBJ.FIRE) + f);

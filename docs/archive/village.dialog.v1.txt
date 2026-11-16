@@ -1,0 +1,65 @@
+// Rozmowy we wsi. Format: docs/DIALOGS.md.
+// To są teksty robocze: pokazują, co potrafi system (wybory, powroty, pamiętanie), i czekają na scenariusz.
+
+# zielarka
+-> zielarka.znowu if zielarka.poznana
+@ Zielarka | Herbalist
+Wstałeś wreszcie. Słońce już wysoko. | Up at last. The sun is high already.
+Kurzy bóg siedzi w rękojeści twojego miecza. Osadziłam go w nocy, kiedy spałeś. | The hag stone sits in the hilt of your sword. I set it there last night, while you slept.
+[+zielarka.poznana]
+-> zielarka.pytania
+
+# zielarka.znowu
+@ Zielarka | Herbalist
+Jeszcze tu jesteś? Dzwon sam się nie rozkołysze. | Still here? The bell will not swing by itself.
+-> zielarka.pytania
+
+# zielarka.pytania
+? Co mam z nim zrobić? | What do I do with it? -> zielarka.kamien
+? Co jest w lesie? | What is in the forest? -> zielarka.las
+? Idę. | I am going. -> zielarka.zegnaj
+
+# zielarka.kamien
+@ Zielarka | Herbalist
+Przekręć go, a zobaczysz Nawię: to samo miejsce, jakim pamiętają je umarli. | Turn it and you will see Nawia: the same place, as the dead remember it.
+Tylko nie tam, gdzie po drugiej stronie coś stoi. Granica odrzuca i bierze krew. | Just not where something stands on the other side. The border throws you back, and takes blood.
+-> zielarka.pytania
+
+# zielarka.las
+@ Zielarka | Herbalist
+Przy wsi las jest zdrowy. Dalej, ku kurhanowi, rośnie skaza. | Near the village the forest is healthy. Further on, towards the barrow, the blight grows.
+Fioletowy cierń wszędzie tam, gdzie Nawia przecieka. | Violet thorn wherever Nawia seeps through.
+Co skaza dotknie, to dziczeje. Trzymaj tarczę pod ręką. | What the blight touches turns wild. Keep your shield close.
+-> zielarka.pytania
+
+# zielarka.zegnaj
+@ Zielarka | Herbalist
+Idź. I wróć, zanim zakwitnie paproć. | Go. And be back before the fern blooms.
+
+# starzec
+@ Starzec | Elder
+Odkąd dzwon milczy, umarli nie odchodzą. Stoją pod starą lipą. | Since the bell fell silent, the dead do not leave. They stand under the old linden.
+? Nikogo tam nie widzę. | I see no one there. -> starzec.lipa
+? Niech stoją. | Let them stand. -> end
+
+# starzec.lipa
+@ Starzec | Elder
+Bo patrzysz oczami żywych. Przekręć kamień. | Because you are looking with the eyes of the living. Turn the stone.
+
+# dziecko
+@ Staś | Staś
+Idziesz do lasu? Dziadek mówi, że pod kurhanem jest zejście do zatopionego grodu! | Are you going to the forest? Grandpa says there is a way down to the drowned stronghold under the barrow!
+? A ty skąd wiesz? | And how would you know? -> dziecko.skad
+? Wracaj do kur. | Go back to your hens. -> dziecko.kury
+
+# dziecko.skad
+@ Staś | Staś
+Bo dziki tam ryją i nikt ich nie goni. A kury od tygodnia nie chcą iść za płot. | Because the boars root there and nobody chases them off. And the hens have refused to go past the fence for a week.
+
+# dziecko.kury
+@ Staś | Staś
+Same wracają. Tylko ich nie strasz! | They come back by themselves. Just don't scare them!
+
+# gospodyni
+@ Gospodyni | Housewife
+Malwy w tym roku wysokie, pszczoły ciężkie. Dobry rok, gdyby nie ten las. | The hollyhocks are tall this year, the bees heavy. A good year, if not for that forest.

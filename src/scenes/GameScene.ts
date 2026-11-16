@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import {
   DEPTH, GAME_H, GAME_W, TILE, TUNE, VIEW_PAD_Y, otherWorld, type World,
 } from '../config.ts';
-import { HERO_LOOKS } from '../art/actors.ts';
+import { GAME_LOOKS } from '../art/heroGame.ts';
 import { OBJ, PX } from '../art/sprites.ts';
 import { ART, addBufferTexture } from '../art/textures.ts';
 import { audio } from '../audio/audio.ts';
@@ -27,6 +27,9 @@ import { loadDungeon } from '../world/dungeonData.ts';
 import { BLOCK_FLY, Level, overlap, roomOriginX, roomOriginY } from '../world/Level.ts';
 import { paintRoom, type RoomPicture } from '../world/painter.ts';
 import { isSurface, type RoomDef } from '../world/roomFormat.ts';
+
+/** The flags conversations set when they give him something (see docs/DIALOGS.md). */
+const GEAR_FLAGS = ['ma.miecz', 'ma.tarcza', 'ma.kurzy-bog'];
 
 type State = 'play' | 'slide' | 'rejected' | 'dying' | 'ending' | 'paused' | 'talk' | 'door' | 'waking';
 
@@ -147,6 +150,9 @@ export class GameScene extends Phaser.Scene {
   private hasShifted = false;
   private hasAttacked = false;
   private hasGuarded = false;
+  private hasDodged = false;
+  /** Seconds left of the reminder that he has no stone to turn yet. */
+  private noStoneHintT = 0;
   private rejectHintT = 0;
   private timeInRoom = 0;
   private bellSwing = -1;
@@ -193,6 +199,8 @@ export class GameScene extends Phaser.Scene {
     this.hasShifted = false;
     this.hasAttacked = false;
     this.hasGuarded = false;
+    this.hasDodged = false;
+    this.noStoneHintT = 0;
     this.rejectHintT = 0;
     this.bellSwing = -1;
     this.clinkSwing = -1;
@@ -256,9 +264,18 @@ export class GameScene extends Phaser.Scene {
     } catch {
       /* private mode: fine */
     }
-    this.look = Math.min(HERO_LOOKS.length - 1, Math.max(0, saved));
-    this.player.setLook(HERO_LOOKS[this.look].key);
+    this.look = Math.min(GAME_LOOKS.length - 1, Math.max(0, saved));
+    // he wakes up with nothing; jumping straight into a room (a dev shortcut) gives him everything
+    if (direct) for (const f of GEAR_FLAGS) this.flags.add(f);
+    this.applyGear();
     this.input.keyboard?.on('keydown-H', this.cycleLook, this);
+    // B: the enemies' new looks (the monsters drawn whole) or their first ones, to compare
+    try {
+      Enemy.newLooks = localStorage.getItem('nawia.beasts') !== 'old';
+    } catch {
+      /* private mode: fine */
+    }
+    this.input.keyboard?.on('keydown-B', this.cycleBeasts, this);
 
     this.room = this.buildRoom(start);
     this.entry = { x: this.player.x, y: this.player.y, world: this.world, facing: this.player.facing };
@@ -286,6 +303,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-H', this.cycleLook, this);
+      this.input.keyboard?.off('keydown-B', this.cycleBeasts, this);
       this.destroyRoom(this.room);
       if (this.leaving) this.destroyRoom(this.leaving);
     });
@@ -398,16 +416,37 @@ export class GameScene extends Phaser.Scene {
     audio.setPlace(this.room.def.biome, this.room.def.blight);
   }
 
+  /** What the story has given him (flags set in conversations) is what he carries; he is drawn with it. */
+  private applyGear(): void {
+    const g = this.player.gear;
+    g.sword = this.flags.has('ma.miecz');
+    g.shield = this.flags.has('ma.tarcza');
+    g.stone = this.flags.has('ma.kurzy-bog');
+    this.player.setLook(`${GAME_LOOKS[this.look].key}${g.shield ? '' : '-bare'}`);
+    this.hud?.setStone(g.stone);
+  }
+
+  /** B: the enemies in their new looks or in their first ones. Remembered between visits. */
+  private cycleBeasts(): void {
+    Enemy.newLooks = !Enemy.newLooks;
+    try {
+      localStorage.setItem('nawia.beasts', Enemy.newLooks ? 'new' : 'old');
+    } catch {
+      /* private mode: fine */
+    }
+    this.hud.showRoomName(t(Enemy.newLooks ? STR.beastsNew : STR.beastsOld));
+  }
+
   /** H: try the next hero on. The choice is remembered between visits. */
   private cycleLook(): void {
-    this.look = (this.look + 1) % HERO_LOOKS.length;
-    this.player.setLook(HERO_LOOKS[this.look].key);
+    this.look = (this.look + 1) % GAME_LOOKS.length;
+    this.applyGear();
     try {
       localStorage.setItem('nawia.look', String(this.look));
     } catch {
       /* private mode: fine */
     }
-    this.hud.showRoomName(`${t(STR.look)}: ${t(HERO_LOOKS[this.look].name)}`);
+    this.hud.showRoomName(`${t(STR.look)}: ${t(GAME_LOOKS[this.look].name)}`);
   }
 
   /** Starts the ring in a room: on the ground and on whatever hangs overhead. (cx, cy) are global px. */
@@ -486,6 +525,7 @@ export class GameScene extends Phaser.Scene {
     this.timeInRoom += dt;
     this.shiftCd = Math.max(0, this.shiftCd - dt);
     this.rejectHintT = Math.max(0, this.rejectHintT - dt);
+    this.noStoneHintT = Math.max(0, this.noStoneHintT - dt);
     this.heartHintT = Math.max(0, this.heartHintT - dt);
     this.stoneHintT = Math.max(0, this.stoneHintT - dt);
     this.soulsHintT = Math.max(0, this.soulsHintT - dt);
@@ -508,6 +548,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (input.moveX !== 0 || input.moveY !== 0) this.hasMoved = true;
     if (player.guarding) this.hasGuarded = true;
+    if (player.dodging) this.hasDodged = true;
     if (player.attackActive) this.resolveAttack();
 
     for (const e of room.enemies) {
@@ -598,12 +639,15 @@ export class GameScene extends Phaser.Scene {
     const pad = input.device === 'gamepad';
     const threat = this.room.enemies.some((e) => e.home === this.world);
     let hint: string | null = null;
+    const gear = this.player.gear;
     if (this.rejectHintT > 0) hint = t(STR.hintRejected);
+    else if (this.noStoneHintT > 0) hint = t(STR.hintNoStone);
     else if (!this.hasMoved && this.timeInRoom > 1) hint = t(pad ? STR.hintMovePad : STR.hintMove);
     else if (this.talkerNear()) hint = t(pad ? STR.hintTalkPad : STR.hintTalk);
-    else if (!this.hasShifted && this.timeInRoom > 1.5 && this.room.place !== 'house') hint = t(pad ? STR.hintShiftPad : STR.hintShift);
-    else if (!this.hasAttacked && threat) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
-    else if (!this.hasGuarded && threat) hint = t(pad ? STR.hintShieldPad : STR.hintShield);
+    else if (gear.stone && !this.hasShifted && this.timeInRoom > 1.5 && this.room.place !== 'house') hint = t(pad ? STR.hintShiftPad : STR.hintShift);
+    else if (gear.sword && !this.hasAttacked && threat) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
+    else if (gear.shield && !this.hasGuarded && threat) hint = t(pad ? STR.hintShieldPad : STR.hintShield);
+    else if (gear.sword && this.hasAttacked && this.hasGuarded && !this.hasDodged && threat) hint = t(pad ? STR.hintDodgePad : STR.hintDodge);
     else if (this.heartHintT > 0 && this.world === 'jawia' && this.room.boss?.heartBare) hint = t(STR.hintHeart);
     else if (this.stoneHintT > 0 && this.room.boss) hint = t(STR.hintStone);
     else if (this.soulsHintT > 0) hint = t(STR.hintTwoSouls);
@@ -616,6 +660,11 @@ export class GameScene extends Phaser.Scene {
 
   private tryShift(): void {
     const { player, level, room } = this;
+    if (!player.gear.stone) {
+      // nothing to turn yet: say so, once in a while
+      if (this.timeInRoom > 0.5) this.noStoneHintT = 2.5;
+      return;
+    }
     const to = otherWorld(this.world);
     const b = player.box;
     const spot = level.findFree(to, b.x, b.y, b.hw, b.hh, TUNE.shift.nudge);
@@ -1097,6 +1146,7 @@ export class GameScene extends Phaser.Scene {
       this.talk = null;
       this.hud.setTalk(null);
       this.state = 'play';
+      this.applyGear();
       this.shiftCd = 0.25;
       input.flush();
     } else this.showTalk();

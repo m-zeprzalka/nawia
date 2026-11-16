@@ -5,7 +5,7 @@
 //  - actions are timestamped, so the game can honour a press that came a few frames early.
 
 export type Dir = 'down' | 'up' | 'left' | 'right';
-export type Action = 'shift' | 'attack' | 'shield' | 'mute' | 'fullscreen' | 'lang' | 'pause';
+export type Action = 'shift' | 'attack' | 'shield' | 'dodge' | 'mute' | 'fullscreen' | 'lang' | 'pause';
 
 const DIR_KEYS: Record<string, Dir> = {
   ArrowUp: 'up', KeyW: 'up',
@@ -18,12 +18,14 @@ const ACTION_KEYS: Record<string, Action> = {
   ShiftLeft: 'shift', ShiftRight: 'shift', Space: 'shift',
   KeyZ: 'attack', KeyJ: 'attack', Enter: 'attack',
   KeyX: 'shield', KeyK: 'shield',
+  KeyC: 'dodge', KeyI: 'dodge', AltLeft: 'dodge',
   KeyM: 'mute', KeyF: 'fullscreen', KeyL: 'lang', Escape: 'pause', KeyP: 'pause',
 };
 
 // Standard gamepad mapping.
 const PAD_ACTIONS: Record<number, Action> = {
-  0: 'attack', 2: 'attack', // A / X
+  0: 'attack', // A
+  2: 'dodge', // X
   1: 'shield', 5: 'shield', 7: 'shield', // B / right bumper / right trigger
   3: 'shift', 4: 'shift', 6: 'shift', // Y / left bumper / left trigger
   9: 'pause',

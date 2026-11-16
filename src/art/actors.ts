@@ -27,7 +27,7 @@ function squash(rows: string[]): string[] {
 
 export const HERO = {
   fw: 16, fh: 16, cols: 8,
-  STAND: 0, WALK_A: 1, WALK_B: 2, ATK0: 3, ATK1: 4, GUARD: 5,
+  STAND: 0, WALK_A: 1, WALK_B: 2, ATK0: 3, ATK1: 4, GUARD: 5, HOP: 6,
   DOWN: 0, UP: 1, SIDE: 2,
 } as const;
 

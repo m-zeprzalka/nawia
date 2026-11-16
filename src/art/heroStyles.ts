@@ -1530,7 +1530,24 @@ export const HERO_HANDS: HeroStyle[] = [BAJKA, KLOCEK, KIESZONKOWY, LUDOWY, SURO
 
 // ------------------------------------------------------------------ putting him together
 
-function lay(grid: string[][], drawing: string[], x: number, y: number): void {
+
+/** One frame: `pose` 0 stands, 1 and 2 are the two strides (the trunk sinks a pixel over the legs). */
+export function styleFrame(s: HeroStyle, view: View, pose: 0 | 1 | 2): PixelBuffer {
+  const grid = styleGrid(s);
+  const dy = pose === 0 ? 0 : 1;
+  const carried = [s.shield[view]].flat();
+  for (const c of carried) if (c.behind) lay(grid, c.rows, c.x, c.y + dy);
+  lay(grid, s.legs[view][pose], 0, s.legsAt);
+  lay(grid, s.upper[view], 0, dy);
+  for (const c of carried) if (!c.behind) lay(grid, c.rows, c.x, c.y + dy);
+  return paintStyle(s, grid);
+}
+
+/** An empty grid of letters, one cell of the style. */
+export const styleGrid = (s: HeroStyle): string[][] => Array.from({ length: s.fh }, () => Array<string>(W).fill('.'));
+
+/** Lays a drawing on a grid at (x, y); '.' lets what is below show through. */
+export function lay(grid: string[][], drawing: string[], x: number, y: number): void {
   for (let j = 0; j < drawing.length; j++) {
     const ty = y + j;
     if (ty < 0 || ty >= grid.length) continue;
@@ -1541,16 +1558,8 @@ function lay(grid: string[][], drawing: string[], x: number, y: number): void {
   }
 }
 
-/** One frame: `pose` 0 stands, 1 and 2 are the two strides (the trunk sinks a pixel over the legs). */
-export function styleFrame(s: HeroStyle, view: View, pose: 0 | 1 | 2): PixelBuffer {
-  const grid = Array.from({ length: s.fh }, () => Array<string>(W).fill('.'));
-  const dy = pose === 0 ? 0 : 1;
-  const carried = [s.shield[view]].flat();
-  for (const c of carried) if (c.behind) lay(grid, c.rows, c.x, c.y + dy);
-  lay(grid, s.legs[view][pose], 0, s.legsAt);
-  lay(grid, s.upper[view], 0, dy);
-  for (const c of carried) if (!c.behind) lay(grid, c.rows, c.x, c.y + dy);
-
+/** A finished grid of letters as a picture, coloured and lined the way the style lines its figures. */
+export function paintStyle(s: HeroStyle, grid: string[][]): PixelBuffer {
   const b = new PixelBuffer(W, s.fh);
   const at = (x: number, y: number): string => (x < 0 || y < 0 || x >= W || y >= s.fh ? '.' : grid[y][x]);
   for (let y = 0; y < s.fh; y++)

@@ -94,6 +94,9 @@ sign 1:
   Mieszkaniec bez linii `nawia:` jest w Nawi tylko echem i milczy.
 - Zamiast `@węzeł` można wpisać sam tekst (`jawia: Dzień dobry. | Good morning.`). Mieszkaniec powie wtedy tę jedną kwestię;
   drogowskaz pokaże ją sam, gdy bohater stanie obok.
+- **W izbie** napis bez `look:` nie jest drogowskazem, tylko niewidocznym miejscem w izbie, które samo „mówi”, gdy bohater
+  stanie obok, np. puste łóżko Dobrawy w `h1-home` (`jawia:` mówi, co widać, a `nawia:` co mówi cień matki). Nie zawadza
+  w chodzeniu.
 
 Rozmowę zaczyna klawisz ciosu (Z / J / Enter, na padzie A), gdy bohater stoi obok. W rozmowie: góra/dół wybiera odpowiedź,
 klawisz ciosu albo Shift potwierdza. Naciśnięcie w trakcie pisania kwestii pokazuje ją od razu w całości.
@@ -103,8 +106,27 @@ klawisz ciosu albo Shift potwierdza. Naciśnięcie w trakcie pisania kwestii pok
 To, co zapisze `[+nazwa]`, jest pamiętane do końca rozgrywki i widzą to wszystkie rozmowy. Nazwy są dowolne; dobrze poprzedzać
 je imieniem postaci (`starzec.poznany`), żeby się nie myliły. Po odświeżeniu strony gra zaczyna od zera: zapisu stanu jeszcze nie ma.
 
-Na razie pamięć rozmów nie wpływa na świat (nie otworzy bramy, nie da przedmiotu). Jeśli scenariusz tego potrzebuje, to jest
-zmiana w kodzie: patrz [DEVELOPER.md](DEVELOPER.md), sekcja o rozmowach.
+## Przedmioty
+
+Trzy znaczniki mają w grze skutek: dają bohaterowi to, czego bez nich nie ma.
+
+| Znacznik | Co daje | Bez niego |
+|---|---|---|
+| `[+ma.miecz]` | miecz | klawisz ciosu tylko zaczyna rozmowę |
+| `[+ma.tarcza]` | tarczę (bohater od razu jest rysowany z tarczą) | nie ma gardy |
+| `[+ma.kurzy-bog]` | kurzego boga: obrót świata | Shift pokazuje tylko „Nie masz czego przekręcić” |
+
+Bohater dostaje przedmiot w chwili, gdy rozmowa się kończy. Dobrze jest powiedzieć to graczowi kwestią narratora
+(sam znak `@`, bez imienia), np. `Racibor daje ci miecz i okrągłą tarczę.` Przykład: węzeł `dziad.bron` w
+`src/story/village.dialog.txt`.
+
+Na tych samych znacznikach można opierać rozmowy: `-> zielarka.bezbroni unless ma.miecz` (Radochna nie da kamienia
+komuś bez broni), `-> dziecko.potem if ma.miecz` (Staś poznaje miecz dziadka).
+
+Gra startuje bez żadnego z nich. Skrót dla testów `?room=...` (wejście od razu do pokoju) daje wszystkie trzy.
+
+Innych skutków w świecie (otwarcia bramy, zmiany pokoju) pamięć rozmów na razie nie ma. Jeśli scenariusz tego potrzebuje,
+to jest zmiana w kodzie: patrz [DEVELOPER.md](DEVELOPER.md), sekcja o rozmowach.
 
 ## Ograniczenia, o których warto wiedzieć przy pisaniu
 

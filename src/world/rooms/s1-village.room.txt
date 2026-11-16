@@ -1,4 +1,6 @@
 // The village: a bright morning, hens in the yard, nothing that can hurt you. Walk, talk, look around.
+// The morning after the strzyga took Dobrawa: Staś (2) saw it, Sulichna (1) sends Sambor to old Racibor (3),
+// who gives him a sword and a shield and sends him to Radochna in her hut (5) for the hag stone.
 // Both houses can be entered (4: the hero's home, where the game starts; 5: the herbalist's hut).
 // The garden in the corner is fenced (J): what the living built is not there in Nawia.
 // Under the old linden (O) the dead of the village stand, and only show on the other side.
@@ -30,7 +32,7 @@ sign 2:
 
 sign 3:
   look: elder
-  jawia: @starzec
+  jawia: @dziad
 
 door 4: home
 door 5: hut
