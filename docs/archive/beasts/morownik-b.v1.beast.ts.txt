@@ -1,0 +1,172 @@
+// Archived: src/art/beasts/morownik-b.beast.ts as it was (commit a2e14c3) before the animation pass of 2026-11-16
+// (the four-frame walk, the three-frame attack, the flinch). Kept so the earlier drawing can be compared or restored.
+
+// M14, Morownik: plague bells. An alternative to P2 (the game's purple bulb). 16 x 16, facing us; it never moves.
+//
+// The idea: a growth of the blight (skaza) on cursed ground, read as a fungus rather than a flower: three tall,
+// waxy, corpse-pale stalks out of a rotten purple mound, each ending in a heavy bell-shaped head that hangs like a
+// mourner's (the white "corpse plant" of the forest floor, grown wrong). The blight climbs the stalks from below;
+// a sickly light glows in the mouth under each head and drips from it.
+//
+// How it moves: it breathes. The heads lift a pixel (the in-breath) and sink a pixel (the out-breath).
+// How it attacks: the wind-up turns all three heads up to face you, their glowing mouths open like eyes; the
+// blow throws them forward as each one bursts out a puff of spores.
+//
+// Nawia: the same frames in other colours. The pale wax goes dark and only its lit edges glow a cold green; the
+// mound and the blight on the stalks burn violet, so you can see what feeds it.
+
+import type { Beast } from './beast.ts';
+
+const W = 16;
+const H = 16;
+
+/** Lays parts on an empty frame, each moved `dx` columns and `dy` rows; a later part covers an earlier one. */
+function put(...parts: [number, number, string[]][]): string[] {
+  const grid = Array.from({ length: H }, () => Array<string>(W).fill('.'));
+  for (const [dx, dy, rows] of parts)
+    rows.forEach((r, y) =>
+      [...r].forEach((ch, x) => {
+        const tx = x + dx;
+        const ty = y + dy;
+        if (ch !== '.' && tx >= 0 && tx < W && ty >= 0 && ty < H - 1) grid[ty][tx] = ch;
+      }),
+    );
+  return grid.map((r) => r.join(''));
+}
+/** a part drawn on rows `top`.. of the frame */
+const at = (top: number, rows: string[]): string[] => [...Array<string>(top).fill('.'.repeat(W)), ...rows];
+
+// the tall one in the middle, nodding to the right; thin under the head, thicker where the blight climbs it
+const MID = at(1, [
+  '.......www......',
+  '......wwwWW.....',
+  '......wwWWWG....',
+  '......wWEgGE....',
+  '.......wW.g.....',
+  '.......wW.......',
+  '.......wWW......',
+  '.......wW.......',
+  '.......wW.......',
+  '......wwW.......',
+  '......wWe.......',
+  '......wWE.......',
+  '......eWE.......',
+]);
+// the short one on the left, nodding to the left
+const LEFT = at(7, [
+  '.ww.............',
+  'wwwW............',
+  'wWWWw...........',
+  'GgEWw...........',
+  '.g.wW...........',
+  '...wW...........',
+  '...eE...........',
+]);
+// the one on the right, nodding to the right
+const RIGHT = at(9, [
+  '..........ww....',
+  '..........wwWW..',
+  '..........wWWWG.',
+  '..........wEgGE.',
+  '..........eW.g..',
+]);
+const MOUND = at(13, ['..KkeEkeEkkeEK..', '..kKKkkKkKkkk...']);
+
+// heads turned to face us, mouths open and glowing
+const MID_FACE = at(0, [
+  '.......ww.......',
+  '......wwwW......',
+  '.....wGEEGW.....',
+  '.....GEhgEG.....',
+  '......GEEG......',
+  '.......wW.......',
+  '.......wW.......',
+  '.......wWW......',
+  '.......wW.......',
+  '.......wW.......',
+  '......wwW.......',
+  '......wWe.......',
+  '......wWE.......',
+  '......eWE.......',
+]);
+const LEFT_FACE = at(6, [
+  '.ww.............',
+  'wwwW............',
+  'GEEG............',
+  'EhgE............',
+  '.GGwW...........',
+  '...wW...........',
+  '...wW...........',
+  '...eE...........',
+]);
+const RIGHT_FACE = at(8, [
+  '...........ww...',
+  '..........wwwW..',
+  '..........GEEEG.',
+  '..........EhgEG.',
+  '...........GGG..',
+  '..........eW....',
+]);
+// the burst: a puff from each mouth
+const SPORES = at(0, [
+  '...hhg...hhg....',
+  '..hhhgg.hhhgg...',
+  '...hgg...hgg....',
+  '................',
+  'hhg.............',
+  'hhgg.........hhg',
+  '.gg.........hhgg',
+  '.............gg.',
+]);
+
+/** a breath of spores leaving the tall one on the out-breath */
+const WISP = at(7, ['...........hg...', '............g...']);
+
+const STAND = put([0, 0, MID], [0, 0, LEFT], [0, 0, RIGHT], [0, 0, MOUND]);
+const INHALE = put([0, -1, MID], [0, -1, LEFT], [0, -1, RIGHT], [0, 0, MOUND]);
+const EXHALE = put([0, 1, MID], [0, 1, LEFT], [0, 1, RIGHT], [0, 0, MOUND], [0, 0, WISP]);
+const WINDUP = put([0, 0, MID_FACE], [0, 0, LEFT_FACE], [0, 0, RIGHT_FACE], [0, 0, MOUND]);
+const BURST = put([0, 1, MID_FACE], [0, 1, LEFT_FACE], [0, 1, RIGHT_FACE], [0, 0, MOUND], [0, 0, SPORES]);
+
+export const BEAST: Beast = {
+  code: 'M14',
+  id: 'morownik-b',
+  kind: { pl: 'Morownik', en: 'Blight bloom' },
+  name: { pl: 'morowe dzwonki', en: 'plague bells' },
+  note: {
+    pl: 'Woskowe łodygi zarazy zwieszają łby jak żałobnicy. Gdy ktoś podejdzie, unoszą je i dmuchają zarodnikami.',
+    en: 'Waxy stalks of the blight hang their heads like mourners. Come close and they lift them and puff out spores.',
+  },
+  alt: ['P2'],
+  w: 16,
+  h: 16,
+  view: 'front',
+  ink: 'dark',
+  outline: 0x1a1018,
+  pal: {
+    w: 0xe6dcd6, // the wax, lit
+    W: 0xa8a0ae, // the wax, in shadow
+    G: 0x625a6e, // the inside of the heads
+    g: 0xc8dc5a, // the sick light in the mouths, and the spores
+    h: 0xeef6a0, // the spores, lit
+    k: 0x2a1830, // the mound
+    K: 0x4a2a52,
+    e: 0x8a6a7a, // the blight climbing the stalks
+    E: 0x5a3a52,
+  },
+  frames: { stand: STAND, walk: [INHALE, EXHALE], attack: [WINDUP, BURST] },
+  nawia: {
+    pal: {
+      w: 0x9ad8b4, // only the lit edges glow
+      W: 0x2c3638,
+      G: 0x1c2026,
+      g: 0xe4ff7a,
+      h: 0xf8ffd8,
+      k: 0x24103a,
+      K: 0x7a3ab0, // the blight burns violet
+      e: 0xa858d8,
+      E: 0x4a2266,
+    },
+    note: { pl: 'Wosk ciemnieje, a zaraza w kopcu i na łodygach pali się fioletem.', en: 'The wax goes dark and the blight in the mound and stalks burns violet.' },
+  },
+};

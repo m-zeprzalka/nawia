@@ -6,16 +6,29 @@
 // head under an ash-grey shawl whose points stand up like the bends of folded wings, the black hair down over
 // the face (only the point of a nose shows through it, sharp as a beak), the hands held up in front of her
 // chest like a bird's claws, the nails long and yellow, the feet long-toed under a dress brown with grave earth.
+//   walk     a stalking walk on long toes, the weight swaying over the standing leg, the head jerking down at
+//            each step like a crow's;
+//   wind-up  she throws her arms out and the shawl opens like wings, up on her toes, the head lifted, and two
+//            sparks of eyes show through the hair;
+//   blow     she drops onto you with both claws, the jaw falling open below the hair on two rows of teeth;
+//   recover  bent double, the head hung below the shoulders, the hair to the ground, the arms hanging limp;
+//   hurt     the head snapped back and the hair flung off the face for a moment: a gaunt dead face, the eyes
+//            two sparks in their sockets, the mouth dropped open; the shoulders jerked up, the claws curled.
 //
-// How it moves: a stalking walk on long toes, the weight swaying over the standing leg, the head jerking down
-// at each step like a crow's.
-// How it attacks: she throws her arms out and the shawl opens like wings (the wind-up), then she drops onto
-// you with both claws, the jaw falling open below the hair on two rows of teeth.
-//
-// Nawia: there you see the other soul, and it is a bird of cold light: wings spread, a crest of light where
-// the hair was, a white face with two dark slits for eyes and the mouth open in the strzyga's screech; behind
-// the ribs of light in its breast the second heart burns red. It beats its wings, then dives at you claws
-// first.
+// Nawia: there you see the other soul, a strix of cold light, all bones and ragged feathers: the hair streams
+// up from a peaked hood of light like cold flame, the face inside the hood is nothing but dark with two slanted
+// slits of light for eyes, ribs of light stand over the dark of the breast, and behind them the second heart
+// burns red; long bird legs end in open talons. It has a dark line round it, so the light does not dissolve
+// into the dark floor.
+//   walk     the flight: the wings beat (up, level, down, level), the body sinking on the upbeat and rising
+//            on the downbeat;
+//   wind-up  the wings thrown up high in a V, the talons drawn up, the eyes blazing into two white blocks and
+//            the jaw dropped open;
+//   blow     the dive: the wings swept back close to the head, the talons thrown forward and wide;
+//   recover  overshot and spent, the wings hanging to the ground, the hood hung forward, the eyes dim, the
+//            talons dragging;
+//   hurt     the wings jerked up and back, the head snapped back with the eyes screwed shut and the jaw open,
+//            the talons curled, the body a row shorter.
 
 import type { Beast } from './beast.ts';
 
@@ -90,7 +103,7 @@ const WINDUP = [
   '.nt.......hHhh.......Sn.',
   '.ksc.....hHhhhh.....cSC.',
   '.kccc...hHhhhhhh...cccC.',
-  '..kccc..hHhhhhhh..cccC..',
+  '..kccc..hHnhhnhh..cccC..',
   '..kc.cc.hHhthhhh.cc.cC..',
   '...k.c.chHhtShhhc.c.C...',
   '...k...chHhhhhHhC...C...',
@@ -122,7 +135,7 @@ const STRIKE = [
   '....kcccchHhhhhhhcccC...',
   '...kccc.hHhhhhhhh.ccC...',
   '..kcc...hHhhhhShh..cCC..',
-  '..kc.c..hHhhhhhhh.c.cC..',
+  '..kc.c..hHnhhhnhh.c.cC..',
   '..ts....hHtnnthHh...sS..',
   '.ts.....hHrrrrHh.....sS.',
   'nts.....whrrrrhL.....sSn',
@@ -138,6 +151,63 @@ const STRIKE = [
   '........................',
 ];
 
+/** the recovery: spent after the drop, bent double, the head hung below the shoulders, the hair to the ground,
+ *  the arms hanging limp, the knees bent */
+const RECOVER = [
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '.....k............C.....',
+  '.....kc..........cC.....',
+  '....kccc........cccC....',
+  '....kcccc......ccccC....',
+  '...kccccchHhhhhcccccC...',
+  '...kc.cchHhhhhhhcc.cC...',
+  '...k..cchHhhhhhhc...C...',
+  '...t...chHhhhhhh.S..C...',
+  '...ts...hHhhhhHh..sS....',
+  '...ts...hHhhhhHh..sS....',
+  '....s...hHhhhhHh...S....',
+  '....s...whHhhHhL...S....',
+  '....s...wlhHHhLL...s....',
+  '....n...wlLhhLlL...N....',
+  '...n.n..wlLlLlLL..N.N...',
+  '........wlL..lLL........',
+  '.........tS..sS.........',
+  '........ts....sS........',
+  '.......nsnn..nnSn.......',
+  '........................',
+];
+/** the flinch: the head snapped back and the hair flung off the face (a gaunt face, the eyes two sparks, the mouth
+ *  open), the shoulders jerked up, the claws curled to the chest */
+const HURT = [
+  '.....h..H......H..h.....',
+  '....k.h.hH....Hh.h.C....',
+  '....kc.hHhhhhhhhh.cC....',
+  '....kcchHsttttShhccC....',
+  '...kccchSnSttSnShcccC...',
+  '...kcccchSsttsShccccC...',
+  '...kc.cc.SsrrsS.cc.cC...',
+  '...k..c..tSrrSS..c..C...',
+  '...k.....sSrrSS.....C...',
+  '......ts..tSSS..sS......',
+  '.....tsn..wlLl..nsS.....',
+  '.....nn.n.wllLl.n.NN....',
+  '.........wlllLlL........',
+  '.........wllLlLL........',
+  '.........wlLlLLL........',
+  '.........wlLlLLL........',
+  '.........wlL.lLL........',
+  '..........tS.sS.........',
+  '..........tS.sS.........',
+  '..........s..sS.........',
+  '.........ts...sS........',
+  '........nsnn.nnSn.......',
+  '........................',
+  '........................',
+];
+
 const stand = stack([0, 18, LEGS.stand], [0, 0, UPPER]);
 // the stalk: a long step, the weight swaying over the standing leg and the head jerking down like a crow's;
 // then the other
@@ -148,123 +218,245 @@ const walk = [
   stack([0, 18, LEGS.stand], [0, 0, UPPER]),
 ];
 
-// ------------------------------------------------------------------ Nawia: the other soul, a bird of light
+// ------------------------------------------------------------------ Nawia: the other soul, a strix of cold light
 
-/** the head: a crest of light where the hair was, a white face, two dark slits for eyes, the mouth open in a screech */
-const SOUL_HEAD = [
-  '..........b.b...........',
-  '.........b.bb.b.........',
-  '.........abbab..........',
-  '..........aWWa..........',
-  '.........aWWWWa.........',
-  '.........aeWWea.........',
-  '.........aWWWWa.........',
-  '..........aeea..........',
-  '..........aeea..........',
-];
-/** the breast: ribs of light, the second heart burning red behind them; the tail streaming under it */
-const SOUL_BODY = [
-  '..........aaaa..........',
-  '.........aWWWWa.........',
-  '........aWcRRcWa........',
-  '........aWcRQcWa........',
-  '.........aWccWa.........',
-  '..........aWWa..........',
-  '.........baaaab.........',
-  '........cbaWWabc........',
-  '.......cbaabbaabc.......',
-  '......dcb.abba.bcd......',
-  '......d.c.b..b.c.d......',
-  '........d.c..c.d........',
-];
-/** the wings, spread: raised, level, down */
-const WINGS = {
-  up: [
-    '.dc..................cd.',
-    '.dcb................bcd.',
-    '..dcb..............bcd..',
-    '..dcba............abcd..',
-    '...dcba..........abcd...',
-    '...dcbaa........aabcd...',
-    '....dcbaa......aabcd....',
-    '....d.cbaa....aabc.d....',
-    '.....d.c.b....b.c.d.....',
-    '......d..c....c..d......',
-    '.........d....d.........',
-  ],
+/** A pair of wings from the left one (12 columns): the right is its mirror, a shade darker, since the light
+ *  comes from the upper left. */
+const DIM: Record<string, string> = { W: 'a', a: 'b', b: 'c', c: 'c', d: 'd' };
+const pair = (left: string[]): string[] => left.map((r) => r + [...r].reverse().map((ch) => DIM[ch] ?? ch).join(''));
+
+/** the left wing in each pose, rows from the top of the soul; the shoulder is at row 9 */
+const WING = {
+  /** spread level, the ragged flight feathers hanging from it */
   level: [
-    '........................',
-    '........................',
-    '........................',
-    'cb....................bc',
-    'dcbaa..............aabcd',
-    '.dcbbaaa........aaabbcd.',
-    '.dccbbbaaa....aaabbbccd.',
-    '..d.cc.bb.a..a.bb.cc.d..',
-    '..d..c..b......b..c..d..',
-    '.....d..c......c..d.....',
-    '........d......d........',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '...aaa......',
+    '.aabbbaa....',
+    'abbcbbbbaaa.',
+    'bcbccbccbb..',
+    'cc.cdc.cdc..',
+    'c.dc.c.d.c..',
+    'd.d..c..d...',
+    'd..d.d......',
+    '...d........',
   ],
+  /** raised high over the head */
+  up: [
+    'a...........',
+    'ba..........',
+    'cba.........',
+    'cbba........',
+    'dcbba.......',
+    'd.cbba......',
+    '.dccbaa.....',
+    '.d.cbbaa....',
+    '..d.ccbaa...',
+    '...d.ccbaaa.',
+    '.....d.ccb..',
+    '......d.c...',
+  ],
+  /** beaten down */
   down: [
-    '........................',
-    '........................',
-    '........................',
-    '........................',
-    '........aa....aa........',
-    '......aaba....abaa......',
-    '....aabbcb....bcbbaa....',
-    '...abbcc.c....c.ccbba...',
-    '..abcc.d..c..c..d.ccba..',
-    '..bc.d..d........d..cb..',
-    '..c..d............d..c..',
-    '..d....................d',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '.......aaa..',
+    '....aabbbaa.',
+    '..aabbccbb..',
+    '.abbcc.cc...',
+    'abc.c.dc....',
+    'bc.d..d.....',
+    'c.d.........',
+    'd...........',
+    'd...........',
+  ],
+  /** swept up and back for the dive, close to the head */
+  swept: [
+    '....a.......',
+    '....ba......',
+    '...dba......',
+    '...dcba.....',
+    '..d.cba.....',
+    '..d.cbba....',
+    '...dccba....',
+    '....dcbaa...',
+    '.....dcbaa..',
+    '......dcba..',
+  ],
+  /** hanging limp to the ground */
+  droop: [
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '............',
+    '.......aaa..',
+    '.....aabbb..',
+    '....abbcc...',
+    '...abcc.c...',
+    '..abc.c.d...',
+    '..bc.dc.....',
+    '.bc.d.d.....',
+    '.c.d..d.....',
+    'cd.d........',
+    'c..d........',
+  ],
+  /** jerked up and back by the blow, crumpled */
+  flung: [
+    '............',
+    '..a.........',
+    '..ba..a.....',
+    '.dcbaab.....',
+    '.d.cbba.....',
+    '..d.cbbaa...',
+    '...d.cbbaa..',
+    '....d.ccba..',
+    '......d.cb..',
   ],
 };
-/** the dive: wings swept back behind it, the claws thrown forward at you */
-const SOUL_DIVE = [
-  '........................',
-  '..dc................cd..',
-  '..dcb..............bcd..',
-  '...dcb...b.b......bcd...',
-  '...dcba.b.bb.b...abcd...',
-  '....dcba.abbab..abcd....',
-  '....dcbaa.aWWa.aabcd....',
-  '.....dcbaaeWWeaabcd.....',
-  '.....dcbaaWWWWaabcd.....',
-  '......dcbaaeeaabcd......',
-  '.......dcbaeeaabcd......',
-  '........dbaaaabd........',
-  '.........aWWWWa.........',
-  '........aWcRRcWa........',
-  '........aWcRQcWa........',
-  '.........aWccWa.........',
-  '.........aaWWaa.........',
-  '........aW.aa.Wa........',
-  '.......aW......Wa.......',
-  '......WaW......WaW......',
-  '.....W.W.W....W.W.W.....',
-  '........................',
-  '........................',
-  '........................',
+
+/** the head: the hair streaming up like cold flame, a hood of light round a long dark face, the eyes two slits of light */
+const HEAD = [
+  '..........a.............',
+  '.........a..ab..........',
+  '..........aaa.b.........',
+  '.........aabbbc.........',
+  '........aabeebbc........',
+  '........aeeeeeec........',
+  '........aWeeeeWc........',
+  '........aeWeeWec........',
+  '.........aeeeec.........',
+  '..........aeec..........',
 ];
-const soul = (wings: string[], dy: number): string[] => stack([0, dy + 1, wings], [0, dy + 8, SOUL_BODY], [0, dy, SOUL_HEAD]);
+/** the head as it winds up: the slits blaze, the jaw drops open on a row of teeth */
+const HEAD_FLARE = [
+  '.......a..a..b..........',
+  '........aa.ab.b.........',
+  '.........aaab...........',
+  '.........aabbbc.........',
+  '........aabeebbc........',
+  '........aWWeeWWc........',
+  '........aWWeeWWc........',
+  '........aeeeeeec........',
+  '.........eaeeae.........',
+  '.........aeeeec.........',
+  '..........eeee..........',
+];
+/** the head hung, spent: the hood forward, the face turned down, the slits gone dim */
+const HEAD_HUNG = [
+  '........................',
+  '........................',
+  '........................',
+  '..........a.b...........',
+  '.........aabbc..........',
+  '........aabbbbbc........',
+  '........abbbbbbc........',
+  '........aeeeeeec........',
+  '........aeceecec........',
+  '.........aeeeec.........',
+];
+/** the head snapped back: the hair flung behind, the face tilted up, the slits screwed shut, the jaw open */
+const HEAD_BACK = [
+  '.....a..........b.......',
+  '......a.a....b.b........',
+  '.......aaabbbbc.........',
+  '........aabbbbbc........',
+  '........aeeeeeec........',
+  '........abbeebbc........',
+  '.........eeeeee.........',
+  '.........eWeeWe.........',
+  '..........eeee..........',
+];
+/** the breast: ribs of light, the second heart burning red behind them */
+const BREAST = [
+  '...........ab...........',
+  '........aWWWWWWc........',
+  '........a..RR..c........',
+  '........aWWRQWWc........',
+  '.........a.QQ.c.........',
+  '.........aWWWWc.........',
+  '..........b..c..........',
+];
+/** the legs: long, the talons hanging open; drawn up and spread; thrown forward; dragging; curled */
+const TALONS = {
+  hang: [
+    '..........b..c..........',
+    '..........a..c..........',
+    '.........a....b.........',
+    '........aW....Wb........',
+    '.......W.W....W.W.......',
+  ],
+  up: [
+    '.........ab..cb.........',
+    '........aW....Wb........',
+    '.......W.W....W.W.......',
+  ],
+  strike: [
+    '.........ab..cb.........',
+    '........ab....cb........',
+    '.......ab......cb.......',
+    '......aW........Wb......',
+    '.....W.W.W....W.W.W.....',
+    '....W.....W..W.....W....',
+  ],
+  drag: [
+    '..........b..c..........',
+    '.........a....c.........',
+    '........aW....Wc........',
+    '.......W.W.WW.W.W.......',
+  ],
+  curl: [
+    '.........ab..cb.........',
+    '.........WW..WW.........',
+  ],
+};
+
+/** the soul with its wings in a pose, its head and its legs, `dy` rows down */
+const soul = (wing: string[], head: string[], talons: string[], dy: number, breast = 10, legs = 16): string[] =>
+  stack([0, dy, pair(wing)], [0, dy + breast, BREAST], [0, dy + legs, talons], [0, dy, head]);
+
 const SOUL_FRAMES = {
-  stand: soul(WINGS.level, 2),
-  // the flight: the wings beat (up, level, down, level), the body rising a pixel on the downbeat
-  walk: [soul(WINGS.up, 3), soul(WINGS.level, 2), soul(WINGS.down, 1), soul(WINGS.level, 2)],
-  // the wings thrown up and back, it rises; then it dives at you, the claws first
-  attack: [soul(WINGS.up, 0), SOUL_DIVE],
+  stand: soul(WING.level, HEAD, TALONS.hang, 1),
+  // the flight: the wings beat (up, level, down, level); the body sinks on the upbeat and rises on the downbeat
+  walk: [soul(WING.up, HEAD, TALONS.hang, 2), soul(WING.level, HEAD, TALONS.hang, 1), soul(WING.down, HEAD, TALONS.hang, 0), soul(WING.level, HEAD, TALONS.hang, 1)],
+  attack: [
+    // the wind-up: the wings thrown up high, the talons drawn up, the slits blazing, the jaw open
+    soul(WING.up, HEAD_FLARE, TALONS.up, 0, 11, 17),
+    // the blow: it dives at you, the wings swept back, the talons thrown forward and wide
+    soul(WING.swept, HEAD, TALONS.strike, 2),
+    // the recovery: overshot and spent, the wings hanging to the ground, the head hung, the talons dragging
+    soul(WING.droop, HEAD_HUNG, TALONS.drag, 3, 10, 16),
+  ],
+  // the flinch: the wings jerked up, the head snapped back, the talons curled, the body squashed a row
+  hurt: soul(WING.flung, HEAD_BACK, TALONS.curl, 2, 9, 15),
 };
 const SOUL_PAL = {
-  W: 0xf4fbff, // the white core of it
-  a: 0xbce8f6,
+  W: 0xf4fbff, // the white core of it: the eyes, the ribs, the talons
+  a: 0xbce8f6, // the cold light, where it is brightest
   b: 0x74b0dc,
   c: 0x3e68a6,
   d: 0x263670, // the feather tips going out into the dark
-  e: 0x0e1236, // the eyes, the mouth
+  e: 0x080a1e, // the face: nothing but dark
   R: 0xff4a50, // the second heart
   Q: 0xa81c40,
 };
+const SOUL_LINE = 0x05061a;
 
 export const BEAST: Beast = {
   code: 'M11',
@@ -272,24 +464,24 @@ export const BEAST: Beast = {
   kind: { pl: 'Strzyga', en: 'Strzyga' },
   name: { pl: 'strzyga o dwóch duszach', en: 'the strzyga with two souls' },
   note: {
-    pl: 'W Jawii ciało: zgarbione jak ptak na gałęzi, włosy na twarzy, szpony. Ma drugą duszę w Nawii i trzeba zabić obie.',
-    en: 'In Jawia the body: hunched like a bird on a branch, hair over the face, claws. Her other soul is in Nawia; kill both.',
+    pl: 'W Jawii ciało: zgarbione jak ptak na gałęzi, włosy na twarzy, szpony. Rozkłada chustę jak skrzydła i spada na ciebie; trafiona odrzuca głowę i widać martwą twarz. Ma drugą duszę w Nawii i trzeba zabić obie.',
+    en: 'In Jawia the body: hunched like a bird on a branch, hair over the face, claws. She spreads her shawl like wings and drops on you; struck, her head snaps back and the dead face shows. Her other soul is in Nawia; kill both.',
   },
   alt: ['P9', 'P10', 'E3', 'E4'],
   w: W,
   h: H,
   view: 'front',
   pal: PAL,
-  frames: { stand, walk, attack: [WINDUP, STRIKE] },
+  frames: { stand, walk, attack: [WINDUP, STRIKE, RECOVER], hurt: HURT },
   ink: 'rim',
   outline: DARK,
   nawia: {
     pal: SOUL_PAL,
     frames: SOUL_FRAMES,
-    ink: { ink: 'none' },
+    ink: { ink: 'dark', outline: SOUL_LINE },
     note: {
-      pl: 'W Nawii jej druga dusza: ptak z zimnego światła, z białą twarzą otwartą w krzyku i drugim sercem w piersi.',
-      en: 'In Nawia, her other soul: a bird of cold light, its white face open in a screech, the second heart in its breast.',
+      pl: 'W Nawii jej druga dusza: strzyga-ptak z zimnego światła, w kapturze z ciemną twarzą i oczami jak szpary światła, z drugim sercem za żebrami. Podrywa skrzydła, a oczy jej płoną, potem nurkuje szponami naprzód.',
+      en: 'In Nawia, her other soul: a strix of cold light, a dark face in a hood with slits of light for eyes, the second heart behind its ribs. It throws its wings up, eyes blazing, then dives talons first.',
     },
   },
 };

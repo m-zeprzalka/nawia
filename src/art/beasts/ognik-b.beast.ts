@@ -6,13 +6,17 @@
 //
 // How it moves: like a light someone is carrying. The flame leans one way, sinks and squats, leans the other way,
 // stretches up and splits at the tip, so it sways at the pace of a walker nobody can see.
-// How it attacks: it gathers itself into a small dark-red knot (the wind-up), then flares into a burst of fire
-// and spits a gob of it down at you.
+// How it attacks: it rises and pulls itself into a tight knot, white-hot at the heart, sparks streaking in at it
+// from all round (the wind-up: small, but the hottest thing on the screen); then it flares into a burst of fire
+// and spits a gob of it down at you (the blow); then it gutters, low, red and small, a wisp of smoke going up
+// off it (the recovery, the moment to step in). Hit, it is blown aside and torn into tongues.
 //
 // Nawia: you can see it is a soul. The same light turns cold, and inside it stands whoever carries it: the shadow
 // of a surveyor in a wide hat, his eyes two white points, his measuring pole (bone-white, marked with the measure,
-// a cross-staff on top) in one hand and a surveyor's chain hanging from the other. He sways in step with the light;
-// to strike he dims, lifts the pole and drives it down as the cold light flares.
+// a cross-staff on top) in one hand and a surveyor's chain hanging from the other. He sways in step with the light.
+// To strike he lifts the pole and the light draws in round him until his whole outline burns white and his eyes
+// flare; then he drives the pole down as the cold light flares; then the light sinks dim and he stoops on the
+// pole, his head bowed, the chain dragging. Hit, he is thrown back, the hat tipped, the light torn sideways.
 //
 // The light has no line ('none'): its darkest red is its edge on the grass. In Nawia the line is a dim blue, so it
 // reads as the last ring of the glow.
@@ -132,22 +136,25 @@ const WALK = [
     '................',
   ],
 ];
-/** the wind-up (it draws itself into a dark knot, a little higher) and the blow (it flares and spits fire down) */
+/**
+ * The wind-up (it rises and pulls itself into a tight knot, white-hot at the heart, sparks streaking in at it),
+ * the blow (it flares and spits fire down), the recovery (it gutters low and red, smoking).
+ */
 const ATTACK = [
   [
-    '................',
-    '................',
     '........r.......',
-    '.......rR.......',
-    '.......roR......',
-    '......royoR.....',
-    '......ryWyR.....',
-    '......royoR.....',
-    '.......RrR......',
-    '................',
-    '................',
-    '................',
-    '................',
+    '...r....o....r..',
+    '....o.......o...',
+    '.......RR.......',
+    '......RyyR......',
+    '.....RyWWyR.....',
+    'ro..ryWWWWyr..or',
+    '.....RyWWWyR....',
+    '......RyWyR.....',
+    '....o..RyR..o...',
+    '...r....R....r..',
+    '........o.......',
+    '........r.......',
     '................',
     '................',
     '................',
@@ -170,6 +177,43 @@ const ATTACK = [
     '........r.......',
     '................',
   ],
+  [
+    '................',
+    '................',
+    '................',
+    '................',
+    '.......g........',
+    '........g.......',
+    '.......G........',
+    '......G.g.......',
+    '.......G........',
+    '........r.......',
+    '.......ro.......',
+    '......royR......',
+    '.....royyoR.....',
+    '.....RroorR.....',
+    '......RRRR......',
+    '................',
+  ],
+];
+/** hit: blown aside, the base knocked one way and the tip torn off into tongues the other */
+const HURT = [
+  '................',
+  '.o..............',
+  'or...o..........',
+  '.....ro.........',
+  '..o...roo.......',
+  '.or....royoR....',
+  '.......ryWyoR...',
+  '......royWWyoR..',
+  '......oyWWWyoR..',
+  '......oyyWWyoR..',
+  '......royyyyoR..',
+  '.......royyorR..',
+  '........RroRR...',
+  '................',
+  '................',
+  '................',
 ];
 
 // ------------------------------------------------------------------ Nawia: the soul inside the light
@@ -205,24 +249,28 @@ const NSTAND_B = [
   '................',
 ];
 const NWALK = [put([-1, 0, NSTAND]), put([0, 1, NSTAND_B]), put([1, 0, NSTAND]), NSTAND_B];
-/** the wind-up (the light dims to a ring, the pole is lifted, the hand at the top) and the blow (it flares) */
+/**
+ * The wind-up (the pole lifted, the hand at the top; the light draws in round him until his outline burns white,
+ * his eyes flare, sparks streak in), the blow (it flares as he drives the pole down), the recovery (the light sinks
+ * dim and low; he stoops on the pole, head bowed, no eyes, the chain dragging).
+ */
 const NATTACK = [
   [
-    '......ooo...b...',
-    '.....oDDDo..d...',
-    '....ooDDDoo.b...',
-    '...oDDDDDDDoho..',
-    '....oDeDeDoDd...',
-    '...RroDDDoDob...',
-    '...roDDDDDorb...',
-    '..RoDDDDDDord...',
-    '..RoDoDDDDorb...',
-    '...oDoDDDDorb...',
-    '..ohooDDDDoRd...',
-    '...droDDDDDo....',
-    '...boDDDDDDo....',
-    '....dDoDDoDo....',
-    '.....oDooDo.....',
+    'r.....yWy....b.r',
+    '.o...WDDDW...d..',
+    '....WWDDDWW..b..',
+    '..WDDDDDDDDDWh..',
+    '...WDeDDDeDWyd..',
+    '.r.yWDDDDDWy.b..',
+    '...WDDDDDDDWyb..',
+    '..WDDDDDDDDWyd.r',
+    'o.WDWDDDDDDWyb..',
+    '...WDWDDDDDWyb..',
+    '..WhWWDDDDDWyd..',
+    '..rdyWDDDDDWy...',
+    '.r.byWDDDDDDy..o',
+    '....dWDyDDyDy...',
+    '.....yDyyDy.....',
     '................',
   ],
   [
@@ -243,6 +291,43 @@ const NATTACK = [
     '...RodDWDDWDWd..',
     '................',
   ],
+  [
+    '................',
+    '................',
+    '................',
+    '................',
+    '......rrr.......',
+    '.....rDDDr......',
+    '.....oDDDo......',
+    '..rroDDDDDDorr..',
+    '...roDDDDDDDhb..',
+    '...rDDDDDDDDob..',
+    '..roDDDDDDDDr.b.',
+    '..rhoDDDDDDDr.b.',
+    '..dRoDDDDDDDr..b',
+    '..b.roDDDoDr...d',
+    '..d..rDrrDr.....',
+    '................',
+  ],
+];
+/** hit: thrown back, the hat tipped up, the pole flung back over his shoulder, the light torn off sideways */
+const NHURT = [
+  '..........bdb...',
+  '.o.....oyy.d....',
+  'or....oyDDyb....',
+  '.....oyDDDDb....',
+  '..o.oyDDDDDDy...',
+  '....oyyyDDDDyo..',
+  '.o..royDDDDDDyo.',
+  'or..roDDDDDDDhyR',
+  '....ryDDDDDDDyoR',
+  '.o..ryDyDDDDDyoR',
+  '...hryDyDDDDyoR.',
+  '..bdroyDDDDDyoR.',
+  '..d..ryDDDDDyR..',
+  '.....RyDyyDyR...',
+  '......RyRRyR....',
+  '................',
 ];
 
 export const BEAST: Beast = {
@@ -251,8 +336,8 @@ export const BEAST: Beast = {
   kind: { pl: 'Ognik', en: 'Wisp' },
   name: { pl: 'ognik mierniczego', en: "the surveyor's wisp" },
   note: {
-    pl: 'Ciepłe światełko kołysze się nad bagnem jak czyjaś latarnia i wabi w topiel. Gdy ktoś podejdzie, zbiera się i bucha ogniem.',
-    en: "A warm light sways over the bog like someone's lantern and lures you in. Come close and it gathers itself and spits fire.",
+    pl: 'Ciepłe światełko kołysze się nad bagnem jak czyjaś latarnia i wabi w topiel. Gdy ktoś podejdzie, ściąga się w biały od żaru węzeł, bucha ogniem i przygasa, dymiąc.',
+    en: "A warm light sways over the bog like someone's lantern and lures you in. Come close and it pulls into a white-hot knot, spits fire, then gutters, smoking.",
   },
   alt: ['P1'],
   w: 16,
@@ -265,8 +350,10 @@ export const BEAST: Beast = {
     o: 0xf8ae4a,
     r: 0xe07434,
     R: 0xa84a2c, // its edge, on the shadow side
+    g: 0x9a9088, // smoke off it as it gutters
+    G: 0x5e5652,
   },
-  frames: { stand: STAND, walk: WALK, attack: ATTACK },
+  frames: { stand: STAND, walk: WALK, attack: ATTACK, hurt: HURT },
   nawia: {
     pal: {
       W: 0xf0ffff, // the cold light, brightest next to him
@@ -280,8 +367,11 @@ export const BEAST: Beast = {
       b: 0xd8d8c4, // the pole and the chain, bone
       d: 0x3a4058, // the marks of the measure
     },
-    frames: { stand: NSTAND, walk: NWALK, attack: NATTACK },
+    frames: { stand: NSTAND, walk: NWALK, attack: NATTACK, hurt: NHURT },
     ink: { ink: 'dark', outline: 0x2a4a80 },
-    note: { pl: 'W zimnym świetle widać duszę: nieuczciwego mierniczego z prętem i łańcuchem.', en: 'In the cold light the soul shows: a dishonest surveyor with his pole and chain.' },
+    note: {
+      pl: 'W zimnym świetle widać duszę: nieuczciwego mierniczego z prętem i łańcuchem. Przed ciosem jego obrys płonie bielą.',
+      en: 'In the cold light the soul shows: a dishonest surveyor with his pole and chain. Before he strikes his outline burns white.',
+    },
   },
 };
