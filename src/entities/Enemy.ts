@@ -278,6 +278,12 @@ export class Enemy {
     return this.mode === 'windup' || this.mode === 'dash';
   }
 
+  /** A boar winding up: where it will run, and how close it is to going (0..1); null otherwise. */
+  get chargeLane(): { dx: number; dy: number; k: number; len: number } | null {
+    if (this.kind !== 'dzik' || this.mode !== 'windup') return null;
+    return { dx: this.ax, dy: this.ay, k: Math.min(1, this.modeT / this.spec.windup), len: Math.min(150, this.spec.dash * this.spec.dashTime) };
+  }
+
   get ranged(): boolean {
     return this.spec.ranged;
   }

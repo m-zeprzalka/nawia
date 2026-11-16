@@ -49,12 +49,17 @@ export class Fx {
   private readonly pixels: Pixel[] = [];
   private readonly ground: Phaser.GameObjects.Graphics;
   private readonly light: Phaser.GameObjects.Graphics;
+  /** Under everyone, on the floor: the lanes of coming charges. */
+  private readonly floor: Phaser.GameObjects.Graphics;
   private readonly flicks: Flick[] = [];
+  /** Lines to paint on the ground this frame only (the path of a coming charge). */
+  private readonly marks: { x: number; y: number; dx: number; dy: number; len: number; color: number; alpha: number }[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.ground = scene.add.graphics().setDepth(DEPTH.fxWorld);
     this.light = scene.add.graphics().setDepth(DEPTH.fog + 6).setBlendMode(Phaser.BlendModes.ADD);
+    this.floor = scene.add.graphics().setDepth(DEPTH.floorDecor + 1);
     // the burst that leaves the stone when it turns: glows over the darkness
     this.ring = scene.add
       .particles(0, 0, 'px', {
@@ -190,6 +195,21 @@ export class Fx {
   update(dt: number): void {
     this.ground.clear();
     this.light.clear();
+    this.floor.clear();
+    for (const m of this.marks.splice(0)) {
+      // two rows of dashes on the ground, as wide as the charge, fading away from it; they creep forward
+      const crawl = (performance.now() / 40) % 6;
+      for (let d = 8 + crawl; d < m.len; d += 6) {
+        const a = m.alpha * Math.pow(1 - d / m.len, 0.7);
+        this.floor.fillStyle(m.color, a);
+        for (const side of [-5, 5]) {
+          const x = m.x + m.dx * d - m.dy * side;
+          const y = m.y + m.dy * d + m.dx * side;
+          this.floor.fillRect(Math.round(x), Math.round(y), 2, 2);
+          this.floor.fillRect(Math.round(x + m.dx * 2), Math.round(y + m.dy * 2), 2, 2);
+        }
+      }
+    }
     for (let i = this.pixels.length - 1; i >= 0; i--) {
       const p = this.pixels[i];
       p.life -= dt;
@@ -255,6 +275,11 @@ export class Fx {
         life: 0.35 + Math.random() * 0.35, color: blood[i % blood.length], size: i % 4 === 0 ? 2 : 1,
       });
     }
+  }
+
+  /** The path a charge will take, painted on the ground for this frame: `k` (0..1) is how close it is. */
+  lane(x: number, y: number, dx: number, dy: number, len: number, k: number, color = 0xd8402a): void {
+    this.marks.push({ x, y, dx, dy, len, color, alpha: 0.3 + 0.55 * k });
   }
 
   /** The tell of a coming strike: a glint over its head. */

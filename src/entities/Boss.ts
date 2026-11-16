@@ -83,6 +83,12 @@ export class Boss {
     return this.state === 'charge';
   }
 
+  /** Winding up: where it will charge and how close it is to going (0..1); null otherwise. */
+  get chargeLane(): { dx: number; dy: number; k: number } | null {
+    if (this.state !== 'windup') return null;
+    return { dx: this.ax, dy: this.ay, k: Math.min(1, this.t / TUNE.boss.windup[this.phase]) };
+  }
+
   /** Is its body there to bump into (Jawia)? */
   get standing(): boolean {
     return this.state !== 'sleep' && this.state !== 'dying' && !this.dead;

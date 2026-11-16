@@ -672,6 +672,8 @@ export class GameScene extends Phaser.Scene {
       e.update(dt, level, this.world, player.x, player.y, !player.dead);
       if (!was && e.threatening && !e.ranged && e.home === this.world) attackers++;
       for (const ev of e.events.splice(0)) this.enemyEvent(e, ev);
+      const lane = e.home === this.world ? e.chargeLane : null;
+      if (lane) this.fx.lane(e.x, e.y + 2, lane.dx, lane.dy, lane.len, lane.k);
       if (!e.solid || e.home !== this.world) continue;
       // only a strike hurts: its reach against his body
       const atk = e.attackBox;
@@ -1183,6 +1185,8 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    const lane = this.world === 'jawia' ? boss.chargeLane : null;
+    if (lane) this.fx.lane(boss.x, boss.y + 4, lane.dx, lane.dy, 170, lane.k, 0xff8a50);
     const awake = boss.state !== 'sleep';
     room.pips.forEach((p, i) => p.setVisible(awake).setTint(i < boss.hp ? 0xe08ae8 : 0x3a2f42));
     if (boss.state === 'dying' && Math.random() < dt * 16)
