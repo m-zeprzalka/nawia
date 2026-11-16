@@ -243,7 +243,8 @@ export class Player {
         this.rollCd = P.rollCooldown;
         this.events.push('land');
       }
-    } else if (control && this.rollCd <= 0 && this.canCancel() && input.consume('dodge', TUNE.inputBuffer)) {
+    } else if (control && this.rollCd <= 0 && this.canCancel() && input.consume('dodge', this.attacking ? TUNE.player.comboBuffer : TUNE.inputBuffer)) {
+      // (a roll pressed during a blow waits for the blade to pass, so it is remembered for longer)
       const len = Math.hypot(mx, my);
       if (len > 0.1) {
         this.rollX = mx / len;
