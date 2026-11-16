@@ -1199,6 +1199,9 @@ export class GameScene extends Phaser.Scene {
         this.trauma = Math.max(this.trauma, 0.5);
         this.hitstop = 0.06;
       } else this.hurtPlayer(boss.x, boss.y, TUNE.boss.damage);
+    } else if (this.world === 'jawia' && boss.standing && overlap(boss.box, player.box)) {
+      // walking into the stone: it does not move, he does
+      player.shove(boss.x, boss.y, 120);
     }
   }
 

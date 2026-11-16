@@ -7,7 +7,8 @@ import { makeTitle, TITLE_MOON } from '../art/title.ts';
 import { audio } from '../audio/audio.ts';
 import { globalKeys } from '../core/globalKeys.ts';
 import { input } from '../core/input.ts';
-import type { PixelBuffer } from '../core/PixelBuffer.ts';
+import { PixelBuffer, rgb } from '../core/PixelBuffer.ts';
+import { addBufferTexture } from '../art/textures.ts';
 import { DualCanvas } from '../fx/DualCanvas.ts';
 import { STR, t, toggleLang } from '../i18n/strings.ts';
 import { PixelText } from '../ui/PixelText.ts';
@@ -22,6 +23,7 @@ export class TitleScene extends Phaser.Scene {
   private view!: DualCanvas;
   private subtitle!: PixelText;
   private prompt!: PixelText;
+  private promptBand!: Phaser.GameObjects.Image;
   private langHint!: PixelText;
   private jam!: PixelText;
   private veil!: Phaser.GameObjects.Rectangle;
@@ -48,7 +50,19 @@ export class TitleScene extends Phaser.Scene {
     this.view = new DualCanvas(this, titleArt(), 'jawia');
 
     this.subtitle = new PixelText(this, 0, 46, { width: GAME_W, height: 13, align: 'center', color: 0xe8dcc0 });
-    this.prompt = new PixelText(this, 0, 150, { width: GAME_W, height: 13, align: 'center', color: 0x9a94a6 });
+    // the prompt sits on the lake's reflections: a soft dark band keeps it readable
+    if (!this.textures.exists('titleband')) {
+      const band = new PixelBuffer(GAME_W, 19);
+      for (let y = 0; y < 19; y++)
+        for (let x = 0; x < GAME_W; x++) {
+          const v = Math.min(1, Math.min(y, 18 - y) / 6) * Math.min(1, Math.min(x - 60, GAME_W - 60 - x) / 50);
+          if (v > 0) band.set(x, y, rgb(0x080712, Math.round(170 * v)));
+        }
+      addBufferTexture(this, 'titleband', band);
+    }
+    this.promptBand = this.add.image(0, 147, 'titleband').setOrigin(0, 0).setDepth(1);
+    this.prompt = new PixelText(this, 0, 150, { width: GAME_W, height: 13, align: 'center', color: 0xe8dcc0 });
+    this.prompt.image.setDepth(2);
     // the menu: the game, or the playground where art styles are compared
     this.menuIx = 0;
     this.menuLatch = 0;
@@ -123,6 +137,7 @@ export class TitleScene extends Phaser.Scene {
           audio.sfx('shiftNawia');
           this.view.reveal('nawia', TITLE_MOON.x, TITLE_MOON.y);
           this.prompt.image.setVisible(false);
+          this.promptBand.setVisible(false);
           for (const m of this.menu) m.image.setVisible(false);
           this.subtitle.setColor(0xcfffff);
           this.phase = 'turn';

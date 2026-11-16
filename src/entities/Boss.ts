@@ -78,9 +78,14 @@ export class Boss {
     return this.state === 'charge';
   }
 
-  /** Does walking into the stone hurt right now? */
+  /** Does the stone hurt right now? Only its charge: otherwise it is in the way, and pushes. */
   get harmful(): boolean {
-    return this.state === 'stalk' || this.state === 'windup' || this.state === 'charge';
+    return this.state === 'charge';
+  }
+
+  /** Is its body there to bump into (Jawia)? */
+  get standing(): boolean {
+    return this.state !== 'sleep' && this.state !== 'dying' && !this.dead;
   }
 
   get alive(): boolean {
