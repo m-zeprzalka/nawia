@@ -10,6 +10,8 @@
 import Phaser from 'phaser';
 import { DEPTH, TUNE, type World } from '../config.ts';
 import { BOSS, MOB } from '../art/actors.ts';
+import { GAME_BOSS, beastFrameOf, beastKey } from '../art/gameBeasts.ts';
+import { Enemy } from './Enemy.ts';
 import type { LightSource } from '../fx/Lighting.ts';
 import { BLOCK_WALK, type Box, type Level } from '../world/Level.ts';
 
@@ -249,20 +251,39 @@ export class Boss {
     const py = Math.round(this.y);
     const depth = DEPTH.entities + (this.y + 8) / 1000;
 
-    let frame: number = BOSS.IDLE;
-    if (this.state === 'stalk') frame = Math.floor(this.clock * 2.6) % 2 ? BOSS.IDLE_B : BOSS.IDLE;
-    else if (this.state === 'windup') frame = BOSS.WINDUP;
-    else if (this.state === 'charge') frame = BOSS.CHARGE;
-    else if (this.state === 'stunned' || dying) frame = BOSS.STUNNED;
-    else if (this.state === 'recover') frame = BOSS.IDLE_B;
+    // the idol drawn whole (M19, src/art/beasts/straznik-b.beast.ts), unless B asked for the first looks
+    if (Enemy.newLooks) {
+      let phase = 0;
+      if (this.state === 'stalk') phase = 1 + (Math.floor(this.clock * 5) % 4);
+      else if (this.state === 'windup') phase = 5;
+      else if (this.state === 'charge') phase = 6;
+      else if (this.state === 'recover') phase = 7;
+      else if (this.state === 'stunned' || dying) phase = 8;
+      const key = beastKey(GAME_BOSS, this.visible);
+      if (this.body.texture.key !== key) this.body.setTexture(key);
+      this.body.setFrame(beastFrameOf(GAME_BOSS, this.visible, phase));
+    } else {
+      let frame: number = BOSS.IDLE;
+      if (this.state === 'stalk') frame = Math.floor(this.clock * 2.6) % 2 ? BOSS.IDLE_B : BOSS.IDLE;
+      else if (this.state === 'windup') frame = BOSS.WINDUP;
+      else if (this.state === 'charge') frame = BOSS.CHARGE;
+      else if (this.state === 'stunned' || dying) frame = BOSS.STUNNED;
+      else if (this.state === 'recover') frame = BOSS.IDLE_B;
+      if (this.body.texture.key !== 'boss') this.body.setTexture('boss');
+      this.body.setFrame(frame);
+    }
 
     const gone = dying ? Math.max(0, 1 - this.t / 1.9) : 1;
     // from Nawia the stone is an echo, like everything that belongs to the living
-    this.body.setFrame(frame).setPosition(px, py + 9).setDepth(depth).setAlpha((0.26 + 0.74 * this.fade) * gone);
+    this.body.setPosition(px, py + 9).setDepth(depth).setAlpha((0.26 + 0.74 * this.fade) * gone);
     this.shadow.setPosition(px, py + 8).setDepth(depth - 0.0005).setAlpha(this.fade * gone);
-    const blink = this.state === 'windup' && Math.floor(this.t * 14) % 2 === 0;
-    if (blink || (dying && Math.floor(this.t * 20) % 2 === 0)) this.body.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
-    else this.body.setTintMode(Phaser.TintModes.MULTIPLY).setTint(this.fade < 0.5 ? 0x9fb0d8 : this.state === 'sleep' ? 0xa8a8b8 : 0xffffff);
+    if (dying && Math.floor(this.t * 20) % 2 === 0) this.body.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+    else if (this.state === 'windup' && this.fade > 0.5) {
+      // it heats from inside before it goes, like every other monster
+      const k = Math.min(1, this.t / TUNE.boss.windup[this.phase]);
+      const heat = Math.round((0.2 + 0.5 * k) * (0.5 + 0.5 * Math.sin(this.t * (14 + 24 * k))) * 255);
+      this.body.setTintMode(Phaser.TintModes.ADD).setTint((heat << 16) | (Math.round(heat * 0.4) << 8) | Math.round(heat * 0.15));
+    } else this.body.setTintMode(Phaser.TintModes.MULTIPLY).setTint(this.fade < 0.5 ? 0x9fb0d8 : this.state === 'sleep' ? 0xa8a8b8 : 0xffffff);
 
     // from Jawia the heart is only a glimmer in the crack
     const bare = this.heartBare || dying;

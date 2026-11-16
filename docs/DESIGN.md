@@ -67,7 +67,7 @@ Dawne wyglądy (Wojak, Pastuszek, Góral, Wędrowiec) zostały w kodzie i na pla
 Przeciwnicy noszą w grze nowe wyglądy z placu prób (M): wilk M1, dzik M2, topielec M5, zjawa M9, strzyga M11, ognik M13,
 morownik M14. Każdy jest widziany w postaci świata, w którym jest bohater. Topielec w Jawi to mokry czarny kot, a z Nawii widać
 jego prawdziwą postać. Strzyga w Jawi to ciało, a w Nawii jej druga dusza. Klawisz **B** przywraca dawne wyglądy.
-Strażnik (boss) ma swój dawny wygląd.
+Strażnik (boss) nosi M19: kamienny bałwan graniczny z pękniętą kolumną, przez którą przy ogłuszeniu widać światło Nawii.
 
 ## Sterowanie
 

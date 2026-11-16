@@ -11,6 +11,7 @@ import { beastSheet, type Beast } from './beasts/beast.ts';
 import { BEAST as DZIK } from './beasts/dzik-b.beast.ts';
 import { BEAST as MOROWNIK } from './beasts/morownik-b.beast.ts';
 import { BEAST as OGNIK } from './beasts/ognik-b.beast.ts';
+import { BEAST as STRAZNIK } from './beasts/straznik-b.beast.ts';
 import { BEAST as STRZYGA } from './beasts/strzyga-b.beast.ts';
 import { BEAST as TOPIELEC } from './beasts/topielec-b.beast.ts';
 import { BEAST as WILK } from './beasts/wilk-b.beast.ts';
@@ -26,6 +27,9 @@ export const GAME_BEASTS: Record<EnemyKind, Beast> = {
   wilk: WILK,
   morownik: MOROWNIK,
 };
+
+/** The guardian (the boss) wears M19: phases 0 asleep, 1-4 its rocking stalk, 5 rising, 6 the charge, 7 coming back, 8 split open. */
+export const GAME_BOSS: Beast = STRAZNIK;
 
 const WORLDS: World[] = ['jawia', 'nawia'];
 
@@ -49,7 +53,7 @@ export function beastFrameOf(b: Beast, world: World, phase: number): number {
 export function gameBeastSheets(): Sheet[] {
   const out: Sheet[] = [];
   const seen = new Set<string>();
-  for (const b of Object.values(GAME_BEASTS))
+  for (const b of [...Object.values(GAME_BEASTS), GAME_BOSS])
     for (const world of WORLDS) {
       const key = beastKey(b, world);
       if (seen.has(key)) continue;
