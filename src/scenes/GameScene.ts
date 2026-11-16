@@ -12,8 +12,9 @@ import { globalKeys } from '../core/globalKeys.ts';
 import { input, type Dir } from '../core/input.ts';
 import { Boss } from '../entities/Boss.ts';
 import { Critter } from '../entities/Critter.ts';
-import { Enemy } from '../entities/Enemy.ts';
-import { Player } from '../entities/Player.ts';
+import { Enemy, type EnemyEvent } from '../entities/Enemy.ts';
+import { DIR_VEC, Player, type StrikeSpec } from '../entities/Player.ts';
+import type { EnemyKind } from '../world/roomFormat.ts';
 import { Prop, type Place } from '../entities/Prop.ts';
 import { Shot, type ShotKind } from '../entities/Shot.ts';
 import { DualCanvas } from '../fx/DualCanvas.ts';
@@ -30,6 +31,28 @@ import { isSurface, type RoomDef } from '../world/roomFormat.ts';
 
 /** The flags conversations set when they give him something (see docs/DIALOGS.md). */
 const GEAR_FLAGS = ['ma.miecz', 'ma.tarcza', 'ma.kurzy-bog'];
+
+/** How many monsters may be winding up or striking at him at once (the rest wait their turn). */
+const MAX_ATTACKERS = 2;
+/** The chance a wounded hero finds a heart where a monster fell. */
+const HEART_DROP = 0.22;
+/** The sweep of the blade: warm white in Jawia, cold in Nawia. */
+const SMEAR_TINT: Record<World, number> = { jawia: 0xfff4e0, nawia: 0xc4f4ff };
+/** What a wisp's fire sent back does to it. */
+const SHOT_STRIKE: StrikeSpec = { damage: 1, knock: 170, hitstop: 0.06, trauma: 0.35, heavy: false };
+const HERO_BLOOD = [0xb01c2c, 0xd8323e, 0x6a0e18];
+/** What each kind bleeds when a blade goes in: animals blood, the drowned bog water, ghosts light. */
+const BLOOD: Record<EnemyKind, number[]> = {
+  utopiec: [0x2c3c34, 0x4e6c58, 0x1a2420],
+  zjawa: [0xd8f0ff, 0x9ad0ff, 0xffffff],
+  ognik: [0xc8ff80, 0x78d040, 0xffffff],
+  strzyga: [0x6a0e18, 0x9a1c24, 0x2a0608],
+  dzik: [0x7a1018, 0xa8202a, 0x4a0a0e],
+  wilk: [0x7a1018, 0xa02030, 0xb050d0],
+  morownik: [0xb050d0, 0xe080f0, 0x5a2070],
+};
+const NAWIA_BLOOD = [0xc8f0ff, 0x8ad8ff, 0xffffff];
+const bloodOf = (kind: EnemyKind, world: World): number[] => (world === 'nawia' && kind !== 'zjawa' ? NAWIA_BLOOD : BLOOD[kind]);
 
 type State = 'play' | 'slide' | 'rejected' | 'dying' | 'ending' | 'paused' | 'talk' | 'door' | 'waking';
 
@@ -72,6 +95,12 @@ interface ActiveRoom {
   /** Which side of the turning stone is up: false = sun posts stand, true = moon posts stand. */
   moon: boolean;
   bellRung: boolean;
+  /** Which wave of monsters is up: 1 is the map's own; the room's `waves` come after it. */
+  wave: number;
+  /** Seconds since the last monster of a wave fell (the next one comes after a breath). */
+  waveT: number;
+  /** The ways out are to close as soon as he is clear of them (an arena: `lock: yes`). */
+  lockPending: boolean;
 }
 
 const ACCENT: Record<World, number> = { jawia: 0xffcf6a, nawia: 0x9af4ff };
@@ -132,6 +161,9 @@ export class GameScene extends Phaser.Scene {
   private camY = 0;
   private trauma = 0;
   private kick = 0;
+  /** A shove of the whole picture the way a blow went (px), easing back at once. */
+  private punchX = 0;
+  private punchY = 0;
   private hitstop = 0;
   private shiftCd = 0;
   private animT = 0;
@@ -244,7 +276,7 @@ export class GameScene extends Phaser.Scene {
     this.vignette = dress.vignette;
 
     this.player = new Player(this, free.x, free.y);
-    this.player.slash.setTint(ACCENT[this.world]);
+    this.player.smear.setTint(SMEAR_TINT[this.world]);
     this.lighting = new Lighting(this);
     this.fog = [0, 1].map((i) =>
       this.add.tileSprite(0, 0, GAME_W, GAME_H, 'fog').setOrigin(0, 0).setScrollFactor(0).setDepth(DEPTH.fog - i * 0.1),
@@ -340,6 +372,7 @@ export class GameScene extends Phaser.Scene {
     const room: ActiveRoom = {
       def, ox, oy, w: painter.w, h: painter.h, painter, view, top, outdoors, place, doors: [], critters: [], echo, echoKeys,
       props: [], enemies: [], pickups: [], shots: [], boss: null, pips: [], moon: false, bellRung: cleared,
+      wave: 1, waveT: 0, lockPending: def.lock && !cleared && (hasFoes || def.waves.length > 0),
     };
     const bounds = { x: ox, y: oy, w: painter.w, h: painter.h };
     for (const o of def.objects) {
@@ -347,10 +380,7 @@ export class GameScene extends Phaser.Scene {
       const cy = oy + o.ty * TILE + 8;
       if (o.kind === 'enemy') {
         if (cleared) continue;
-        const e = new Enemy(this, o.type, cx, cy, this.world, bounds);
-        if (o.type === 'ognik') e.onShoot = (x, y, vx, vy) => this.spawnShot(room, 'wisp', 'jawia', x, y, vx, vy, e);
-        if (o.type === 'morownik') e.onShoot = (x, y, vx, vy) => this.spawnShot(room, 'thorn', 'jawia', x, y, vx, vy, e);
-        room.enemies.push(e);
+        this.spawnEnemy(room, o.type, cx, cy);
       } else if (o.kind === 'boss') {
         if (cleared) continue;
         // 'K' marks the top-left tile of its 2x2 footprint
@@ -381,6 +411,64 @@ export class GameScene extends Phaser.Scene {
       }
     }
     return room;
+  }
+
+  private spawnEnemy(room: ActiveRoom, type: EnemyKind, x: number, y: number): Enemy {
+    const e = new Enemy(this, type, x, y, this.world, { x: room.ox, y: room.oy, w: room.w, h: room.h });
+    if (type === 'ognik') e.onShoot = (sx, sy, vx, vy) => this.spawnShot(room, 'wisp', 'jawia', sx, sy, vx, vy, e);
+    if (type === 'morownik') e.onShoot = (sx, sy, vx, vy) => this.spawnShot(room, 'thorn', 'jawia', sx, sy, vx, vy, e);
+    room.enemies.push(e);
+    return e;
+  }
+
+  /** The next wave of the room comes up out of the ground: smoke, a glint, and they are there. */
+  private spawnWave(room: ActiveRoom): void {
+    const list = room.def.waves[room.wave - 1];
+    room.wave++;
+    room.waveT = 0;
+    if (!list) return;
+    audio.sfx('spawn');
+    this.trauma = Math.max(this.trauma, 0.3);
+    for (const o of list) {
+      const x = room.ox + o.tx * TILE + 8;
+      const y = room.oy + o.ty * TILE + 8;
+      const e = this.spawnEnemy(room, o.type, x, y);
+      e.emerge();
+      const tint = e.home === 'nawia' ? 0x9ad0ff : 0xb050d0;
+      this.fx.death(x, y - 4, e.home);
+      this.fx.dust(x, y + 4, 8, tint, 1.2);
+    }
+  }
+
+  /**
+   * An arena: once he is clear of the ways in, bars (or the palisade's gates) drop across every way out, and
+   * they open again when the room is settled (see checkCleared).
+   */
+  private tryLock(): void {
+    const { room, level, player } = this;
+    const def = room.def;
+    const exits: [number, number][] = [];
+    for (let ty = 0; ty < def.rows; ty++)
+      for (let tx = 0; tx < def.cols; tx++) {
+        if (tx !== 0 && ty !== 0 && tx !== def.cols - 1 && ty !== def.rows - 1) continue;
+        const x = room.ox + tx * TILE + 8;
+        const y = room.oy + ty * TILE + 8;
+        if (level.blocked('jawia', x, y, 4, 4) && level.blocked('nawia', x, y, 4, 4)) continue;
+        exits.push([tx, ty]);
+      }
+    const pb = player.box;
+    for (const [tx, ty] of exits) if (overlap(pb, { x: room.ox + tx * TILE + 8, y: room.oy + ty * TILE + 8, hw: 9, hh: 9 })) return;
+    room.lockPending = false;
+    if (!exits.length) return;
+    for (const [tx, ty] of exits) {
+      const gate = new Prop(this, { kind: 'gate', tx, ty }, room.ox, room.oy, this.world, room.place);
+      gate.setOpen(false);
+      level.setBlocked(def, tx, ty, true);
+      room.props.push(gate);
+      this.fx.debris(gate.x, gate.y + 4, undefined, 3);
+    }
+    audio.sfx('lock');
+    this.trauma = Math.max(this.trauma, 0.45);
   }
 
   private spawnShot(room: ActiveRoom, kind: ShotKind, home: World, x: number, y: number, vx: number, vy: number, owner: Enemy | null): void {
@@ -514,6 +602,7 @@ export class GameScene extends Phaser.Scene {
         break;
     }
 
+    this.fx.update(dt);
     this.updateAtmosphere(dt, rawDt);
     this.hud.update(rawDt);
     this.render();
@@ -542,37 +631,50 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (player.update(dt, level, this.world, true)) {
-      audio.sfx('swing');
-      this.hasAttacked = true;
+    // the nearest foe on this side: a blow with no direction held turns to it
+    let nearest: Enemy | null = null;
+    let nd = Infinity;
+    for (const e of room.enemies) {
+      if (!e.solid || e.home !== this.world) continue;
+      const d = Math.hypot(e.x - player.x, e.y - player.y);
+      if (d < nd) {
+        nd = d;
+        nearest = e;
+      }
     }
+    player.target = nearest ? { x: nearest.x, y: nearest.y } : null;
+
+    if (player.update(dt, level, this.world, true)) this.hasAttacked = true;
+    this.playerEvents();
     if (input.moveX !== 0 || input.moveY !== 0) this.hasMoved = true;
     if (player.guarding) this.hasGuarded = true;
-    if (player.dodging) this.hasDodged = true;
+    if (player.rolling) this.hasDodged = true;
     if (player.attackActive) this.resolveAttack();
+    if (room.lockPending) this.tryLock();
+    if (!this.cleared.has(room.def.id) && room.enemies.length === 0 && room.wave <= room.def.waves.length) {
+      room.waveT += dt;
+      if (room.waveT > 0.9) this.spawnWave(room);
+    }
 
-    for (const e of room.enemies) {
+    // only a few come at him at once; the others wait their turn at a distance
+    let attackers = room.enemies.filter((e) => e.home === this.world && !e.ranged && e.threatening).length;
+    for (const e of [...room.enemies]) {
+      if (!e.ranged) e.allowAttack = e.threatening || attackers < MAX_ATTACKERS;
+      const was = e.threatening;
       e.update(dt, level, this.world, player.x, player.y, !player.dead);
-      if (e.bumped) {
-        // the boar met something harder than itself
-        audio.sfx('clink');
-        this.fx.debris(e.x, e.y + 4, undefined, 4);
-        this.trauma = Math.max(this.trauma, 0.35);
-      }
-      if (!e.solid || e.home !== this.world || !overlap(e.box, player.box)) continue;
-      if (player.blocks(e.x, e.y)) {
-        // caught on the shield: it staggers back, and that is the opening
-        e.bash(player.x, player.y);
-        player.absorb(e.x, e.y);
-        audio.sfx('block');
-        this.fx.block((e.x + player.x) / 2, (e.y + player.y) / 2 - 5);
-        this.trauma = Math.max(this.trauma, 0.3);
-        this.hitstop = 0.05;
-      } else if (this.hurtPlayer(e.x, e.y, TUNE.player.enemyDamage)) {
+      if (!was && e.threatening && !e.ranged && e.home === this.world) attackers++;
+      for (const ev of e.events.splice(0)) this.enemyEvent(e, ev);
+      if (!e.solid || e.home !== this.world) continue;
+      // only a strike hurts: its reach against his body
+      const atk = e.attackBox;
+      if (!atk || !overlap(atk, player.hurtBox)) continue;
+      if (player.blocks(e.x, e.y)) this.blocked(e.x, e.y - 5, () => e.bash(player.x, player.y, player.perfect));
+      else if (this.hurtPlayer(e.x, e.y, TUNE.player.enemyDamage)) {
         e.recoil(player.x, player.y);
         if (player.dead) return;
       }
     }
+    this.separate();
     this.updateShots(dt);
     if (this.state !== 'play') return;
     this.updateBoss(dt);
@@ -695,7 +797,7 @@ export class GameScene extends Phaser.Scene {
   /** Everything that follows the current world but is not the room picture itself. */
   private applyWorldDressing(world: World, announce: boolean): void {
     const { room } = this;
-    this.player.slash.setTint(ACCENT[world]);
+    this.player.smear.setTint(SMEAR_TINT[world]);
     this.fx.setAmbience(world, room.ox, room.oy, room.w, room.h, room.outdoors, room.def.blight);
     this.hud.setWorld(world, announce);
     audio.setWorld(world);
@@ -729,8 +831,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.fx.reject(player.x, player.y - 6, to);
 
-    player.attackT = -1;
-    player.guarding = false;
+    player.halt();
     player.drain(TUNE.shift.rejectDamage);
     this.hud.setHearts(player.hp);
     if (player.dead) {
@@ -782,31 +883,121 @@ export class GameScene extends Phaser.Scene {
     if (!player.hurt(fromX, fromY, amount)) return false;
     audio.sfx('hurt');
     this.hud.setHearts(player.hp);
-    this.hud.flash(0xc9323e, 0.28, 240);
-    this.trauma = Math.max(this.trauma, 0.6);
-    this.hitstop = 0.09;
+    this.hud.rattle();
+    this.hud.flash(0xc9323e, 0.34, 260);
+    this.trauma = Math.max(this.trauma, 0.7);
+    this.hitstop = Math.max(this.hitstop, 0.12);
+    const ang = Math.atan2(player.y - fromY, player.x - fromX);
+    this.punch(Math.cos(ang), Math.sin(ang), 3);
+    this.fx.strike(player.x - Math.cos(ang) * 3, player.y - 7, ang, this.world, HERO_BLOOD, false);
     if (player.dead) this.startDying();
     return true;
   }
 
+  /** A blow caught on the shield: sparks, a shove, and whatever it does to the attacker (`onAttacker`). */
+  private blocked(fromX: number, fromY: number, onAttacker: () => void): void {
+    const { player } = this;
+    const perfect = player.perfect;
+    onAttacker();
+    player.absorb(fromX, fromY, perfect ? 40 : 85);
+    audio.sfx(perfect ? 'parry' : 'block');
+    const ang = Math.atan2(player.y - 5 - fromY, player.x - fromX);
+    const [fx, fy] = DIR_VEC[player.facing];
+    this.fx.block(player.x + fx * 7, player.y - 6 + fy * 6);
+    if (perfect) {
+      this.fx.strike(player.x + fx * 7, player.y - 6 + fy * 6, ang + Math.PI, this.world, [0xffffff, 0xffe8a0], true);
+      this.hud.flash(0xffffff, 0.14, 160);
+    }
+    this.trauma = Math.max(this.trauma, perfect ? 0.45 : 0.3);
+    this.hitstop = Math.max(this.hitstop, perfect ? 0.1 : 0.05);
+  }
+
+  /** What he did this frame, dressed up: the swish of each blow, dust under a roll and under his feet. */
+  private playerEvents(): void {
+    const { player } = this;
+    const dust = this.world === 'nawia' ? 0x5a78b0 : this.room.outdoors ? 0xb8a47e : 0x8a8478;
+    for (const ev of player.events.splice(0)) {
+      if (ev === 'swing') audio.sfx(player.comboIndex === 2 ? 'swingHeavy' : player.comboIndex === 1 ? 'swing2' : 'swing');
+      else if (ev === 'roll') {
+        audio.sfx('roll');
+        this.fx.dust(player.x, player.y + 3, 7, dust);
+      } else if (ev === 'land') this.fx.dust(player.x, player.y + 3, 5, dust, 0.8);
+      else if (ev === 'step' && Math.random() < 0.35) this.fx.dust(player.x, player.y + 4, 1, dust, 0.4);
+    }
+  }
+
+  /** What an enemy did this frame, dressed up: the glint of a coming strike, a boar meeting a wall. */
+  private enemyEvent(e: Enemy, ev: EnemyEvent): void {
+    const here = e.home === this.world;
+    if (ev === 'windup' && here) {
+      this.fx.glint(e.headX, e.headY, e.ranged ? 0xa8ff80 : 0xffa050);
+      audio.sfx('warn');
+    } else if (ev === 'bump') {
+      // the boar met something harder than itself
+      audio.sfx('crash');
+      this.fx.debris(e.x, e.y + 4, undefined, 6);
+      if (here) this.trauma = Math.max(this.trauma, 0.45);
+    }
+  }
+
+  /** Bodies do not pile up: monsters on the same side push each other apart, and step aside for him. */
+  private separate(): void {
+    const { room, player, level } = this;
+    const es = room.enemies;
+    for (let i = 0; i < es.length; i++) {
+      const a = es[i];
+      if (!a.solid) continue;
+      if (a.home === this.world && a.movable && overlap(a.box, player.box)) {
+        const d = Math.hypot(a.x - player.x, a.y - player.y) || 1;
+        a.nudge(level, ((a.x - player.x) / d) * 1.2, ((a.y - player.y) / d) * 1.2);
+      }
+      for (let j = i + 1; j < es.length; j++) {
+        const b = es[j];
+        if (!b.solid || b.home !== a.home || !overlap(a.box, b.box)) continue;
+        const dx = b.x - a.x || Math.random() - 0.5;
+        const dy = b.y - a.y || Math.random() - 0.5;
+        const d = Math.hypot(dx, dy) || 1;
+        const k = 0.9;
+        if (a.movable) a.nudge(level, (-dx / d) * k, (-dy / d) * k);
+        if (b.movable) b.nudge(level, (dx / d) * k, (dy / d) * k);
+      }
+    }
+  }
+
+  /** The whole picture jolts `px` pixels in direction (dx, dy), and settles at once. */
+  private punch(dx: number, dy: number, px: number): void {
+    this.punchX = dx * px;
+    this.punchY = dy * px;
+  }
+
   /** Hurts an enemy with swing (or shot) `id`. Returns true if the blow landed. */
-  private strike(e: Enemy, id: number, fromX: number, fromY: number): boolean {
-    const { room } = this;
+  private strike(e: Enemy, id: number, fromX: number, fromY: number, spec: StrikeSpec = SHOT_STRIKE): boolean {
+    const { room, player } = this;
     const was = e.home;
-    if (!e.hit(id, fromX, fromY)) return false;
-    audio.sfx('hit');
-    this.fx.hit(e.x, e.y - 4, was);
-    this.hitstop = 0.065;
-    this.trauma = Math.max(this.trauma, 0.4);
+    const body = e.hurtBox;
+    if (!e.hit(id, fromX, fromY, spec.damage, spec.knock, spec.heavy)) return false;
+    const ang = Math.atan2(body.y - (fromY - 5), body.x - fromX);
+    // where it lands: the side of the body that faced the blow
+    const cx = body.x - Math.cos(ang) * body.hw * 0.5;
+    const cy = body.y - Math.sin(ang) * body.hh * 0.5;
+    this.fx.strike(cx, cy, ang, was, bloodOf(e.kind, was), spec.heavy);
+    audio.sfx(spec.heavy ? 'hitHeavy' : 'hit');
+    this.hitstop = Math.max(this.hitstop, spec.hitstop);
+    this.trauma = Math.max(this.trauma, spec.trauma);
+    this.punch(Math.cos(ang), Math.sin(ang), spec.heavy ? 3 : 1.5);
     if (e.rose) {
       // a strzyga's body is down; her second soul is already up on the other side
       e.rose = false;
       audio.sfx('rise');
-      this.fx.death(e.x, e.y - 4, was);
+      this.fx.disintegrate(e.sprite, was, fromX, fromY);
       this.soulsHintT = 6;
     } else if (e.dead) {
-      audio.sfx('enemyDie');
-      this.fx.death(e.x, e.y - 4, was);
+      audio.sfx('kill');
+      this.fx.disintegrate(e.sprite, was, fromX, fromY);
+      this.hitstop = Math.max(this.hitstop, 0.1);
+      this.trauma = Math.max(this.trauma, 0.5);
+      // a wounded hero now and then finds a heart in what is left
+      if (player.hp < TUNE.player.maxHp && Math.random() < HEART_DROP) this.dropHeart(room, e.x, e.y);
       e.destroy();
       room.enemies.splice(room.enemies.indexOf(e), 1);
       this.checkCleared();
@@ -821,8 +1012,8 @@ export class GameScene extends Phaser.Scene {
 
     for (let i = room.enemies.length - 1; i >= 0; i--) {
       const e = room.enemies[i];
-      if (e.home !== this.world || !overlap(a, e.box)) continue;
-      if (this.strike(e, player.swingId, player.x, player.y)) landed = true;
+      if (e.home !== this.world || !overlap(a, e.hurtBox)) continue;
+      if (this.strike(e, player.swingId, player.x, player.y, player.strike)) landed = true;
     }
     // nobody gets to hit a hen, but she does not know that
     if (this.world === 'jawia') for (const c of room.critters) if (overlap(a, c.box)) c.scare(player.x, player.y);
@@ -902,15 +1093,14 @@ export class GameScene extends Phaser.Scene {
             sh.dead = true;
             break;
           }
-      } else if (!sh.dead && sh.home === this.world && overlap(sh.box, player.box)) {
+      } else if (!sh.dead && sh.home === this.world && overlap(sh.box, player.hurtBox)) {
         if (player.blocks(fromX, fromY)) {
-          audio.sfx('block');
-          this.fx.block(sh.x, sh.y);
-          this.hitstop = 0.04;
-          if (sh.kind === 'wisp') {
-            sh.reflect();
-            this.hasReflected = true;
-          } else sh.dead = true;
+          this.blocked(fromX, fromY, () => {
+            if (sh.kind === 'wisp') {
+              sh.reflect();
+              this.hasReflected = true;
+            } else sh.dead = true;
+          });
         } else if (this.hurtPlayer(fromX, fromY, TUNE.player.shotDamage)) sh.dead = true;
       }
       if (sh.dead) {
@@ -1046,7 +1236,7 @@ export class GameScene extends Phaser.Scene {
     const { room } = this;
     if (this.cleared.has(room.def.id)) return;
     const hasBell = room.props.some((p) => p.kind === 'bell');
-    if (hasBell ? !room.bellRung : room.enemies.length > 0 || room.boss !== null) return;
+    if (hasBell ? !room.bellRung : room.enemies.length > 0 || room.boss !== null || room.wave <= room.def.waves.length) return;
     this.cleared.add(room.def.id);
     for (const p of room.props) {
       if (p.kind !== 'gate') continue;
@@ -1096,8 +1286,7 @@ export class GameScene extends Phaser.Scene {
     player.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down';
     player.vx = 0;
     player.vy = 0;
-    player.attackT = -1;
-    player.guarding = false;
+    player.halt();
     this.hud.setHint(null);
     this.showTalk();
   }
@@ -1161,8 +1350,7 @@ export class GameScene extends Phaser.Scene {
     this.doorTo = target;
     this.state = 'door';
     this.stateT = 0;
-    this.player.attackT = -1;
-    this.player.guarding = false;
+    this.player.halt();
     this.hud.setDialog(null);
     this.hud.setHint(null);
     audio.sfx('door');
@@ -1272,7 +1460,7 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameraTarget(room, tx, ty);
     this.slide = { t: 0, fromX: this.camX, fromY: this.camY, toX: cam.x, toY: cam.y, pFromX: player.x, pFromY: player.y, pToX: tx, pToY: ty };
     player.facing = dir;
-    player.attackT = -1;
+    player.halt();
     old.echo.jawia.setAlpha(0);
     old.echo.nawia.setAlpha(0);
     this.echoT = 0;
@@ -1315,7 +1503,8 @@ export class GameScene extends Phaser.Scene {
   private updateDying(dt: number): void {
     const { player } = this;
     player.update(dt, this.level, this.world, false);
-    player.sprite.setAlpha(Math.max(0, 1 - this.stateT / 0.8));
+    // he falls; only once he lies still does he fade
+    player.sprite.setAlpha(Math.max(0, 1 - Math.max(0, this.stateT - 1.4) / 0.6));
     for (const p of this.room.props) p.update(dt, player.x, player.y);
     if (this.stateT > 0.7) this.hud.setCenter(t(STR.dead));
     if (this.stateT > 2.4) {
@@ -1328,7 +1517,7 @@ export class GameScene extends Phaser.Scene {
       player.y = this.entry.y;
       player.facing = this.entry.facing;
       player.hp = TUNE.player.maxHp;
-      player.dead = false;
+      player.revive(this.entry.facing);
       player.invuln = 1;
       player.fade = 1;
       player.kx = 0;
@@ -1449,6 +1638,8 @@ export class GameScene extends Phaser.Scene {
 
     this.trauma = Math.max(0, this.trauma - rawDt * 2.2);
     this.kick *= Math.exp(-rawDt * 22);
+    this.punchX *= Math.exp(-rawDt * 30);
+    this.punchY *= Math.exp(-rawDt * 30);
   }
 
   private render(): void {
@@ -1456,8 +1647,8 @@ export class GameScene extends Phaser.Scene {
     const amp = this.trauma * this.trauma * 8;
     const sx = amp >= 0.5 ? Math.round((Math.random() * 2 - 1) * amp) : 0;
     const sy = amp >= 0.5 ? Math.round((Math.random() * 2 - 1) * amp) : 0;
-    const scrollX = this.camX + sx;
-    const scrollY = this.camY + sy - Math.round(this.kick);
+    const scrollX = this.camX + sx + Math.round(this.punchX);
+    const scrollY = this.camY + sy - Math.round(this.kick) + Math.round(this.punchY);
     this.cameras.main.setScroll(scrollX, scrollY);
 
     const lights: LightSource[] = [

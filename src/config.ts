@@ -25,27 +25,40 @@ export const TUNE = {
     hitW: 10,
     hitH: 8,
     cornerAssist: 6, // px the hero will slide to get around a corner
-    attackTime: 0.24,
-    attackActiveFrom: 0.03,
-    attackActiveTo: 0.15,
-    attackCooldown: 0.05,
-    attackLunge: 46, // px/s burst at the start of a swing
-    hurtInvuln: 1.1,
-    knockback: 150,
+    /** A blow: how far he steps into it (a burst of speed, px/s) and how much he can still walk meanwhile. */
+    attackLunge: 70,
+    heavyLunge: 120,
+    attackMove: 0.12,
+    /** After the string: a short breath; after the third blow, a longer one (s). */
+    attackCooldown: 0.04,
+    heavyCooldown: 0.22,
+    /** A press this long before a blow can follow still counts (s); a pause this long after one keeps the string going. */
+    comboBuffer: 0.32,
+    comboWindow: 0.28,
+    /** What the blows do: the first two, then the heavy third. */
+    strikeKnock: 150,
+    heavyKnock: 280,
+    heavyDamage: 2,
+    strikeHitstop: 0.055,
+    heavyHitstop: 0.11,
+    /** A blow with no direction held turns to a foe this close (px). */
+    aimReach: 34,
+    hurtInvuln: 1.0,
+    knockback: 175,
     /** Health is counted in half hearts. */
     maxHp: 6,
     /** What a blow from an enemy costs (half hearts). */
     enemyDamage: 2,
     guardSpeed: 0.45, // walking speed behind the raised shield
     guardArc: 0.2, // how squarely he must face a blow to stop it (dot product)
+    /** A blow caught within this long of raising the shield staggers the attacker for longer (s). */
+    perfectGuard: 0.2,
     /** What a wisp's fire or a soul orb costs (half hearts). */
     shotDamage: 1,
-    /** The dodge: a quick hop that nothing can touch while he is in the air. */
-    dodgeSpeed: 200, // px/s
-    dodgeTime: 0.26,
-    dodgeSafe: 0.22, // seconds of it nothing can hurt him
-    dodgeHeight: 5, // px he leaves the ground at the top of the hop
-    dodgeCooldown: 0.45,
+    /** The roll: a quick forward roll with a little hop; untouchable in the tuck (the `safe` frames in the layout). */
+    rollSpeed: 230, // px/s off the mark; he slows as he comes out of it (about 50 px in all)
+    rollHeight: 3, // px he leaves the ground at the top of the hop
+    rollCooldown: 0.16,
   },
   /** The guardian. Three phases of `hitsPerPhase` blows each. */
   boss: {

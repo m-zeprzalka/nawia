@@ -1,8 +1,41 @@
 // Particles. Small, square, unscaled: they stay on the pixel grid.
+//
+// Two kinds: Phaser emitters for the soft things (the burst of the stone, motes in the air, smoke), and a little
+// system of single pixels of their own colour for the hard ones: sparks thrown the way a blow went, the ichor of
+// a monster, dust kicked up by feet, and a monster coming apart into the pixels it was drawn with. The pixels
+// move only while the game does (`update` gets the frame's time, which is 0 in a hit-stop), so a blow's sparks
+// hang in the air with everything else for that instant.
 
 import Phaser from 'phaser';
 import { DEPTH, type World } from '../config.ts';
+import { IMPACT } from '../art/combatFx.ts';
 import { PX } from '../art/sprites.ts';
+import { SHEET_PIXELS } from '../art/textures.ts';
+
+interface Pixel {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** px/s^2 down the screen (negative: rising) */
+  grav: number;
+  /** velocity kept per second (drag) */
+  drag: number;
+  life: number;
+  max: number;
+  color: number;
+  /** 2 for a fat speck */
+  size: number;
+  /** drawn over the darkness (light), or under it */
+  glow: boolean;
+}
+
+interface Flick {
+  sprite: Phaser.GameObjects.Sprite;
+  frames: number[];
+  t: number;
+  step: number;
+}
 
 const ACCENT: Record<World, number> = { jawia: 0xffcf6a, nawia: 0x9af4ff };
 
@@ -13,9 +46,15 @@ export class Fx {
   private readonly poof: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly shards: Phaser.GameObjects.Particles.ParticleEmitter;
   private motes: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private readonly pixels: Pixel[] = [];
+  private readonly ground: Phaser.GameObjects.Graphics;
+  private readonly light: Phaser.GameObjects.Graphics;
+  private readonly flicks: Flick[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+    this.ground = scene.add.graphics().setDepth(DEPTH.fxWorld);
+    this.light = scene.add.graphics().setDepth(DEPTH.fog + 6).setBlendMode(Phaser.BlendModes.ADD);
     // the burst that leaves the stone when it turns: glows over the darkness
     this.ring = scene.add
       .particles(0, 0, 'px', {
@@ -143,5 +182,130 @@ export class Fx {
     this.ring.explode(30, x, y);
     this.poof.setParticleTint(0xc9323e);
     this.poof.explode(10, x, y);
+  }
+
+  // ------------------------------------------------------------------ the pixel system
+
+  /** Moves and draws the pixels and the short sprite effects. `dt` is 0 during a hit-stop. */
+  update(dt: number): void {
+    this.ground.clear();
+    this.light.clear();
+    for (let i = this.pixels.length - 1; i >= 0; i--) {
+      const p = this.pixels[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        this.pixels[i] = this.pixels[this.pixels.length - 1];
+        this.pixels.pop();
+        continue;
+      }
+      const k = Math.pow(p.drag, dt);
+      p.vx *= k;
+      p.vy = p.vy * k + p.grav * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      const a = Math.min(1, (p.life / p.max) * 2.2);
+      const g = p.glow ? this.light : this.ground;
+      g.fillStyle(p.color, a);
+      g.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    }
+    for (let i = this.flicks.length - 1; i >= 0; i--) {
+      const f = this.flicks[i];
+      f.t += dt;
+      const n = Math.floor(f.t / f.step);
+      if (n >= f.frames.length) {
+        f.sprite.destroy();
+        this.flicks.splice(i, 1);
+      } else f.sprite.setFrame(f.frames[n]);
+    }
+  }
+
+  private add(p: Partial<Pixel> & { x: number; y: number; color: number }): void {
+    if (this.pixels.length > 1400) return;
+    const life = p.life ?? 0.5;
+    this.pixels.push({ vx: 0, vy: 0, grav: 0, drag: 0.05, size: 1, glow: false, max: life, life, ...p });
+  }
+
+  /** A short sprite effect from the impact sheet, frame by frame. */
+  private flick(x: number, y: number, frames: number[], step: number, tint: number, depth: number, add = true): void {
+    const sprite = this.scene.add.sprite(Math.round(x), Math.round(y), 'impact', frames[0]).setDepth(depth).setTint(tint);
+    if (add) sprite.setBlendMode(Phaser.BlendModes.ADD);
+    this.flicks.push({ sprite, frames, t: 0, step });
+  }
+
+  /**
+   * A blow landing at (x, y), struck in direction `angle` (radians): the star, sparks flying on the way the
+   * blade went, and drops of whatever the thing bleeds (`blood`, a few colours).
+   */
+  strike(x: number, y: number, angle: number, world: World, blood: number[], heavy: boolean): void {
+    const tint = world === 'jawia' ? 0xfff2c8 : 0xc8f6ff;
+    this.flick(x, y, [0, 1, 2, 3], heavy ? 0.05 : 0.04, tint, DEPTH.fog + 7);
+    const sparks = heavy ? 14 : 8;
+    for (let i = 0; i < sparks; i++) {
+      const a = angle + (Math.random() - 0.5) * 1.3;
+      const v = 90 + Math.random() * (heavy ? 170 : 110);
+      this.add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, drag: 0.004, life: 0.12 + Math.random() * 0.16, color: i % 3 ? tint : 0xffffff, glow: true });
+    }
+    const drops = heavy ? 12 : 7;
+    for (let i = 0; i < drops; i++) {
+      const a = angle + (Math.random() - 0.5) * 1.6;
+      const v = 40 + Math.random() * 90;
+      this.add({
+        x: x + (Math.random() - 0.5) * 4, y: y + (Math.random() - 0.5) * 4,
+        vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, grav: 220, drag: 0.08,
+        life: 0.35 + Math.random() * 0.35, color: blood[i % blood.length], size: i % 4 === 0 ? 2 : 1,
+      });
+    }
+  }
+
+  /** The tell of a coming strike: a glint over its head. */
+  glint(x: number, y: number, tint = 0xffb060): void {
+    const g = IMPACT.GLINT;
+    this.flick(x, y, [g + 2, g + 1, g, g, g + 1, g + 2], 0.035, tint, DEPTH.fog + 7);
+  }
+
+  /** Dust kicked up at (x, y): `n` specks, outwards and settling. */
+  dust(x: number, y: number, n: number, tint = 0xcbb89a, spread = 1): void {
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI + Math.random() * Math.PI;
+      const v = (12 + Math.random() * 34) * spread;
+      this.add({ x: x + (Math.random() - 0.5) * 6, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.5, grav: 30, drag: 0.02, life: 0.25 + Math.random() * 0.3, color: tint, size: i % 3 === 0 ? 2 : 1 });
+    }
+  }
+
+  /**
+   * A thing coming apart into its own pixels: every pixel of the sprite's current frame flies off its place.
+   * In Jawia they burst and fall; in Nawia they rise like sparks of a fire and go out.
+   */
+  disintegrate(sprite: Phaser.GameObjects.Sprite, world: World, fromX: number, fromY: number): void {
+    const buf = SHEET_PIXELS.get(sprite.texture.key);
+    const fr = sprite.frame;
+    if (!buf) return;
+    const w = fr.cutWidth;
+    const h = fr.cutHeight;
+    const left = sprite.x - sprite.originX * w;
+    const top = sprite.y - sprite.originY * h;
+    const cx = left + w / 2;
+    const cy = top + h / 2;
+    const away = Math.atan2(cy - fromY, cx - fromX);
+    const rising = world === 'nawia';
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const c = buf.get(fr.cutX + x, fr.cutY + y);
+        if (!(c >>> 24)) continue;
+        const wx = left + (sprite.flipX ? w - 1 - x : x);
+        const wy = top + y;
+        const color = ((c & 0xff) << 16) | (c & 0xff00) | ((c >> 16) & 0xff);
+        const out = Math.atan2(wy - cy, wx - cx);
+        const a = Math.random() < 0.55 ? away + (Math.random() - 0.5) * 1.4 : out;
+        const v = 20 + Math.random() * 70;
+        const delay = Math.random() * 0.18;
+        this.add({
+          x: wx, y: wy,
+          vx: Math.cos(a) * v, vy: Math.sin(a) * v + (rising ? -25 : -20),
+          grav: rising ? -40 - Math.random() * 40 : 160, drag: rising ? 0.2 : 0.05,
+          life: 0.45 + delay + Math.random() * 0.5, color, glow: rising && Math.random() < 0.4,
+        });
+      }
+    this.flick(cx, cy, [0, 1, 2, 3], 0.05, rising ? 0xc8f6ff : 0xfff2c8, DEPTH.fog + 7);
   }
 }

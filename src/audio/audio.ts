@@ -14,7 +14,8 @@ import type { Biome } from '../world/roomFormat.ts';
 export type Sfx =
   | 'shiftNawia' | 'shiftJawia' | 'denied' | 'swing' | 'hit' | 'clink' | 'enemyDie' | 'hurt'
   | 'door' | 'text' | 'gate' | 'bell' | 'start' | 'die' | 'block' | 'smash' | 'pickup' | 'reject'
-  | 'shoot' | 'switch' | 'crash' | 'roar' | 'rise' | 'greatbell' | 'cluck';
+  | 'shoot' | 'switch' | 'crash' | 'roar' | 'rise' | 'greatbell' | 'cluck'
+  | 'swing2' | 'swingHeavy' | 'hitHeavy' | 'roll' | 'warn' | 'parry' | 'lock' | 'spawn' | 'kill';
 
 // ------------------------------------------------------------- the tune
 // Two lines of notes on a grid of equal steps: "a4" plays, "-" holds the note before it, "." is silence,
@@ -492,6 +493,51 @@ class AudioEngine {
         break;
       case 'swing':
         this.hiss('bandpass', 900, 3800, 0.11, 0.42, { q: 1.2 });
+        break;
+      case 'swing2':
+        // the backhand: the same air, cut the other way
+        this.hiss('bandpass', 3600, 1100, 0.1, 0.42, { q: 1.2 });
+        break;
+      case 'swingHeavy':
+        // the heavy third: a longer, lower rush and a grunt of effort
+        this.hiss('bandpass', 500, 2600, 0.2, 0.55, { q: 1.1 });
+        this.tone('triangle', 130, 80, 0.12, 0.18);
+        break;
+      case 'hitHeavy':
+        this.hiss('lowpass', 3000, 200, 0.2, 0.75);
+        this.tone('square', 160, 45, 0.16, 0.38);
+        this.tone('sine', 70, 35, 0.22, 0.7);
+        break;
+      case 'kill':
+        // the last blow: a crack and the thing letting go
+        this.hiss('highpass', 2600, 800, 0.08, 0.45);
+        this.tone('triangle', 520, 60, 0.4, 0.38, { echo: 0.5 });
+        this.hiss('bandpass', 1600, 180, 0.5, 0.32, { echo: 0.5, at: 0.04 });
+        break;
+      case 'roll':
+        this.hiss('lowpass', 700, 220, 0.2, 0.35, { attack: 0.03 });
+        this.tone('sine', 95, 60, 0.08, 0.25, { at: 0.2 });
+        break;
+      case 'warn':
+        // a monster about to strike: a short rising hiss, sharp enough to hear over a fight
+        this.tone('sawtooth', 330, 620, 0.1, 0.12);
+        this.hiss('bandpass', 1800, 4200, 0.12, 0.22, { q: 3 });
+        break;
+      case 'parry':
+        // the shield up at the very moment: a bright ring
+        this.tone('triangle', 1568, 1568, 0.35, 0.22, { echo: 0.6 });
+        this.tone('triangle', 2349, 2349, 0.4, 0.12, { echo: 0.6, at: 0.01 });
+        this.tone('square', 300, 160, 0.06, 0.3);
+        break;
+      case 'lock':
+        // bars dropping across the ways out
+        this.tone('square', 90, 60, 0.18, 0.4);
+        this.hiss('lowpass', 1200, 100, 0.35, 0.6);
+        this.tone('triangle', 233, 220, 0.4, 0.12, { at: 0.05, echo: 0.6 });
+        break;
+      case 'spawn':
+        this.tone('sine', 120, 480, 0.45, 0.22, { attack: 0.08, echo: 0.6 });
+        this.hiss('bandpass', 400, 2000, 0.4, 0.25, { q: 2, echo: 0.4 });
         break;
       case 'hit':
         this.hiss('lowpass', 2400, 300, 0.12, 0.6);

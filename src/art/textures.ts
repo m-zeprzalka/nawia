@@ -17,6 +17,9 @@ export const ART_OVERRIDES: Record<string, string> = Object.fromEntries(
   Object.entries(overrides).map(([path, url]) => [path.split('/').pop()!.replace(/\.png$/, ''), url]),
 );
 
+/** The pixels behind every generated sheet, by texture key: effects read them (a monster falling apart into its pixels). */
+export const SHEET_PIXELS = new Map<string, PixelBuffer>();
+
 export const ART: { tilesets: Record<World, PixelBuffer> } = {
   tilesets: { jawia: new PixelBuffer(1, 1), nawia: new PixelBuffer(1, 1) },
 };
@@ -69,7 +72,11 @@ export function registerArt(scene: Phaser.Scene): void {
     ART.tilesets[world] = override(`tiles_${world}`) ?? makeTileset(world);
   }
   const sheets: Sheet[] = makeSheets();
-  for (const s of sheets) addBufferTexture(scene, s.key, override(s.key) ?? s.buf, s.fw, s.fh);
+  for (const s of sheets) {
+    const buf = override(s.key) ?? s.buf;
+    SHEET_PIXELS.set(s.key, buf);
+    addBufferTexture(scene, s.key, buf, s.fw, s.fh);
+  }
 
   addBufferTexture(scene, 'fog', makeFog());
   addBufferTexture(scene, 'glow', makeGlow());

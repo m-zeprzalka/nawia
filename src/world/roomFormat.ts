@@ -73,8 +73,15 @@ export interface RoomDef {
   ornament: Uint8Array;
   objects: ObjectDef[];
   spawn: { tx: number; ty: number } | null;
+  /** The ways out close behind him while anything in the room is left standing (`lock: yes`). */
+  lock: boolean;
+  /** Monsters that come once the ones on the map are gone: wave 2, wave 3... (`wave 2: v 3,4; z 10,6`). */
+  waves: { type: EnemyKind; tx: number; ty: number }[][];
   source: string[];
 }
+
+/** The map letters of the monsters, which a `wave` line uses too. */
+export const ENEMY_LETTERS: Record<string, EnemyKind> = { u: 'utopiec', z: 'zjawa', f: 'ognik', x: 'strzyga', d: 'dzik', v: 'wilk', p: 'morownik' };
 
 /** char -> [terrain in Jawia, terrain in Nawia] */
 export const LEGEND: Record<string, [Terrain, Terrain]> = {
@@ -147,6 +154,7 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
   const talks = new Map<number, Record<World, string | null>>();
   const looks = new Map<number, NpcLook>();
   const doorTo = new Map<number, string>();
+  const waves: { type: EnemyKind; tx: number; ty: number }[][] = [];
   let currentSign = 0;
   let currentTalk: Record<World, string | null> | null = null;
 
@@ -177,6 +185,20 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
       currentSign = Number(s[1]);
       signs.set(currentSign, current);
       talks.set(currentSign, currentTalk);
+      continue;
+    }
+    const wv = /^wave\s+([2-9]):\s*(.+)$/.exec(line);
+    if (wv) {
+      const n = Number(wv[1]);
+      if (n !== waves.length + 2) fail(`line ${i + 1}: wave ${n} comes after wave ${waves.length + 1}`);
+      const list: { type: EnemyKind; tx: number; ty: number }[] = [];
+      for (const part of wv[2].split(';')) {
+        const e = /^\s*([a-z])\s+(\d+)\s*,\s*(\d+)\s*$/.exec(part);
+        if (!e || !ENEMY_LETTERS[e[1]]) fail(`line ${i + 1}: "${part.trim()}" is not "<monster letter> <column>,<row>" (letters: ${Object.keys(ENEMY_LETTERS).join(' ')})`);
+        else list.push({ type: ENEMY_LETTERS[e[1]], tx: Number(e[2]), ty: Number(e[3]) });
+      }
+      waves.push(list);
+      current = null;
       continue;
     }
     const d = /^door\s+([1-9]):\s*(\S+)$/.exec(line);
@@ -229,8 +251,13 @@ export function parseRoom(text: string, fileName = '?'): RoomDef {
     ornament: new Uint8Array(cols * rows),
     objects: [],
     spawn: null,
+    lock: meta.lock === 'yes',
+    waves,
     source: map,
   };
+  if (meta.lock !== undefined && meta.lock !== 'yes' && meta.lock !== 'no') fail(`bad "lock: ${meta.lock}" (yes or no)`);
+  for (const [n, list] of waves.entries())
+    for (const e of list) if (e.tx < 1 || e.ty < 1 || e.tx >= cols - 1 || e.ty >= rows - 1) fail(`wave ${n + 2}: ${e.tx},${e.ty} is outside the room (columns 1-${cols - 2}, rows 1-${rows - 2}, counted from 0)`);
 
   for (let y = 0; y < rows; y++) {
     const row = map[y].padEnd(cols, ' ');

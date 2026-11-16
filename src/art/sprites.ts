@@ -3,6 +3,7 @@
 //
 // Characters live in actors.ts; this file holds everything that stands still.
 
+import { impactSheet, smearSheet } from './combatFx.ts';
 import { gameBeastSheets } from './gameBeasts.ts';
 import { gameHeroSheets } from './heroGame.ts';
 import { surfacePropSheet } from './surfaceProps.ts';
@@ -593,5 +594,5 @@ export function makeGlow(size = 48): PixelBuffer {
 }
 
 export function makeSheets(): Sheet[] {
-  return [...makeActorSheets(), ...gameHeroSheets(), ...gameBeastSheets(), objectSheet(), surfacePropSheet(), greatBellSheet(), slashSheet(), particleSheet(), uiSheet()];
+  return [...makeActorSheets(), ...gameHeroSheets(), ...gameBeastSheets(), objectSheet(), surfacePropSheet(), greatBellSheet(), slashSheet(), smearSheet(), impactSheet(), particleSheet(), uiSheet()];
 }
