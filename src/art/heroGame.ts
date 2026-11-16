@@ -6,17 +6,18 @@
 // the side, columns the animations (idle, run, three strikes, guard, roll, hurt, death), with the sword drawn into
 // the strikes.
 //
-// Until a look has its own frames for all of that, `fromPoses` fills the layout from the seven game poses it does
-// have (stand, two strides, wind-up, blow, guard, hop), laying the old separate sword where the old swing put it.
+// C2f has its own frames for all of it (src/art/hero/sambor.anim.ts). S3 does not: `fromPoses` fills the layout
+// from the seven game poses it does have (stand, two strides, wind-up, blow, guard, hop), laying the old separate
+// sword where the old swing put it.
 //
 // The old looks of the game (Wojak, Pastuszek, Góral, Wędrowiec: HERO_LOOKS in actors.ts) stay where they were;
 // the playground still shows them (G1-G4).
 
 import { PixelBuffer } from '../core/PixelBuffer.ts';
 import { SWORD, swordPicture } from './actors.ts';
-import { paintRows, type GamePose, type GamePoses, type View } from './concepts/concept.ts';
-import { CONCEPT as C2F, GAME as C2F_GAME } from './concepts/najlepszy-wysoki-f.concept.ts';
+import type { GamePose, View } from './concepts/concept.ts';
 import { ANIM_ORDER, ANIMS, CELL, SHEET_COLS, type HeroAnim, type HeroView } from './hero/layout.ts';
+import { samborFrame } from './hero/sambor.anim.ts';
 import { HERO_STYLES, lay, paintStyle, styleGrid, type HeroStyle } from './heroStyles.ts';
 import { grid, type Sheet } from './sheet.ts';
 
@@ -90,12 +91,7 @@ export function fromPoses(key: string, pose: (view: View, p: GamePose) => PixelB
   });
 }
 
-// ------------------------------------------------------------------ C2f and S3
-
-/** C2f: its game poses are drawn in its own concept file. */
-function conceptPose(key: string, poses: GamePoses): (view: View, p: GamePose) => PixelBuffer {
-  return (view, p) => paintRows(poses[view][p], 16, C2F.h, C2F.pal, C2F, true, `hero "${key}"`);
-}
+// ------------------------------------------------------------------ S3
 
 /**
  * S3: put together from its parts the way the game's first hero was (actors.ts, heroFrame): a stride under
@@ -133,8 +129,8 @@ export function gameHeroSheets(): Sheet[] {
   const s3 = HERO_STYLES.find((s) => s.id === 'malowany');
   if (!s3) throw new Error('no S3 ("malowany") among the hero styles');
   return [
-    fromPoses('sambor', conceptPose('sambor', C2F_GAME.armed), true),
-    fromPoses('sambor-bare', conceptPose('sambor-bare', C2F_GAME.bare), false),
+    layoutSheet('sambor', (a, v, i) => samborFrame(a, v, i, true)),
+    layoutSheet('sambor-bare', (a, v, i) => samborFrame(a, v, i, false)),
     fromPoses('sambor-s3', (v, p) => styleFrameFor(s3, v, p, true), true),
     fromPoses('sambor-s3-bare', (v, p) => styleFrameFor(s3, v, p, false), false),
   ];

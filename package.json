@@ -13,6 +13,7 @@
     "art:export": "node tools/export-art.ts",
     "art:preview": "node tools/preview.ts art-template/preview 3",
     "hero:preview": "node tools/hero-preview.ts",
+    "hero:anim": "node tools/hero-anim-preview.ts",
     "beast:preview": "node tools/beast-preview.ts"
   },
   "dependencies": {

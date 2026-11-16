@@ -22,7 +22,7 @@ function stack(...parts: ([number, string[]] | [number, string[], number])[]): s
 
 // ------------------------------------------------------------------ facing us
 
-const TRUNK_D = [
+export const TRUNK_D = [
   '....RbrsSrAC....',
   '...bRbaaaaACA...',
   '...rRbaaaaACR...',
@@ -32,7 +32,7 @@ const TRUNK_D = [
 ];
 const ARM_FWD_D = ['...b............', '...r............', '...s............'];
 const ARM_BACK_D = ['...b............', '...b............', '...r............', '...R............'];
-const LEGS_D = {
+export const LEGS_D = {
   stand: ['....RpP..pPC....', '.....pP..pP.....', '.....kK..kK.....', '....kkK..kkK....'],
   a: ['....RpP..pPC....', '.....pP..pP.....', '.....kK..kkK....', '....kkK.........'],
   b: ['....RpP..pPC....', '.....pP..pP.....', '....kkK..kK.....', '.........kkK....'],
@@ -40,7 +40,7 @@ const LEGS_D = {
 
 // ------------------------------------------------------------------ from behind
 
-const TRUNK_U = [
+export const TRUNK_U = [
   '....rRRRRRRC....',
   '...arRRRRRRCA...',
   '...rrRRRRRCCR...',
@@ -49,7 +49,7 @@ const TRUNK_U = [
   '....rRRRRCCC....',
   '....rRCRRCCC....',
 ];
-const LEGS_U = {
+export const LEGS_U = {
   stand: ['.....pP..pP.....', '.....pP..pP.....', '.....kK..kK.....', '....kkK..kkK....'],
   a: ['.....pP..pP.....', '.....pP..pP.....', '.....kK..kkK....', '....kkK.........'],
   b: ['.....pP..pP.....', '.....pP..pP.....', '....kkK..kK.....', '.........kkK....'],
@@ -58,7 +58,7 @@ const LEGS_U = {
 // ------------------------------------------------------------------ from the side, facing right: slim
 
 /** neck and collar; the cloak covers the back half, the shirt shows in front and below the belt */
-const TRUNK_S = [
+export const TRUNK_S = [
   '......Rrssr.....',
   '.....RRRbaA.....',
   '....RRRCbaA.....',
@@ -66,12 +66,12 @@ const TRUNK_S = [
   '....RRCCbaA.....',
   '...RRCC.baA.....',
 ];
-const ARM_S = {
+export const ARM_S = {
   stand: ['.......ba.......', '.......ba.......', '.......rb.......', '.......ss.......'],
   fwd: ['........ba......', '........ba......', '.........rb.....', '.........ss.....'],
   back: ['......ba........', '......ba........', '.....rb.........', '.....ss.........'],
 };
-const LEGS_S = {
+export const LEGS_S = {
   stand: ['...CC..pP.......', '.......pP.......', '.......kK.......', '......kkKk......'],
   near: ['...CC.PppP......', '.....PP..pp.....', '....KK....kk....', '....KK....kkK...'],
   far: ['...CC.pPPp......', '.....pp..PP.....', '....kk....KK....', '....kk....KKK...'],
