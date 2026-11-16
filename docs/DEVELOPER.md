@@ -31,7 +31,7 @@ Narzędzia pomocnicze:
 | `npm run art:export` | zapisuje arkusze 1:1 do `art-template/` jako szablony do przemalowania |
 | `node tools/preview.ts <katalog> <skala> <fragment id>` | podgląd tylko pokoi, których id zawiera podany fragment |
 | `npm run hero:preview -- C1g [C1h …]` | duży podgląd konceptów bohatera do rysowania ręcznie: głowy ×24 z numerami rzędów i kolumn, 9 klatek, chód; do `art-template/hero/` (patrz [HERO-DRAWING.md](HERO-DRAWING.md)) |
-| `npm run beast:preview -- M1 [M2 …]` | to samo dla potworów rysowanych w całości: duża klatka stania z numerami, wszystkie klatki (w obu światach), potwór obok bohatera w wielkości z gry; do `art-template/beasts/` |
+| `npm run beast:preview -- M1 [M2 …]` | to samo dla potworów rysowanych w całości: duża klatka stania z numerami, wszystkie klatki z nazwami (stanie, chód, zamach, cios, powrót, zachwianie) w obu światach na trawie, kamieniu i ciemności Nawii, „tłum” w wielkości z gry (jeden się zamierza, jeden się chwieje); `--big=attack1,hurt` powiększa wybrane klatki, `--world=nawia` pokazuje jedną postać; do `art-template/beasts/`. Poprzednie wersje siedmiu wrogów i strażnika leżą w `docs/archive/beasts/` |
 
 Skróty w trybie deweloperskim (`npm run dev`):
 
