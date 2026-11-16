@@ -473,6 +473,8 @@ export class GameScene extends Phaser.Scene {
     }
     audio.sfx('lock');
     this.trauma = Math.max(this.trauma, 0.45);
+    // the way he came in is barred now: a refused shift (or a fall) brings him back to where he stands, not into the bars
+    this.entry = { x: player.x, y: player.y, world: this.world, facing: player.facing };
   }
 
   private spawnShot(room: ActiveRoom, kind: ShotKind, home: World, x: number, y: number, vx: number, vy: number, owner: Enemy | null): void {
@@ -701,7 +703,9 @@ export class GameScene extends Phaser.Scene {
     let near: Prop | null = null;
     for (const p of room.props)
       if (p.kind === 'sign' && Math.abs(p.x - player.x) < 21 && Math.abs(p.y - player.y) < 21) near = p;
-    const text = near?.text?.[this.world];
+    // in an arena, inscriptions keep quiet while anything is left to fight: the box would cover the fight
+    const fighting = room.def.lock && room.enemies.some((e) => e.solid && e.home === this.world);
+    const text = fighting ? undefined : near?.text?.[this.world];
     this.hud.setDialog(text ? t(text) : null);
 
     // a doorway: in he goes

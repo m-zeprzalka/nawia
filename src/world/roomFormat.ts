@@ -81,7 +81,7 @@ export interface RoomDef {
 }
 
 /** The map letters of the monsters, which a `wave` line uses too. */
-export const ENEMY_LETTERS: Record<string, EnemyKind> = { u: 'utopiec', z: 'zjawa', f: 'ognik', x: 'strzyga', d: 'dzik', v: 'wilk', p: 'morownik' };
+export const ENEMY_LETTERS: Record<string, EnemyKind> = { u: 'utopiec', z: 'zjawa', f: 'ognik', w: 'ognik', x: 'strzyga', d: 'dzik', v: 'wilk', p: 'morownik' };
 
 /** char -> [terrain in Jawia, terrain in Nawia] */
 export const LEGEND: Record<string, [Terrain, Terrain]> = {
