@@ -1,11 +1,13 @@
 // The playground: a place to compare looks, not to play.
 //
 // The hero walks around a meadow that has a bit of everything in it. Along the roads stand exhibits:
-// the heroes still in the running, the villagers, and the monsters grouped by how tall they stand (one tile,
-// one and a half, two). Every exhibit has a code (C1, S2, P7...) so a choice can be named in one word;
-// standing next to one shows what it is, its size and how many colours it uses.
+// the heroes still in the running on the left, the villagers at the top, the monsters on the right. Every
+// exhibit has a code (C1, S2, P7, M3...) so a choice can be named in one word; standing next to one shows what
+// it is, its size and how many colours it uses. Monsters drawn whole (M) walk, attack, and change into their
+// Nawia form when the world is shifted.
 //
-// Which heroes stand here, in what order and under what headings, is written in src/lab/lineup.txt.
+// Which heroes and monsters stand here, in what order and under what headings, is written in
+// src/lab/lineup.txt.
 // What is taken off the board goes to that file's archive: it is never deleted, and comes back with one line.
 // What is chosen gets built into the game; see docs/PLAYGROUND.md.
 //
@@ -14,7 +16,9 @@
 
 import Phaser from 'phaser';
 import { DEPTH, GAME_H, GAME_W, TILE, TUNE, otherWorld, type World } from '../config.ts';
-import { HERO as GAME_HERO, HERO_LOOKS as GAME_LOOKS } from '../art/actors.ts';
+import { BOSS, HERO as GAME_HERO, HERO_LOOKS as GAME_LOOKS, MOB } from '../art/actors.ts';
+import { beastSheet, checkBeast, type Beast } from '../art/beasts/beast.ts';
+import { BEASTS } from '../art/beasts/index.ts';
 import { BUILDS as OLD_BUILDS, HEROES as OLD_HEROES, OLD_BEASTS } from '../art/archive.ts';
 import { CREATURES } from '../art/cast.ts';
 import { FOLK_LOOKS, HERO_LOOKS, dollSheet, type Ink, type Size } from '../art/dolls.ts';
@@ -46,7 +50,7 @@ interface Sprites {
   fh: number;
   /** how many colours the sheet uses (a 16-bit sprite had fifteen to spend) */
   colors: number;
-  /** phase 0 stands, 1-4 walk */
+  /** phase 0 stands, 1-4 walk, 5-6 attack */
   frame: (view: View, phase: number) => number;
 }
 
@@ -83,20 +87,37 @@ const INKS: { id: Ink; name: Bilingual }[] = [
 const VIEW_ROW: Record<View, number> = { down: RIG.DOWN, up: RIG.UP, side: RIG.SIDE };
 
 /** Where the exhibits stand, in tiles. Heroes fill rows in the order of lineup.txt, seven to a row. */
-const HERO_ROWS = [13, 18, 23, 28];
+const HERO_ROWS = [13, 18, 23, 28, 33, 38];
 const HERO_COLS = [2, 5, 8, 11, 14, 17, 20];
+/** Monsters fill the same rows, right of the heroes: three tiles apart, four in a group with a big one in it. */
+const MONSTER_X = [23, 57];
 
 const FOLK_SPOTS: [number, number][] = [[3, 8], [7, 8], [12, 8], [16, 8]];
-const CLASS_SPOTS: Record<string, [number, number][]> = {
-  '1': [[22, 13], [25, 13], [28, 13], [33, 13], [37, 13], [41, 13]],
-  '1.5': [[22, 18], [25, 18], [28, 18], [33, 18], [36, 18], [39, 18], [42, 18], [45, 18]],
-  '2': [[51, 13], [55, 13]],
-};
-const CLASS_NAME: Record<string, Bilingual> = {
-  '1': { pl: 'jeden kafel', en: 'one tile' },
-  '1.5': { pl: 'półtora kafla', en: 'a tile and a half' },
-  '2': { pl: 'dwa kafle', en: 'two tiles' },
-};
+
+/** Something lineup.txt can put on the monster board. */
+interface Monster {
+  code: string;
+  title: Bilingual;
+  name: Bilingual;
+  note: Bilingual | null;
+  does: Exhibit['does'];
+  /** the widest it gets, in px */
+  w: number;
+  sprites: () => Sprites;
+  /** what is wrong with a drawing (it is still drawn, as well as it can be) */
+  errors?: string[];
+}
+
+/** The game's own enemies, as they are now, to compare the new ones with: first frame and count on their sheet. */
+const GAME_ENEMIES: { name: Bilingual; short: Bilingual; key: 'mobs' | 'boss'; first: number; count: number }[] = [
+  { name: { pl: 'utopiec (w grze)', en: 'drowned one (in the game)' }, short: { pl: 'utopiec z gry', en: 'game drowned one' }, key: 'mobs', first: MOB.UTOPIEC, count: 3 },
+  { name: { pl: 'zjawa (w grze)', en: 'wraith (in the game)' }, short: { pl: 'zjawa z gry', en: 'game wraith' }, key: 'mobs', first: MOB.ZJAWA, count: 3 },
+  { name: { pl: 'strzyga w Jawi (w grze)', en: 'strzyga in Jawia (in the game)' }, short: { pl: 'strzyga z gry', en: 'game strzyga' }, key: 'mobs', first: MOB.STRZYGA, count: 3 },
+  { name: { pl: 'strzyga w Nawii (w grze)', en: 'strzyga in Nawia (in the game)' }, short: { pl: 'jej dusza', en: 'her soul' }, key: 'mobs', first: MOB.STRZYGA_N, count: 3 },
+  { name: { pl: 'dzik (w grze)', en: 'boar (in the game)' }, short: { pl: 'dzik z gry', en: 'game boar' }, key: 'mobs', first: MOB.DZIK, count: 3 },
+  { name: { pl: 'wilk (w grze)', en: 'wolf (in the game)' }, short: { pl: 'wilk z gry', en: 'game wolf' }, key: 'mobs', first: MOB.WILK, count: 3 },
+  { name: { pl: 'strażnik, boss (w grze)', en: 'the guardian, boss (in the game)' }, short: { pl: 'boss z gry', en: 'game boss' }, key: 'boss', first: BOSS.IDLE, count: 2 },
+];
 
 /** Something standing in the meadow: the hero, or an exhibit. */
 class Figure {
@@ -106,6 +127,8 @@ class Figure {
   moving = false;
   /** px walked, drives the walk cycle */
   dist = 0;
+  /** 0, or which frame of an attack it is in (1 the wind-up, 2 the blow) */
+  acting = 0;
   set: Sprites;
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly shadow: Phaser.GameObjects.Image;
@@ -129,7 +152,7 @@ class Figure {
 
   draw(): void {
     const view: View = this.facing === 'down' ? 'down' : this.facing === 'up' ? 'up' : 'side';
-    const phase = this.moving ? 1 + (Math.floor(this.dist / 5) % 4) : 0;
+    const phase = this.acting ? 4 + this.acting : this.moving ? 1 + (Math.floor(this.dist / 5) % 4) : 0;
     const px = Math.round(this.x);
     const py = Math.round(this.y);
     const depth = DEPTH.entities + (this.y + 4) / 1000;
@@ -155,9 +178,10 @@ interface Exhibit {
   label: PixelText;
   /**
    * 'pace': walks to and fro. 'turn': stands and turns on the spot. 'show': turns on the spot, standing and
-   * then walking in place in each direction. 'stay': stands and keeps moving in place (a flame).
+   * then walking in place in each direction. 'stay': stands and keeps moving in place (a flame). 'hunt': walks
+   * to and fro and attacks at each end.
    */
-  does: 'pace' | 'turn' | 'show' | 'stay';
+  does: 'pace' | 'turn' | 'show' | 'stay' | 'hunt';
   homeX: number;
   t: number;
   /** which sheet to show right now */
@@ -184,6 +208,8 @@ export class PlaygroundScene extends Phaser.Scene {
   private size: Size = 'small';
   /** every hero and archived animal there is, by code */
   private entries = new Map<string, Entry>();
+  /** every monster the monster board can show, by code */
+  private monsters = new Map<string, Monster>();
   /** the heroes on the board, in the order Q / E walks through them */
   private walkers: Entry[] = [];
   private picked = 0;
@@ -222,6 +248,7 @@ export class PlaygroundScene extends Phaser.Scene {
     this.mood = pick(MOODS, q.get('mood'), this.mood);
     this.ink = pick(INKS, q.get('ink'), this.ink);
     this.entries = this.catalogue();
+    this.monsters = this.bestiary();
     const lineup = loadLineup();
     this.walkers = lineup.board.flatMap((r) => r.codes).map((c) => this.entries.get(c)).filter((e): e is Entry => !!e && e.walk);
     const wanted = (q.get('hero') ?? '').toLowerCase();
@@ -414,6 +441,52 @@ export class PlaygroundScene extends Phaser.Scene {
     return out;
   }
 
+  /** Everything lineup.txt can put on the monster board, by code. */
+  private bestiary(): Map<string, Monster> {
+    const out = new Map<string, Monster>();
+    const put = (m: Monster): void => {
+      if (out.has(m.code) || this.entries.has(m.code)) console.warn(`playground: two exhibits share the code ${m.code}`);
+      out.set(m.code, m);
+    };
+    // P: the first monsters (cast.ts), posed by the figure painter or drawn by hand
+    CREATURES.forEach((c, i) => {
+      const title = c.kind.pl.toLowerCase() === c.name.pl.toLowerCase() ? c.kind : { pl: `${c.kind.pl}: ${c.name.pl}`, en: `${c.kind.en}: ${c.name.en}` };
+      put({ code: `P${i + 1}`, title, name: c.name, note: c.note, does: c.mob ? 'stay' : 'pace', w: c.tiles === 2 ? 24 : 16, sprites: () => this.creatureSprites(i) });
+    });
+    // E: the game's enemies as they are now
+    GAME_ENEMIES.forEach((g, i) => {
+      const fw = g.key === 'boss' ? BOSS.fw : MOB.fw;
+      const fh = g.key === 'boss' ? BOSS.fh : MOB.fh;
+      const sprites: Sprites = { key: g.key, fw, fh, colors: 0, frame: (_v, phase) => g.first + (phase % g.count) };
+      put({ code: `E${i + 1}`, title: g.name, name: g.short, note: null, does: 'stay', w: fw, sprites: () => sprites });
+    });
+    // M: monsters drawn whole (src/art/beasts), each in Jawia's form or, when the world is shifted, Nawia's
+    for (const b of BEASTS) {
+      const title = { pl: `${b.kind.pl}: ${b.name.pl}`, en: `${b.kind.en}: ${b.name.en}` };
+      const other = b.nawia?.note ? { pl: ` [Shift] ${b.nawia.note.pl}`, en: ` [Shift] ${b.nawia.note.en}` } : { pl: '', en: '' };
+      const instead = b.alt.length ? { pl: `zamiast ${b.alt.join(', ')}: `, en: `instead of ${b.alt.join(', ')}: ` } : { pl: 'nowy: ', en: 'new: ' };
+      const note = { pl: instead.pl + b.note.pl + other.pl, en: instead.en + b.note.en + other.en };
+      const errors = checkBeast(b);
+      if (errors.length) console.warn(`playground: ${b.code} (${b.id}.beast.ts) has mistakes:\n  ${errors.join('\n  ')}`);
+      // over its head only what it is (Wodnik); the reading of it (pan jeziora z garnkiem) is in the title
+      put({ code: b.code, title, name: b.kind, note, does: 'hunt', w: b.w, sprites: () => this.beastSprites(b), errors: errors.length ? errors : undefined });
+    }
+    return out;
+  }
+
+  /** A monster drawn whole, in the form of the world it is in now. */
+  private beastSprites(b: Beast): Sprites {
+    const world = b.nawia && this.world === 'nawia' ? 'nawia' : 'jawia';
+    const key = `lab:beast:${b.id}:${world}`;
+    const made = this.made.get(key);
+    if (made && this.textures.exists(key)) return made;
+    const s = beastSheet(b, world, false);
+    addBufferTexture(this, key, s.buf, s.fw, s.fh);
+    const sprites: Sprites = { key, fw: s.fw, fh: s.fh, colors: s.colors, frame: (_v, phase) => s.frameOf(phase) };
+    this.made.set(key, sprites);
+    return sprites;
+  }
+
   private folkSprites(i: number): Sprites {
     const look = FOLK_LOOKS[i];
     const ink = INKS[this.ink].id;
@@ -456,9 +529,9 @@ export class PlaygroundScene extends Phaser.Scene {
       text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
       this.titles.push({ text, name });
     };
-    const named = new Set([...lineup.board.flatMap((r) => r.codes), ...lineup.archive]);
-    for (const code of named) if (!this.entries.has(code)) console.warn(`playground: lineup.txt names ${code}, which does not exist`);
-    for (const code of this.entries.keys()) if (!named.has(code)) console.warn(`playground: ${code} is in neither part of lineup.txt (not shown)`);
+    const named = new Set([...lineup.board.flatMap((r) => r.codes), ...lineup.monsters.flatMap((r) => r.codes), ...lineup.archive]);
+    for (const code of named) if (!this.entries.has(code) && !this.monsters.has(code)) console.warn(`playground: lineup.txt names ${code}, which does not exist`);
+    for (const code of [...this.entries.keys(), ...this.monsters.keys()]) if (!named.has(code)) console.warn(`playground: ${code} is in neither part of lineup.txt (not shown)`);
     let row = 0;
     for (const group of lineup.board) {
       const list = group.codes.map((c) => this.entries.get(c)).filter((e): e is Entry => !!e);
@@ -475,19 +548,23 @@ export class PlaygroundScene extends Phaser.Scene {
     }
     FOLK_LOOKS.forEach((c, i) => add(`N${i + 1}`, c.name, c.name, c.note, FOLK_SPOTS[i], 'turn', () => this.folkSprites(i)));
 
-    const used: Record<string, number> = { '1': 0, '1.5': 0, '2': 0 };
-    CREATURES.forEach((c, i) => {
-      const cls = String(c.tiles);
-      const spot = CLASS_SPOTS[cls][used[cls]++];
-      const title = c.kind.pl.toLowerCase() === c.name.pl.toLowerCase() ? c.kind : { pl: `${c.kind.pl}: ${c.name.pl}`, en: `${c.kind.en}: ${c.name.en}` };
-      add(`P${i + 1}`, title, c.name, c.note, spot, c.mob ? 'stay' : 'pace', () => this.creatureSprites(i));
-    });
-    // a heading over each size class
-    for (const cls of Object.keys(CLASS_SPOTS)) {
-      const [tx, ty] = CLASS_SPOTS[cls][0];
-      const text = new PixelText(this, tx * TILE - 8, ty * TILE - 52, { width: 160, height: 13, color: 0x9af4ff });
-      text.image.setDepth(DEPTH.fxWorld).setVisible(this.labels);
-      this.titles.push({ text, name: CLASS_NAME[cls] });
+    // the monster board, right of the heroes, as lineup.txt has it
+    row = 0;
+    for (const group of lineup.monsters) {
+      const list = group.codes.map((c) => this.monsters.get(c)).filter((m): m is Monster => !!m);
+      const step = list.some((m) => m.w > 24) ? 4 : 3;
+      const cols: number[] = [];
+      for (let x = MONSTER_X[0]; x <= MONSTER_X[1]; x += step) cols.push(x);
+      for (let i = 0; i < list.length; i += cols.length) {
+        if (row >= HERO_ROWS.length) {
+          console.warn('playground: the monster board is full; the rest of lineup.txt is not shown');
+          break;
+        }
+        const ty = HERO_ROWS[row];
+        if (i === 0 && group.heading) heading(cols[0], ty, group.heading);
+        list.slice(i, i + cols.length).forEach((m, k) => add(m.code, m.title, m.name, m.note, [cols[k], ty], m.does, m.sprites));
+        row++;
+      }
     }
     this.relabel();
   }
@@ -559,7 +636,8 @@ export class PlaygroundScene extends Phaser.Scene {
       this.top.reveal(this.world, this.hero.x, this.hero.y - 6);
       audio.setWorld(this.world);
       audio.sfx(this.world === 'nawia' ? 'shiftNawia' : 'shiftJawia');
-      this.light();
+      // monsters with a form of their own in Nawia change into it
+      this.restyle();
     }
 
     // ---- the hero just walks
@@ -595,6 +673,24 @@ export class PlaygroundScene extends Phaser.Scene {
         // things drawn only in profile keep facing the way they last walked
         if (!walking && f.set.frame('down', 0) === f.set.frame('side', 0)) f.facing = k < 2.6 ? 'right' : 'left';
         f.dist = walking ? e.t * 17.5 : 0;
+      } else if (e.does === 'hunt') {
+        // 1.6 s walking right, an attack (a wind-up, the blow, a breath), 1.6 s back, another attack
+        const k = e.t % 6.4;
+        const right = k < 3.2;
+        const leg = k % 3.2;
+        f.facing = right ? 'right' : 'left';
+        if (leg < 1.6) {
+          f.moving = true;
+          f.acting = 0;
+          f.x = right ? e.homeX - 14 + (leg / 1.6) * 28 : e.homeX + 14 - (leg / 1.6) * 28;
+          f.dist = e.t * 17.5;
+        } else {
+          const a = leg - 1.6;
+          f.moving = false;
+          f.dist = 0;
+          f.acting = a < 0.5 ? 1 : a < 1.0 ? 2 : 0;
+          f.x = right ? e.homeX + 14 : e.homeX - 14;
+        }
       } else if (e.does === 'turn') {
         f.facing = (['down', 'right', 'up', 'left'] as Dir[])[Math.floor(e.t / 1.5) % 4];
       } else if (e.does === 'show') {

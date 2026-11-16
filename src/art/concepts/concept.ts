@@ -81,35 +81,47 @@ export function checkConcept(c: Concept): string[] {
 
 /** One frame, coloured and lined. With `strict` a bad drawing throws instead of drawing what it can. */
 export function conceptFrame(c: Concept, view: View, pose: Pose, strict = true): PixelBuffer {
-  const rows = c.frames[view][pose];
-  const h = c.h;
-  const b = new PixelBuffer(W, h);
-  const at = (x: number, y: number): string => (x < 0 || y < 0 || x >= W || y >= h ? '.' : (rows[y]?.[x] ?? '.'));
+  return paintRows(c.frames[view][pose], W, c.h, c.pal, c, strict, `concept "${c.id}"`);
+}
+
+/** How a drawing is lined: see Concept['ink']. */
+export interface Ink {
+  ink: 'none' | 'dark' | 'tinted' | 'rim';
+  outline?: number;
+  line?: Record<string, number>;
+}
+
+/**
+ * Letter rows (one letter, one colour; '.' empty) as a picture `w` x `h`, with the line round it that `ink`
+ * asks for. Shared by the hero concepts and the monsters (beasts/beast.ts).
+ */
+export function paintRows(rows: readonly string[], w: number, h: number, pal: Record<string, number>, ink: Ink, strict = true, who = 'drawing'): PixelBuffer {
+  const b = new PixelBuffer(w, h);
+  const at = (x: number, y: number): string => (x < 0 || y < 0 || x >= w || y >= h ? '.' : (rows[y]?.[x] ?? '.'));
   for (let y = 0; y < h; y++)
-    for (let x = 0; x < W; x++) {
+    for (let x = 0; x < w; x++) {
       const ch = at(x, y);
       if (ch !== '.') {
-        const hex = c.pal[ch];
+        const hex = pal[ch];
         if (hex === undefined) {
-          if (strict) throw new Error(`concept "${c.id}" has no colour for "${ch}"`);
+          if (strict) throw new Error(`${who} has no colour for "${ch}"`);
           continue;
         }
         b.set(x, y, rgb(hex));
         continue;
       }
-      if (c.ink === 'none') continue;
+      if (ink.ink === 'none') continue;
       // the pixel above a gap decides its line first, then the one to its left: that is the shadow side
       const up = at(x, y - 1);
       const left = at(x - 1, y);
-      const n = up !== '.' ? up : left !== '.' ? left : c.ink === 'rim' ? '.' : at(x + 1, y) !== '.' ? at(x + 1, y) : at(x, y + 1);
-      if (n === '.') continue;
-      const hex = c.ink === 'dark' ? c.outline : (c.line?.[n] ?? c.outline);
+      const n = up !== '.' ? up : left !== '.' ? left : ink.ink === 'rim' ? '.' : at(x + 1, y) !== '.' ? at(x + 1, y) : at(x, y + 1);
+      if (n === '.' || pal[n] === undefined) continue;
+      const hex = ink.ink === 'dark' ? ink.outline : (ink.line?.[n] ?? ink.outline);
       if (hex !== undefined) b.set(x, y, rgb(hex));
     }
   return b;
 }
 
-/** Rows: facing down, up, side (right). Columns: stand, stride, stand, other stride, stand. */
 /** The walk sheet: rows down, up, side; columns stand, 1, stand, 2, stand. `strict` as in conceptFrame. */
 export function conceptSheet(c: Concept, strict = true): Sheet {
   const buf = new PixelBuffer(W * 5, c.h * 3);

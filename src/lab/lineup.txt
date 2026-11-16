@@ -2,11 +2,15 @@
 //
 // "* title | title in English" starts a new row of the board, with a heading over it.
 // Then one exhibit a line: its code first; the rest of the line is a note for you (the playground ignores it).
-// A row holds seven; a longer group goes on in the next row.
+// Heroes ("board:") stand on the left, seven to a row; monsters ("monsters:") on the right, twelve to a row
+// (nine in a group with a big one in it). A longer group goes on in the next row.
 //
 // To take something off the board, move its line below "archive:". Nothing is deleted: to bring it back,
 // move the line up again and reload the page. Codes the playground does not know are reported in the
-// browser console. Villagers (N) and monsters (P) are not listed here: they keep their own places.
+// browser console. Villagers (N) are not listed here: they keep their own places.
+//
+// Monster codes: E = the game's enemies as they are now, P = the first monsters drawn for the playground,
+// M = monsters drawn whole (src/art/beasts), each an alternative to the ones before it or new from the lore.
 
 board:
 
@@ -34,6 +38,61 @@ S3   Malowany: brzeg głowy rozjaśniony
 A1b  Wojak z mniejszą, mniej okrągłą głową
 A3b  Łowca z mniejszą głową
 A5b  Kołpak z mniejszą głową
+
+monsters:
+
+* Zwierzęta | Animals
+E6   wilk w grze
+P4   wilk szary
+P5   wilk skazy
+M1   wilk z Rojstów: chudy, łeb nisko, kłus; w Nawii żebra i kość pyska
+E5   dzik w grze
+P6   dzik
+M2   odyniec: klin ze szczeciną, szarża i podrzut szablami; w Nawii świeci szczecina
+P3   żmija
+M3   żmija zygzakowata: pełznie falą, kąsa z wyskoku; w Nawii zygzak jak piorun
+M4   nawka, ptak-dusza (z lore): w Jawi tylko cień na ziemi, w Nawii ptak z ludzką twarzą
+
+* Woda | Water
+E1   utopiec w grze
+P7   topielec
+M5   topielec: w Jawi mokry czarny kot, w Nawii topielec po pas w czarnej wodzie
+P8   wodnik
+M6   wodnik: pan jeziora z garnkiem na dusze (przodem); w Nawii w garnku świeci dusza
+M7   rusałka (z lore): w Jawi tylko wianek i mokre ślady, w Nawii tańcząca dziewczyna
+M8   boginka (z lore): z cudzym dzieckiem na plecach; w Nawii tobołek to zielsko
+
+* Noc | Night
+E2   zjawa w grze
+P11  zjawa: całun
+P12  zjawa: południca
+M9   zjawa: topielica ze Zwonigrodu, wisi za związane ręce (przodem); w Nawii pod wodą
+P13  upiór
+M10  upiór z sierpem na szyi: wlecze się i dusi; w Nawii lata
+E3   strzyga w grze (Jawia)
+E4   strzyga w grze (Nawia)
+P9   strzyga: jędza
+P10  strzyga: sowa
+M11  strzyga o dwóch duszach (przodem): w Jawi ciało, w Nawii ptak ze światła z drugim sercem
+M12  zmora (z lore): w Jawi cień z oczami, w Nawii blada; skacze na plecy
+
+* Ognie, zaraza, licho, burza | Lights, blight, misfortune, storm
+P1   ognik w grze
+M13  ognik mierniczego: w Jawi ciepła latarnia, w Nawii dusza mierniczego z prętem
+P2   morownik w grze
+M14  morowe dzwonki: woskowe łodygi zarazy dmuchające zarodnikami
+P14  licho
+M15  licho z workiem: jednooki dziad, ręka za długa; w Nawii worek świeci
+M16  płanetnik (z lore): ciągnie chmurę na linie; w Nawii na linie milczący dzwon
+
+* Wielkie i bossowie | The big ones and the bosses
+P15  bies
+M17  bies z bagna: kudłaty, na kozich nogach; w Nawii dziura w świecie
+P16  leszy
+M18  leśny dziad: płaszcz z mchu, broda z korzeni, wali konarem
+E7   strażnik, boss w grze
+M19  bałwan graniczny: dębowy, w łańcuchach, skacze i wali o ziemię; w Nawii świeci
+M20  Żmij, boss (z lore): w Jawi nietykalny pancerz, w Nawii widać serce
 
 archive:
 C1e  najlepszy: oko z boku za wysoko i niepodobne do oka z przodu; poprawione w C1g

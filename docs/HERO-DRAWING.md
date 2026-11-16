@@ -189,3 +189,32 @@ niezależna.
   nosa.
 - **Oko z boku to to samo oko co z przodu**: te same rzędy (powieka w 4, białko i tęczówka w 5), te same kolory. Tęczówka z
   przodu, białko za nią, przed tęczówką jeden piksel skóry.
+
+## 10. Potwory
+
+Potwory rysowane w całości (kody **M** na placu prób) zapisuje się tak samo: litery, kolory w `PAL`, kropka jako pusty
+piksel. Leżą w `src/art/beasts/`, jeden plik na potwora: `<nazwa>.beast.ts`. Format opisuje `src/art/beasts/beast.ts`.
+Różnice względem bohatera:
+
+- **Rozmiar.** Szerokość 16, 24 albo 32 px (`w`), wysokość od 16 do 32 rzędów (`h`): jeden kafel, półtora albo dwa. Każdy
+  rząd ma dokładnie `w` znaków. To, co stoi na ziemi, stoi w przedostatnim rzędzie; ostatni zostaje pusty.
+- **Jeden widok.** `view: 'side'` znaczy, że potwór jest narysowany w prawo, a idąc w lewo jest odbijany lustrzanie.
+  `view: 'front'` znaczy, że zawsze patrzy na nas (płomień, zjawa).
+- **Klatki.** `frames` ma trzy części:
+  - `stand`: stanie;
+  - `walk`: chód, dwie albo cztery klatki;
+  - `attack`: atak, jedna albo dwie klatki (zamach, cios).
+- **Postać w Nawii.** Część `nawia` jest opcjonalna. Może zmienić kolory (`pal`: tylko te litery, które są inne), klatki
+  (`frames`: tylko te, które są inne) i obrys. Na placu prób widać ją po wciśnięciu Shift.
+- **Kolory.** Najwyżej 15 w każdej postaci, razem z obrysem.
+
+Podgląd: `npm run beast:preview -- M1` zapisuje obrazek `art-template/beasts/M1.png`. Na obrazku są:
+- duża klatka stania z numerami rzędów i kolumn, dla każdej postaci (Jawia i Nawia);
+- wszystkie klatki na trawie i na ciemnym tle;
+- to samo w wielkości z gry, obok bohatera C1g, żeby było widać skalę.
+
+Kto stoi na planszy potworów i w jakich grupach, decyduje sekcja `monsters:` w `src/lab/lineup.txt`. Działa tak samo jak
+plansza bohaterów i ma wspólne archiwum. Kody na planszy potworów:
+- **E** to przeciwnicy z gry, tacy, jacy są teraz;
+- **P** to pierwsze potwory z placu prób;
+- **M** to potwory rysowane w całości.

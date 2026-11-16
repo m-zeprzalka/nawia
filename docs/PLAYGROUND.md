@@ -25,7 +25,9 @@ W4   Łowca potworów: odpada
 - **Zmienić kolejność**: przestawić linijki. Rząd mieści siedem postaci; dłuższa grupa przechodzi do następnego rzędu.
 - Notatki za kodem plac pomija, więc można tam pisać werdykty („za duża głowa”, „odpada”).
 - Kod, którego plac nie zna, i bohater, którego nie ma w żadnej części, są wypisywane w konsoli przeglądarki.
-- Mieszkańców (N) i potworów (P) ten plik na razie nie dotyczy: stoją na swoich miejscach.
+- Bohaterowie są w części `board:` i stoją po lewej. Potwory są w części `monsters:` i stoją po prawej, po dwanaście w rzędzie
+  (po dziewięć w grupie z dużym potworem). Archiwum jest wspólne.
+- Mieszkańców (N) ten plik nie dotyczy: stoją na swoich miejscach.
 - Bohatera z archiwum można obejrzeć w ruchu bez przenoszenia linijki: `?lab&hero=W4`.
 
 ## Teraz wybieramy: styl graficzny bohatera
@@ -213,7 +215,9 @@ Które kody stoją na planszy, decyduje `src/lab/lineup.txt`; poniżej są wszys
 | **X1–X6** | postacie ze „szkieletu” (głowa szersza od tułowia), 16×16 i 16×24 | jak wyżej |
 | **Z1–Z4** | pierwsze ręcznie rysowane zwierzęta (żmija, wilki, dzik) | chodzą tam i z powrotem |
 | **N1–N4** | mieszkańcy: zielarka, starzec, gospodyni, dziecko (w wysokości wybranej klawiszem 1 / 2; dziecko ma zawsze jeden kafel) | stoją w zagrodach i obracają się |
-| **P1–P16** | potwory, pogrupowane według wysokości | chodzą tam i z powrotem; ognik i morownik stoją |
+| **E1–E7** | przeciwnicy z gry, tacy, jacy są teraz: utopiec, zjawa, strzyga w Jawi i w Nawii, dzik, wilk, strażnik (boss) | ruszają się w miejscu |
+| **P1–P16** | pierwsze potwory z placu prób | chodzą tam i z powrotem; ognik i morownik stoją |
+| **M1–M20** | potwory rysowane w całości: alternatywa każdego potwora (E i P) i nowe istoty z lore | chodzą tam i z powrotem i atakują na końcu każdej drogi; te, które mają drugą postać, po Shift zmieniają się w nią |
 
 Pomysły na postać z poprzedniej iteracji (lalki; ten sam numer w obu wysokościach):
 
@@ -255,6 +259,40 @@ Potwory:
 
 Zwierzęta (żmija, wilki, dzik) są rysowane ręcznie, klatka po klatce, z profilu.
 
+**Nowe potwory (M)** stoją na planszy potworów, każdy obok tego, co zastępuje, w grupach: zwierzęta, woda, noc, ognie i licho,
+wielkie i bossowie. Każdy ma stanie, chód i atak (zamach, cios). Wiele z nich ma drugą postać w Nawii, bo tak mówi lore: topielec
+w Jawi jest niewinnym zwierzęciem przy wodzie, nawkę w Jawi widać tylko jako cień na ziemi, a Żmij w Nawii pokazuje serce.
+Na placu prób widać to po wciśnięciu Shift.
+
+![Potwory rysowane w całości: po lewej w Jawi (stanie, dwa kroki, zamach, cios), po prawej w Nawii; obok bohater dla skali](img/monsters-whole.png)
+
+| Kod | Kto | Rozmiar | Zamiast | Pomysł | W Nawii |
+|---|---|---|---|---|---|
+| **M1** | Wilk z Rojstów | 24×16 | P4, P5, E6 | chudy, łeb nisko, zjeżony kark; kłus w czterech klatkach, przysiad i skok do gardła | martwy wilk z bagna: świecące żebra, kość zamiast pyska |
+| **M2** | Odyniec | 24×16 | P6, E5 | klin: wysoki kark z grzywą szczeciny, długi ryj, szable; szarża z łbem przy ziemi i podrzut | czarny kształt, świecą szczecina, szable, ryj i oko |
+| **M3** | Żmija zygzakowata | 24×16 | P3 | krótka i gruba, czarny zygzak; pełznie falą, zwija szyję w S i kąsa | zygzak świeci jak pęknięcie albo piorun |
+| **M4** | Nawka, ptak-dusza | 24×16 | nowa | w Jawi tylko cień ptaka sunący po ziemi | czarny ptak z bladą ludzką twarzą, spada na ofiarę szponami |
+| **M5** | Topielec: kot znad wody | 16×24 | P7, E1 | w Jawi mokry czarny kot z okiem za jasnym: skrada się i skacze | prawdziwa postać: rozdęty topielec po pas w czarnej wodzie, wciąga w głąb |
+| **M6** | Wodnik z garnkiem | 24×32, przodem | P8 | stary, mokry, broda z wodorostów; unosi garnek na dusze i przykrywa nim ofiarę | w garnku świeci dusza topielca |
+| **M7** | Rusałka | 16×24 | nowa | w Jawi niewidzialna: wianek w powietrzu, błysk oka, mokre ślady | blada dziewczyna we włosach do kolan, tańczy i rzuca się, żeby załaskotać |
+| **M8** | Boginka | 16×24 | nowa | zgarbiona, w mokrych łachmanach, z cudzym dzieckiem na plecach; chwyta wyrzutem ręki | tobołek to mokre zielsko, a w nim jej odmieniec |
+| **M9** | Zjawa: topielica ze Zwonigrodu | 16×24, przodem | P11, P12, E2 | wisi za związane ręcznikiem nadgarstki; spada na ciebie, pod włosami ma dziurę | pod wodą: włosy się unoszą, twarz to zimne światło |
+| **M10** | Upiór z sierpem na szyi | 16×24 | P13 | trup w koszuli grobowej; wlecze się, potem rzuca się do gardła | lata: bez nóg, rozwiewa się w dym, w oczodole żarzy się węgiel |
+| **M11** | Strzyga o dwóch duszach | 24×24, przodem | P9, P10, E3, E4 | ciało zgarbione jak ptak na gałęzi, włosy na twarzy, szpony | druga dusza: ptak z zimnego światła z drugim sercem (słaby punkt) |
+| **M12** | Zmora | 16×16 | nowa | w Jawi cień z dwojgiem oczu; skacze na plecy (Shift ją zrzuca) | widać ją całą: blada, bez włosa, kręgosłup na wierzchu |
+| **M13** | Ognik mierniczego | 16×16, przodem | P1 | ciepłe światełko jak czyjaś latarnia, wabi w topiel, bucha ogniem | dusza nieuczciwego mierniczego z prętem i łańcuchem |
+| **M14** | Morowe dzwonki | 16×16, przodem | P2 | woskowe łodygi zarazy ze zwieszonymi łbami; dmuchają zarodnikami | wosk ciemnieje, zaraza pali się fioletem |
+| **M15** | Licho z workiem | 16×24 | P14 | jednooki dziad z workiem na cudze szczęście, ręka o wiele za długa | worek świeci skradzionym szczęściem |
+| **M16** | Płanetnik | 24×32 | nowy | ciągnie chmurę na linie; szarpie, a z chmury bije piorun | na linie milczący dzwon ze związanym sercem |
+| **M17** | Bies z bagna | 24×32 | P15 | wychudły, kudłaty, na kozich nogach; staje dęba i wbija szpony w ziemię | dziura w świecie: czarny, ze świecącymi krawędziami |
+| **M18** | Leśny dziad | 24×32 | P16 | zgięty pod płaszczem mchu, broda z korzeni, łapcie z brzozy; wali konarem | świecą porosty, twarz i broda |
+| **M19** | Bałwan graniczny (boss) | 32×32, przodem | E7 | dębowy, z wieloma twarzami, w obroży z zerwanymi łańcuchami; skacze i wali o ziemię | rzeźby i pęknięcia świecą, dolna twarz otwiera oczy |
+| **M20** | Żmij (boss) | 32×32 | nowy | strażnik wejścia do Nawii: zwinięty w łuskowym pancerzu, nietykalny; cofa łeb i uderza | przezroczysty, w splocie bije serce |
+
+Wszystkie mieszczą się w 15 kolorach w każdym świecie. Każdego narysował jeden z pięciu niezależnych grafików
+(zwierzęta, woda, noc, ognie i licho, wielkie i bossowie), według wspólnych zasad: malowane jak bohater C1g, światło z lewej
+góry, jeden ciemny kontur, nic okrągłego ani uśmiechniętego.
+
 ## Nastroje scenerii (klawisz N)
 
 Ta sama łąka, wieś, staw i krąg kamieni w pięciu wersjach: **poranek** (obecny wygląd gry), **zmierzch** (ciepłe światło, fioletowe
@@ -273,8 +311,11 @@ Nawia ma jeden wygląd: tam nie ma pogody.
   i pięć klatek chodu.
 - **Zwierzęta** są rysowane ręcznie z profilu (`src/art/cast.ts`): ciało raz, do tego trzy układy nóg. Żmija jest zadana
   kolumna po kolumnie, więc druga klatka to ten sam wąż chwilę później.
+- **Potwory rysowane w całości (M)** mają ten sam zapis co koncepty bohatera, litera po literze. Każdy jest w swoim pliku
+  `src/art/beasts/*.beast.ts`, a format opisuje `beast.ts`. Mają jeden widok (z profilu albo przodem), stanie, chód, atak i
+  opcjonalnie postać w Nawii. Jak je poprawiać: [HERO-DRAWING.md](HERO-DRAWING.md), punkt 10.
 
-Czego jeszcze nie ma: zamachu mieczem, gardy, obrażeń, ataków potworów. Postaci na placu tylko stoją i chodzą.
+Czego jeszcze nie ma: zamachu mieczem, gardy, obrażeń. Na placu atakują tylko potwory M.
 
 ## Dla developera
 
@@ -289,6 +330,7 @@ Czego jeszcze nie ma: zamachu mieczem, gardy, obrażeń, ataków potworów. Post
 | archiwum | `src/art/archive.ts`: wcześniejsze postacie ze szkieletu i pierwsze zwierzęta, bez zmian |
 | szkielet potworów | `src/art/rig.ts`: `Figure`, `figureFrame`, `figureSheet` |
 | potwory | `src/art/cast.ts`: `CREATURES`, rysunki zwierząt |
+| potwory rysowane w całości | `src/art/beasts/*.beast.ts` (każdy eksportuje `BEAST`); format i zasady w `beast.ts`; plac znajduje je sam (`index.ts`); w scenie `bestiary()` zna wszystkie potwory po kodach, a przeciwników z gry opisuje `GAME_ENEMIES` |
 | nastroje | `MOODS` w `src/art/surface.ts` |
 
 Litery w rysunkach ludzi znaczą wszędzie to samo (`h H l` włosy, `s S t` skóra, `a A b` koszula, `r R` haft, `p P` spodnie,

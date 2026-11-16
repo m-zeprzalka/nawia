@@ -12,7 +12,8 @@
     "rooms:check": "node tools/check-rooms.ts",
     "art:export": "node tools/export-art.ts",
     "art:preview": "node tools/preview.ts art-template/preview 3",
-    "hero:preview": "node tools/hero-preview.ts"
+    "hero:preview": "node tools/hero-preview.ts",
+    "beast:preview": "node tools/beast-preview.ts"
   },
   "dependencies": {
     "phaser": "^4.2.1"
