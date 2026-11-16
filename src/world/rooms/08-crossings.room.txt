@@ -2,6 +2,9 @@
 // and nothing on screen marks them: on a crossing each world shows only its own deck.
 // The way over:  west bank -> old bridge -> planks -> old bridge -> planks -> east bank.
 // Every other branch is a dead end. Turn the stone anywhere else and the border throws you back to the door.
+// Nothing gates the room, but nothing lets him think in peace either: two wisps (w) spit at whoever is on the
+// planks in Jawia (one by the first crossing, one in the middle), and a wraith (z) on the east bank flies out
+// at whoever is on the old bridge in Nawia. The inscription no longer counts the crossings for him.
 room: crossings
 at: 2,2
 name: Kładki | The Crossings
@@ -15,10 +18,10 @@ map:
 #..~====~~w=~~:~~...
 #..~=~~~:~~=~~:~~..#
 ...:+::::~~=~~:~~..#
-#..~~~~~:~~~~~~~~..#
+#..~~~w~:~~~~~~~~..#
 #T.~~~~~~~~~~~~~~.T#
 ####################
 
 sign 1:
-  jawia: Żywi kładą deski, gdzie mogą. Umarli chodzą starym mostem. Te drogi krzyżują się w trzech miejscach i nic tego nie zdradza. | The living lay planks where they can. The dead walk the old bridge. The two ways cross in three places, and nothing gives them away.
+  jawia: Żywi kładą deski, gdzie mogą. Umarli chodzą starym mostem. Gdzie jedna droga przechodzi w drugą, wie tylko ten, kto przeszedł. | The living lay planks where they can. The dead walk the old bridge. Where one way turns into the other, only one who has crossed knows.
   nawia: ...stoimy na moście i patrzymy, jak chodzisz po wodzie... | ...we stand on the bridge and watch you walk on water...

@@ -1,7 +1,12 @@
-// A room two screens wide: the camera follows. Potters' Street.
+// A room two screens wide: the camera follows. Potters' Street. A corridor, not an arena: nothing bars the
+// way, but every crossing has something on it.
 // Jawia: rubble across the road (J), a flooded stretch with planks (=).
 // Nawia: the road is clear, the gatehouse still stands (N, with doorways on the path), the old bridge (:) too.
 // Every crossing wants the other side, and the strips between them are where you must remember what stood where.
+// Who waits where: two of the drowned (u) in the square he comes down into, one by the flooded cellar and one
+// from the south; a wisp (w) over the flood that spits at whoever is on the planks; a wraith (z) shut in the
+// gatehouse in Nawia, where he must turn the stone to reach the old bridge; and another on the west bank,
+// which flies out over the water at whoever is on the old bridge.
 room: street
 at: 1,1
 name: Ulica Garncarzy | Potters' Street
@@ -9,12 +14,12 @@ name: Ulica Garncarzy | Potters' Street
 map:
 ##################################.#####
 #!####!#####!######!#####!####!###.###!#
-#.s..~~~~.N...N..~~~~..JJ.........,.1..#
+#.s..~~~~.N...N..~~~~..JJ......u..,.1..#
 #....~~~~.N.s.N..~~w~..JJ...~~~~..,....#
 #....~~~~.N...N..~~~~..JJ...~~~~..,....#
 .....::::.,...,..====..JJ,,,,,,,,,,....#
-#.u..~~~~.N...N..~~~~..JJ..............#
-#....~~~~.NN.NN..~~~~..JJ..............#
+#....~~~~.N...N..~~~~..JJ..............#
+#.z..~~~~.NN.NN..~~~~..JJ..............#
 #..o.~~~~.N.z.N..~~~~..JJ..s.u.....o...#
 #.T..~~~~.N...N..~~~~..JJ.T..........T.#
 ########################################

@@ -1,23 +1,34 @@
-// A strzyga (x) has two souls: kill the body in Jawia and the second soul gets up in Nawia.
-// The hall is a patchwork: rubble (J) only in Jawia, standing walls (N) only in Nawia.
-// Following her across means turning the stone mid-fight, and not on the wrong tile.
-// The gate (G) to the guardian opens when everything here is dead on both sides. The heart (h) is for what comes next.
+// The climax before the guardian, and an arena: bars drop behind him, the gate (G) opens when all is dead.
+// A strzyga (x) has two souls: kill the body in Jawia and the second soul gets up in Nawia, where it fell.
+// Wave 1: one strzyga, alone, to learn her: follow her across.
+// Wave 2: a strzyga in the north-west, and a wraith (z) in Nawia waiting for whoever follows her soul.
+// Wave 3: two strzygi from opposite corners. Kill one body, then the other, and only then go after
+// both souls; or follow each one across as she falls.
+// The hall is read like this: the aisle (,) is the same on both sides, safe ground to turn the stone on.
+// Columns (P) stand in both worlds. Rubble (J) is only in Jawia; the old walls (N) only in Nawia, two rows
+// of them, whose stumps can be seen in Jawia. A lunge ends against whatever stands in its world.
+// One pot holds a heart; the heart by the gate is for what comes next. The inscription (1) is by the way in,
+// read on arrival, so that its words do not cover the fight.
 room: souls
 at: 3,2
 name: Sala Dwóch Dusz | Hall of Two Souls
+lock: yes
 
 map:
 ##########.#########
 #!###!####G###!###!#
-#.....N......J.....#
-#..J.....N.......N.#
-#.....x.....J......#
-....N....h,....J...#
-#.......J...x...N..#
-#..N.........N.....#
-#.o...J....N....J.o#
-#T...u...1........T#
+#...N.....h....N...#
+#.P...J..,,..J...P.#
+#1..N....,,....N...#
+..,,,,,,,,,,,,,,x,.#
+#...N....,,....N...#
+#.P...J..,,..J...P.#
+#.o.N....,,....N...#
+#T................T#
 ####################
+
+wave 2: x 3,2; z 16,8
+wave 3: x 3,8; x 16,2
 
 sign 1:
   jawia: Strzyga rodzi się z dwiema duszami. Zabij ciało, a druga wstanie tam, gdzie stal jej nie sięga. Chyba że pójdziesz za nią. | A strzyga is born with two souls. Kill the body and the other rises where steel cannot reach it. Unless you follow.

@@ -4,6 +4,11 @@
 //   west hall -> past the lowered moon post -> the north chamber (rubble in Jawia: go as a spirit)
 //   -> strike the stone from the north -> turn back to Jawia (not on the rubble!) -> through the gap
 //   that is a wall in Nawia (N) -> past the lowered sun posts -> out.
+// The north chamber can only be entered as a spirit, and a wraith (z) lives there: the fight is in the world
+// he has to be in, in a cramped room full of tiles he must not turn the stone on. A drowned one (u) waits
+// in the east chamber for whoever comes down past the sun posts. The pot in the north-east chamber, which he
+// only reaches the right way round, holds a heart.
+// The inscription only says what the stone does; which side to strike it from is for him to find.
 room: sunmoon
 at: 1,2
 name: Komnata Słońca i Księżyca | Chamber of Sun and Moon
@@ -22,5 +27,5 @@ map:
 ####################
 
 sign 1:
-  jawia: Kamień słońca i księżyca. Uderz, a słupy zamienią się miejscami. Zanim uderzysz, pomyśl, po której stronie muru chcesz stać. | The stone of sun and moon. Strike it and the posts trade places. Before you strike, think which side of the wall you want to be on.
+  jawia: Słońce dla żywych, księżyc dla umarłych. Kto uderzy w kamień, zamieni im miejsca, a sam zostanie tam, gdzie stał. | The sun for the living, the moon for the dead. Whoever strikes the stone makes them trade places, and stays where he stood.
   nawia: ...słońce jest dla żywych, księżyc dla nas. Kamień nie wybiera... | ...the sun is for the living, the moon is for us. The stone does not choose...
