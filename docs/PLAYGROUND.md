@@ -40,38 +40,26 @@ tarczę. Twoje decyzje i uwagi są w [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md),
 
 | Kod | Koncept | Rozmiar | Na czym polega |
 |---|---|---|---|
-| **C1c** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, smukły, oczy z powieką, białkiem i tęczówką) z nowym profilem: grzywka schodzi na czoło do samej krawędzi, oko piksel od przodu, twarz płaska, **bez nosa** |
-| **C2c** | Najlepszy 16×18 | 16×18 | to samo, między C1 a C2 |
-| **C7b** | Wędrowiec | 16×18 | C7 („kwadratowy” z przodu, kontur w kolorze materiału) z płaskim profilem: bez nosa, płytsza głowa, tarcza bliżej ciała |
-| **C8b** | Z Północy, bez konturu | 16×20 | C8 bez obrysu: trzyma się własnymi tonami jak C1 i S3; z boku bez wystającego nosa |
-| **C10** | Kudłacz | 16×20 | budowa jak we wzorcu z Moonlightera: duża, kudłata głowa, ale ciało z rękami tak samo szerokie, krótkie nogi, płaski profil; płowe włosy, bordowy kaftan z kremowym kołnierzem, kamień z dziurką, drewniana tarcza z czerwonym krzyżem słonecznym na plecach (z tyłu to ją widać najpierw); kontur w kolorze materiału |
-| **C11** | Kołpak | 16×18 | dorosła wersja lalki A5 w tej samej budowie: kołpak z kuny z czerwonym denkiem, granatowy kożuszek z kremowym kołnierzem, czerwony pas, tarcza z krzyżem; **malowany, bez konturu** |
+| **C1d** | Najlepszy | 16×16 | C1 (malowany jak S3, tony S2, oczy z powieką, białkiem i tęczówką) z **wąskim profilem**: głowa z boku ma 7 px (tyle co tułów z płaszczem), płaski tył, oko jednym ciemnym pikselem pod grzywką, bez nosa |
+| **C2d** | Najlepszy 16×18 | 16×18 | to samo, między C1 a C2 |
+| **C7c** | Wędrowiec, bez obrysu | 16×18 | C7 bez obrysu i z wąskim profilem; płaszcz ciemniejszy i chłodniejszy, żeby bez obrysu nie zlewał się z trawą |
+| **C11b** | Kołpak | 16×18 | C11 z wąskim profilem: czapka i głowa z boku 8 px zamiast 11 |
+| **C12** | Czupryna | 16×18 | **na wzorcu Moonlightera**: głowę robi postrzępiona, oświetlona pasmami czupryna, twarz osadzona nisko, ciało tak szerokie jak głowa, krótkie nogi; malowany jak C1, wąski profil; lniana koszula z haftem, kożuszany serdak, ciemnoczerwony pas, drewniana tarcza w okuciu |
+| **C13** | Kaptur | 16×18 | **na wzorcu bohatera 16-bitowego**: głowę robi nakrycie, a z boku i z tyłu ogon kaptura opada na plecy, więc profil jest kroplą, nie jajkiem; duża tarcza, nasycone barwy, bez obrysu; brązowy wełniany kaptur z peleryną, bordowa tunika, niebieska tarcza z białą tarczą słoneczną |
 
-Wszystkie mają trzy widoki, stanie i dwa kroki, i mieszczą się w 15 kolorach.
+Wszystkie mają trzy widoki, stanie i dwa kroki, i mieszczą się w 15 kolorach. C8b i C6b (bez werdyktu) stoją na początku drugiej grupy.
 
-**Czego nauczyły Twoje wzorce** (miary i rzemiosło, nie postaci):
-- **Profil.** Ani bohater 16-bitowej przygodówki, ani Will z Moonlightera nie mają z boku nosa. Twarz to tylko przednia dolna ćwiartka
-  głowy: grzywka schodzi na czoło do krawędzi, oko jest piksel od przodu, przód twarzy jest płaski, broda zaokrąglona do tyłu.
-  Wystający piksel nosa robił z głowy dziób; stąd C1c, C2c, C7b, C8b.
-- **„Kwadratowość”.** Głowa może być duża, jeśli ciało z rękami jest tak samo szerokie. Żarówka powstaje wtedy, gdy szeroka głowa
-  stoi na wąskim tułowiu. Nogi są krótkie, a z boku cała postać jest o połowę płytsza niż z przodu.
-- **Kontur** nigdy nie jest czarny: to ciemny odcień tego, co obrysowuje, albo nie ma go wcale.
+**Zasady profilu** (z Twoich wzorców i uwag):
+- głowa z boku nie jest głębsza niż tułów z płaszczem pod nią (7–8 px); szersza wygląda jak jajko albo ET;
+- obrys głowy z boku łamią włosy albo nakrycie (płaski tył, kosmyki, ogon kaptura), nie gładki owal;
+- twarz to przednia dolna ćwiartka głowy, z płaskim przodem: bez nosa;
+- oko w profilu to jeden ciemny piksel pod cieniem grzywki, bez białka (białko w profilu robiło wytrzeszcz).
 
-Werdykty z poprzedniej rundy (w archiwum): C1b i C2b fatalne z boku przez wystający nos (poprawione w C1c, C2c), C7 do lekkiego
-spłaszczenia z boku (C7b), C8 lepszy bez obrysu (C8b), C9 za mały i za chudy. C6b nie dostał werdyktu i stoi w drugiej grupie.
+Werdykty z poprzedniej rundy (w archiwum): C1c, C2c i C11 z boku jak jajka (poprawione w C1d, C2d, C11b), C7b do zwężenia
+i bez obrysu (C7c), C10 do wyrzucenia.
 
-### Wzorce do porównań (lokalnie)
-
-Obrazki wrzucone do folderu **`src/lab/reference/`** (PNG, GIF, WebP, JPG) plac pokazuje w pierwszym wolnym rzędzie, z nazwą
-pliku nad każdym. Ten folder jest ignorowany przez git: nic z niego nie trafia do repozytorium ani do gry. Po wrzuceniu pliku
-wystarczy odświeżyć stronę.
-
-- Zwykły obrazek (ilustracja, zrzut w dowolnym powiększeniu) jest zmniejszany, żeby zmieścił się w 96×64 pikselach gry: do oglądania obok.
-- Jeśli nazwa kończy się na **`@n`** (np. `link@4.png`), plac wie, że obrazek jest powiększony n razy, i pokazuje go w 1/n:
-  wtedy jego piksele są tej samej wielkości co piksele gry i da się porównać wysokość postaci co do piksela.
-
-Postaci z cudzych gier (np. bohatera klasycznej przygodówki ze SNES-a) nie rysuję jako kopii: to cudzy, chroniony bohater,
-a nasze repozytorium jest publiczne. Do porównania służy właśnie ten folder.
+Twoje obrazki wzorcowe leżą w `src/lab/reference/` (folder ignorowany przez git). Plac ich nie pokazuje: służą mi do nauki miar
+i rzemiosła; postaci z nich nie kopiuję.
 
 ### Poprawki z DESIGN-DECISIONS
 

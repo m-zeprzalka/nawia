@@ -11,14 +11,15 @@
 board:
 
 * Nowe koncepty | New concepts
-C1c  najlepszy, 16x16: profil bez nosa, grzywka do krawędzi
-C2c  to samo, 16x18
-C7b  wędrowiec, 16x18: płaski profil
-C8b  z Północy, 16x20: bez konturu
-C10  Kudłacz, 16x20: budowa jak w Moonlighterze, tarcza na plecach
-C11  Kołpak, 16x18: malowany, bez konturu
+C1d  najlepszy, 16x16: wąski profil (głowa z boku 7 px), oko jednym pikselem
+C2d  to samo, 16x18
+C7c  wędrowiec, 16x18: bez obrysu, wąski profil
+C11b Kołpak, 16x18: wąski profil
+C12  Czupryna, 16x18: wzorzec Moonlightera, malowany jak C1
+C13  Kaptur, 16x18: wzorzec bohatera 16-bitowego, bez obrysu
 
 * Wybrane z poprzednich rund | Chosen in earlier rounds
+C8b  z Północy bez konturu (bez werdyktu)
 C6b  Bartnik z poprawionym bokiem (bez werdyktu)
 G1   bohater z gry: baza
 W2   Śmiałek (w notatkach "K2": W2 czy R2? jeden z nich do archiwum)
@@ -34,6 +35,11 @@ A3b  Łowca z mniejszą głową
 A5b  Kołpak z mniejszą głową
 
 archive:
+C1c  najlepszy: głowa z boku jak jajko ("ET"); poprawiony w C1d
+C2c  to samo 16x18: jw.; poprawiony w C2d
+C7b  wędrowiec: głowa z boku za szeroka, bez obrysu lepiej; poprawiony w C7c
+C10  Kudłacz: do wyrzucenia
+C11  Kołpak: głowa z boku jak jajko; poprawiony w C11b
 C1b  najlepszy: z boku fatalnie przez wystający nos; poprawiony w C1c
 C2b  to samo 16x18: jw.; poprawiony w C2c
 C7   wędrowiec: od boku do spłaszczenia; poprawiony w C7b
