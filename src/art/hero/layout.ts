@@ -1,8 +1,8 @@
 // The layout of the hero's animation sheet: the contract between whoever draws him and the code that plays him.
 //
 // Every look of the hero (src/art/heroGame.ts) is one sheet in this layout, armed and bare:
-//   - cells of CELL.w x CELL.h; his feet stand on row CELL.foot (the last row of his shoes is CELL.foot - 1),
-//     centred on column CELL.cx: a 16 x 18 figure drawn the old way sits at columns 8-23, rows 9-26;
+//   - cells of CELL.w x CELL.h; the sprite's origin is row CELL.foot, column CELL.cx: a 16 x 18 figure drawn the old
+//     way sits at columns 8-23, rows 9-26 (soles on row 25, the line under them on row 26);
 //     the room around him is for the sword, a lean, a fall;
 //   - rows: facing down (towards us), up (away), and to the side (drawn facing right; left is a mirror);
 //   - columns: the animations below, one after another, in the order of ANIM_ORDER.

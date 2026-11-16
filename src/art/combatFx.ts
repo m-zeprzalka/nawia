@@ -32,6 +32,8 @@ interface Arc {
   r: number;
   /** thickness at the blade's end */
   thick: number;
+  /** squeezes the sweep sideways (1 = a circle): an overhead chop seen from the front is a tall, narrow sickle */
+  squash?: number;
 }
 
 /**
@@ -40,20 +42,21 @@ interface Arc {
  * and down in front of him.
  */
 export const ARCS: Record<Strike, Record<StrikeView, Arc>> = {
+  // the angles follow the blade tips of the drawn frames (BLADE_TIP in src/art/hero/sambor.anim.ts): wind-up to follow-through
   atkA: {
-    down: { px: 24, py: 28, from: 200, to: -15, r: 16, thick: 8 },
-    up: { px: 24, py: 23, from: 15, to: -195, r: 15, thick: 7 },
-    side: { px: 26, py: 27, from: -120, to: 60, r: 16, thick: 8 },
+    down: { px: 24, py: 28, from: 212, to: -20, r: 16, thick: 8 },
+    up: { px: 24, py: 23, from: 25, to: -170, r: 15, thick: 7 },
+    side: { px: 26, py: 27, from: -130, to: 48, r: 16, thick: 8 },
   },
   atkB: {
-    down: { px: 24, py: 28, from: -15, to: 200, r: 16, thick: 8 },
-    up: { px: 24, py: 23, from: -195, to: 15, r: 15, thick: 7 },
-    side: { px: 26, py: 27, from: 65, to: -105, r: 15, thick: 8 },
+    down: { px: 24, py: 28, from: -40, to: 192, r: 16, thick: 8 },
+    up: { px: 24, py: 23, from: 172, to: 335, r: 15, thick: 7 },
+    side: { px: 26, py: 27, from: 132, to: -66, r: 15, thick: 8 },
   },
   atkC: {
-    down: { px: 24, py: 27, from: 220, to: -40, r: 20, thick: 11 },
-    up: { px: 24, py: 24, from: 40, to: -220, r: 19, thick: 10 },
-    side: { px: 25, py: 26, from: -160, to: 80, r: 20, thick: 11 },
+    down: { px: 24, py: 26, from: 262, to: 102, r: 20, thick: 9, squash: 0.45 },
+    up: { px: 24, py: 23, from: 40, to: -100, r: 19, thick: 9, squash: 0.6 },
+    side: { px: 25, py: 26, from: -135, to: 62, r: 20, thick: 11 },
   },
 };
 
@@ -82,7 +85,7 @@ function smearFrame(a: Arc, frame: number): PixelBuffer {
   const reach = frame === 0 ? 0.62 : 1;
   for (let y = 0; y < SMEAR.fh; y++)
     for (let x = 0; x < SMEAR.fw; x++) {
-      const dx = x + 0.5 - a.px;
+      const dx = (x + 0.5 - a.px) / (a.squash ?? 1);
       const dy = y + 0.5 - a.py;
       const r = Math.hypot(dx, dy);
       if (r > a.r || r < 3) continue;
@@ -125,7 +128,7 @@ export function arcBox(s: Strike, v: StrikeView): { dx: number; dy: number; hw: 
   for (let k = 0; k <= 32; k++) {
     const deg = a.from + ((a.to - a.from) * k) / 32;
     for (const r of [a.r * 0.45, a.r + 2]) {
-      const x = a.px + Math.cos((deg * Math.PI) / 180) * r;
+      const x = a.px + Math.cos((deg * Math.PI) / 180) * r * (a.squash ?? 1);
       const y = a.py + Math.sin((deg * Math.PI) / 180) * r;
       x0 = Math.min(x0, x);
       y0 = Math.min(y0, y);
