@@ -2,15 +2,17 @@
 // Jawia: stone, cannot be hurt. It charges in a straight line; make it hit a wall or a rubble pile (J).
 // Nawia: while the stone is stunned its heart lies bare in the same place. The standing pillars (N)
 // are cover from its soul orbs, and a reason not to turn the stone just anywhere.
-// The gate (G) opens when it falls.
+// An arena: once he is in, bars drop behind him; they and the gate (G) open when it falls.
+// The pot in the north-east corner holds a heart, one mistake's worth, every time he tries.
 room: guardian
 at: 3,1
 name: Strażnik | The Guardian
+lock: yes
 
 map:
 ##########.#########
 #!###!####G####!##!#
-#..................#
+#.................o#
 #..N.....K.....N...#
 #......J....J......#
 #........,,........#

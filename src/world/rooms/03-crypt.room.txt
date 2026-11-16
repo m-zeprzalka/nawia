@@ -1,22 +1,32 @@
-// First fight. The drowned (u) live in Jawia, wraiths (z) in Nawia. Raise the shield (X) when they come.
-// The gate (G) opens when both sides fall silent.
+// The first fight of the stronghold, and an arena: bars drop behind him, and the gate (G) down to the
+// street opens when both sides are silent and the graves have given up everything they hold.
+// Wave 1: two of the drowned (u) in Jawia, from the far side and from the gate side; a wraith (z) in Nawia.
+// Wave 2: lights rise over the bones (s) north and south of the middle aisle, wisps over bare floor that the
+// blade can reach and the shield can answer; a third drowned one climbs out by the east wall, and a wraith
+// rises in the corner he came in by, in Nawia.
+// The four stone blocks are cover: from the wisps' fire, and from a lunge, which ends against them.
+// One pot (the south-west one) holds a heart. The inscription (1) is by the way in, read on arrival, so that
+// its words do not cover the fight.
 room: crypt
 at: 2,0
 name: Krypta | The Crypt
+lock: yes
 
 map:
 ####################
 #!######!##!######!#
-#o................o#
+#.......s.........o#
 #..##...u...##.....#
-#..##.......##..z..#
+#1.##.......##..z..#
 ..,,,,,,,,,,,,,....#
 #..##.......##,....#
-#..##...z...##,.u..#
-#s.....1......,....#
-#o...T.....T..,...o#
+#..##.......##,.u..#
+#s............,....#
+#o...T..s..T..,...o#
 ##############G#####
 
+wave 2: f 8,2; f 8,9; u 17,2; z 2,8
+
 sign 1:
-  jawia: Co żyje w Jawi, w Nawi jest tylko cieniem. Krata ustąpi, gdy ucichnie po obu stronach. | What lives in Jawia is but a shadow in Nawia. The gate yields when both sides fall silent.
-  nawia: ...podnieś tarczę, gdy przyjdą. Nie lubią drewna, które pamięta las... | ...raise your shield when they come. They dislike wood that remembers the forest...
+  jawia: Tu leżą ci, co nie zdążyli uciec przed wodą. Krata puści, gdy ucichnie po obu stronach. | Here lie those who did not outrun the water. The bars give way when both sides fall silent.
+  nawia: ...nie śpimy. Kiedy padną jedni, z grobów wstaną drudzy... | ...we do not sleep. When some fall, others rise from the graves...

@@ -162,6 +162,13 @@ Izba ⇄ Wieś ⇄ Chata zielarki          (⇄ to drzwi)
           Topiel ──► Słońce i Księżyc ──► Kładki ──► Sala Dwóch Dusz
 ```
 
+**Kształt gry.** Wieś i Skraj wsi są spokojne. Stary gościniec uczy walki (jeden dzik), potem po jednym potworze na
+świat. Kurhan to pierwsza arena i sprawdzian powierzchni: dwie fale. Przedsionek to oddech (żadnych potworów,
+naczynie z sercem). W grodzie trudność rośnie: most i ulica to korytarze pod naciskiem, krypta to arena z dwiema
+falami, Topiel to egzamin z tarczy, Słońce i Księżyc oraz Kładki to zagadki z jednym strażnikiem lub dwoma,
+Sala Dwóch Dusz to szczyt (trzy fale strzyg), a Strażnik zamyka grę. Areny (`lock: yes`) zamykają za bohaterem
+wyjścia, dopóki nie padnie wszystko w obu światach; zagadki i korytarze się nie zamykają.
+
 ### Powierzchnia: nauka
 
 | Pokój | Plik | Czego uczy |
@@ -169,29 +176,30 @@ Izba ⇄ Wieś ⇄ Chata zielarki          (⇄ to drzwi)
 | **Izba** | `h1-home` | Początek gry: bohater otwiera oczy we własnej izbie, bez niczego. Ruch. Puste łóżko Dobrawy mówi, co się stało; w Nawii siedzi przy nim cień matki. |
 | **Wieś** | `s1-village` | Rozmowy i drzwi. Nic tu nie rani: kury, stóg, malwy, ule. Staś widział strzygę, Sulichna posyła do Racibora, Racibor daje miecz i tarczę. Pod lipą stoją umarli (widać ich po obrocie). Ogródek za płotem jest dostępny tylko z Nawi. |
 | **Chata zielarki** | `h2-hut` | Radochna daje kurzego boga (tylko komuś z bronią) i mówi, jak uratować Dobrawę. Rozmowa z wyborem. |
-| **Skraj wsi** | `s2-shrine` | Pierwszy obrót, który jest potrzebny: kładki nie ma, stary most stoi tylko w Nawi. Obrót z powrotem na moście to pierwsze spotkanie z karą. Bożek, przed nim ogień. |
-| **Stary gościniec** | `s3-forest-road` | Pierwsza walka, jeszcze z niczym nienaturalnym: dzik przy strudze. Potem zapora z dwóch warstw: ciernie skazy blokują w Jawi, a deski na strudze są tylko w Jawi. Trzeba przejść ciernie w Nawi i wrócić do Jawi. Za cierniami zaczyna się skaza: zjawa po stronie Nawi, morownik po stronie Jawi. |
-| **Uroczysko** | `s4-forest-pond` | Opcjonalne. Tarcza: brama otwiera się po zabiciu dwóch ogników, a miecz ich nie sięga. Za bramą stary most na wyspę (tylko w Nawi), na wyspie serce. |
-| **Kurhan** | `s5-barrow` | Serce skazy i sprawdzian: brama do zejścia otwiera się, gdy padną dwa wilki i morownik w Jawi oraz zjawa w Nawi. Ciernie i pamiętane drzewa (w Jawi pniaki) sprawiają, że polana ma inny kształt po każdej stronie. |
+| **Skraj wsi** | `s2-shrine` | Pierwszy obrót, który jest potrzebny: kładki nie ma, stary most stoi tylko w Nawi. Drogowskaz stoi na ścieżce przy brzegu, więc czyta się go przed wodą. Obrót z powrotem na moście to pierwsze spotkanie z karą. Bożek, przed nim ogień. |
+| **Stary gościniec** | `s3-forest-road` | Pierwsza walka, jeszcze z niczym nienaturalnym: dzik na polanie nad rzeką. Polana ma cztery rzędy, więc szarża zawsze kończy się na czymś: na głazie pośrodku, na głazie pod lasem, na cierniach albo w rzece. Stanąć przed głazem, odskoczyć, bić ogłuszonego. Potem zapora z dwóch warstw: ciernie skazy blokują w Jawi, a deski na strudze są tylko w Jawi; drogowskaz stoi tam, gdzie ścieżka wchodzi w ciernie. Za cierniami skaza, po jednym potworze na świat: zjawa w Nawi, morownik w Jawi z kładką w zasięgu. Nic tu nie zamyka drogi. |
+| **Uroczysko** | `s4-forest-pond` | Opcjonalne. Tarcza: brama otwiera się po zabiciu dwóch ogników nad wodą (miecz ich nie sięga) i morownika na brzegu. Zachodni koniec brzegu jest poza zasięgiem morownika: tam uczy się odsyłać ogień. Na wschodzie drugi ognik i ciernie lecące wzdłuż brzegu, z boku. Za bramą stary most na wyspę (tylko w Nawi), na wyspie serce. |
+| **Kurhan** | `s5-barrow` | Serce skazy i sprawdzian, pierwsza arena: za bohaterem zamykają się wrota palisady. Fala 1 to sfora: dwa wilki z dwóch stron w Jawi i zjawa w Nawi. Fala 2 to nowy nacisk z dwóch stron: dzik z północnego zachodu, morownik na kopcu na północnym wschodzie i druga zjawa z czarnej wody. Cztery głazy wokół ścieżki to wszystko, czego trzeba: dzik się o nie rozbija, a za nimi nie dolecą ciernie. Ciernie i pamiętane drzewa (w Jawi pniaki) dają polanie inny kształt po każdej stronie. Garnek przy gąszczu ma serce. Umarli mówią tu o Dobrawie. |
 
 ### Gród: sprawdzian
 
 | Pokój | Plik | O co chodzi |
 |---|---|---|
-| Przedsionek | `01-threshold` | powtórka z obrotu w kamieniu: gruz w Jawi, stary mur w Nawi |
-| Zerwany most | `02-bridge` | kładka tylko w Jawi, stary most tylko w Nawi; kamienne filary to jedyne miejsca, gdzie obrót jest bezpieczny |
-| Krypta | `03-crypt` | utopce w Jawi, zjawy w Nawi; krata otwiera się, gdy ucichną obie strony |
-| Ulica | `04-street` | pokój szeroki na dwa ekrany: gruz i kładka w Jawi, brama grodu i stary most w Nawi; każde przejście wymaga drugiej strony |
-| Mały dzwon | `05-bell` | dzwon otwiera kratę w dół |
-| Topiel | `06-pool` | krata otwiera się po zabiciu ogników: trzeba użyć tarczy |
-| Słońce i Księżyc | `07-sunmoon` | kamień uderzony mieczem zamienia miejscami dwa rodzaje słupów |
-| Kładki | `08-crossings` | skrzyżowań kładki i mostu nie widać: czysta pamięć |
-| Sala Dwóch Dusz | `09-souls` | dwie strzygi |
-| Strażnik | `10-guardian` | boss, którego trzeba pokonać w obu światach |
+| Przedsionek | `01-threshold` | oddech po kurhanie: żadnych potworów, naczynie z sercem; powtórka z obrotu w kamieniu w obie strony (gruz w Jawi, stary mur w Nawi). Czerwona wstążka Dobrawy na kamieniu |
+| Zerwany most | `02-bridge` | kładka tylko w Jawi, stary most tylko w Nawi; kamienne filary to jedyne miejsca, gdzie obrót jest bezpieczny. Każde przejście ma strażnika w swoim świecie: utopiec na drugim filarze schodzi po kładce (na desce nie ma gdzie uskoczyć ani obrócić kamienia, zostaje tarcza), zjawa ze wschodniego brzegu wylatuje nad wodę na ostatni odcinek mostu |
+| Krypta | `03-crypt` | arena, dwie fale. Fala 1: dwa utopce w Jawi z dwóch stron i zjawa w Nawi. Fala 2: nad kośćmi na północy i południu wstają ogniki (nad posadzką, więc miecz je sięga), przy wschodniej ścianie trzeci utopiec, w Nawi zjawa w kącie przy wejściu. Cztery kamienne bloki zasłaniają przed ogniem i zatrzymują skok. Krata w dół otwiera się, gdy ucichną obie strony |
+| Ulica | `04-street` | korytarz na dwa ekrany: gruz i kładka w Jawi, brama grodu i stary most w Nawi; każde przejście wymaga drugiej strony i na każdym coś czeka: dwa utopce na placu, ognik nad zalaną ulicą strzela do idącego po kładce, zjawa zamknięta w bramie grodu (tam trzeba obrócić kamień), druga na zachodnim brzegu nad starym mostem |
+| Mały dzwon | `05-bell` | dzwon otwiera kratę w dół i sam załatwia pokój. Na wyspę prowadzą kładka (Jawia, pilnuje jej utopiec) i stary most (Nawia, pilnuje go zjawa). Naczynie przy wejściu ma serce |
+| Topiel | `06-pool` | egzamin z tarczy: krata otwiera się po zabiciu trzech ogników nad wodą (z północy, z południowego zachodu i z południowego wschodu); utopiec obchodzi staw od bramy i zmusza do opuszczenia tarczy, w Nawi czeka zjawa. Stara kładka (Nawia) prowadzi do serca |
+| Słońce i Księżyc | `07-sunmoon` | kamień uderzony mieczem zamienia miejscami dwa rodzaje słupów; trzeba go uderzyć z właściwej strony muru, a napis już tego nie podpowiada. W północnej komnacie, do której wchodzi się tylko w Nawi, mieszka zjawa: walka w ciasnocie, wśród kafli, na których nie wolno obrócić kamienia |
+| Kładki | `08-crossings` | skrzyżowań kładki i mostu nie widać: czysta pamięć. Napis nie liczy już skrzyżowań. Dwa ogniki strzelają do idącego po kładkach, zjawa ze wschodniego brzegu do idącego mostem |
+| Sala Dwóch Dusz | `09-souls` | szczyt przed strażnikiem, arena z trzema falami: jedna strzyga (nauka: zabić ciało, pójść za duszą), strzyga i zjawa czekająca w Nawi, dwie strzygi z przeciwnych rogów. Hala jest czytelna: aleja `,` (bezpieczna w obu światach) na krzyż, kolumny w obu światach, gruz tylko w Jawi, dwa rzędy starych murów tylko w Nawi. Naczynie z sercem; serce przy bramie jest na to, co dalej |
+| Strażnik | `10-guardian` | boss, którego trzeba pokonać w obu światach; arena (kraty spadają, gdy bohater wejdzie). Naczynie w rogu ma serce: jedną pomyłkę więcej przy każdej próbie |
 | Wielki Dzwon | `11-greatbell` | zakończenie |
 
 `npm run rooms:check` podaje dla każdego celu najmniejszą liczbę obrotów. Dziś: mały dzwon 9, kamień słońca i księżyca 9, wielki dzwon 14
-(licząc od wioski; kraty uznawane są za otwarte, wrogowie pomijani).
+(licząc od wioski; kraty uznawane są za otwarte, wrogowie pomijani). Czy każdą arenę da się załatwić (czy potwory
+z fal mają gdzie stać), sprawdza się na razie okiem: zasady w [ROOMS.md](ROOMS.md), „Arena: `lock` i fale”.
 
 ## Zasady projektowania pokoi
 

@@ -1,6 +1,9 @@
 // Wisps (w) hang over the water where no blade reaches them, and spit fire.
 // The gate (G) opens when the room falls silent, so there is no way around it:
 // raise the shield, face the fire, and it flies back to the wisp that spat it.
+// The exam of the shield: three wisps, north, south-west and south-east, and while he stands behind the shield
+// a drowned one (u) comes round the pool from the gate, so he has to drop it, and a wraith (z) waits in Nawia.
+// The pot by the way in holds a heart.
 // The old footbridge (:) leads to a heart, for those who look at the room from the other side.
 room: pool
 at: 0,2
@@ -14,11 +17,11 @@ map:
 #.....~~~~~~~~~~...#
 #.,,,::::,h~~~~~..G.
 #.....~~~~~~~~~~...#
-#.T....~~~w~~~~~.u.#
+#.T....~~~w~~~w~.u.#
 #........~~~~~~~.T.#
 #..1..............o#
 ####################
 
 sign 1:
-  jawia: Błędne ognie. Nad wodą stal ich nie dosięgnie. Podnieś tarczę i oddaj im ich własny ogień. | Wisps. No blade reaches them over the water. Raise your shield and give them back their own fire.
+  jawia: Błędne ognie. Za życia przesuwali miedze, po śmierci zwodzą na wodę. Stal ich tam nie sięgnie, ale własny ogień tak. | Wisps. In life they moved boundary stones; in death they lure men onto the water. Steel cannot reach them there, but their own fire can.
   nawia: ...światła nad wodą? Nie widzimy żadnych świateł. Tu jest tylko kładka... | ...lights over the water? We see no lights. There is only the footbridge here...

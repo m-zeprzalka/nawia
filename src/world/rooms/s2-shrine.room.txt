@@ -1,5 +1,6 @@
 // The first shift that is needed: the footbridge is gone in Jawia, the old bridge (:) still stands in Nawia.
 // Turning the stone back while standing on it is the first taste of the border's penalty.
+// The signpost (1) stands right on the path at the bank, so it is read on the way, before the water.
 // A fire (T) burns before the carved god (I) of the village; in Nawia one of the dead keeps it company.
 // The palisade gate (G) is open: nothing guards the edge of the village.
 room: shrine
@@ -14,8 +15,8 @@ map:
 #..."~~~.....I.s"..#
 #....~~~.....T....t#
 ,,,,,:::,,,,,,,....#
-#....~~~....,......#
-#.1..~~~....,..b...#
+#..1.~~~....,......#
+#....~~~....,..b...#
 #t...~~~~...,....t.#
 #FFFF~~~~FFFGFFFFFF#
 #####~~~~###.#######

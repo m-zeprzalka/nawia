@@ -1,6 +1,9 @@
 // The lesser bell: strike it and the gate in the south wall (G) opens. The way goes down from here.
-// Two ways onto the island: planks guarded by a drowned one, the old bridge guarded by a wraith.
+// The bell settles the room by itself; whatever is left standing stays, so the guards are a choice, not a lock.
+// Two ways onto the island: the planks (Jawia) from the west bank, guarded by a drowned one (u), and the old
+// bridge (Nawia) from the east bank, where he comes in, guarded by a wraith (z).
 // In Nawia the people of the stronghold stand around the water, waiting to hear it.
+// The pot by the way in holds a heart (a rest after the street); the one by the gate is empty.
 room: bell
 at: 0,1
 name: Mały dzwon | The Lesser Bell
@@ -14,10 +17,10 @@ map:
 #...===,,B,,,:::....
 #...~~~,,,,,,~~~.s.#
 #.u.~~~~~~~~~~~~z..#
-#.o..............o.#
+#..o.............o.#
 #T.......1........T#
 ####G###############
 
 sign 1:
-  jawia: Mały dzwon otwiera drogę w dół. Jego wielki brat czeka głębiej, pod jeziorem. | The lesser bell opens the way down. Its great brother waits deeper, beneath the lake.
+  jawia: Mały dzwon, syn Budzisława. Otwiera drogę w dół. Ojciec czeka głębiej, pod jeziorem. | The lesser bell, son of Budzisław. It opens the way down. Its father waits deeper, beneath the lake.
   nawia: Uderz. Niech nas wreszcie ktoś usłyszy. | Strike it. Let someone hear us at last.

@@ -1,5 +1,9 @@
-// Optional. A place to learn the shield: the gate (G) opens when both wisps are gone,
-// and steel cannot reach them over the water. Behind it the old bridge (:) leads to the island, in Nawia only.
+// Optional. A place to learn the shield: the gate (G) opens when both wisps and the bloom are gone,
+// and steel cannot reach the wisps over the water. The west end of the bank is out of the bloom's reach:
+// a quiet place to learn to send fire back. The east end is where it gets hard: the second wisp
+// and the blight bloom (p) on the bank, whose thorns come along the bank, from the side, while the wisp
+// spits from the water. Cut the bloom, or keep turning the shield.
+// Behind the gate the old bridge (:) leads to the island, in Nawia only; on the island, a heart.
 room: forest-pond
 biome: forest
 blight: 1
@@ -10,8 +14,8 @@ map:
 ####################
 #####t....t#########
 ##...."........#####
-,,,,,,,,..."....t###
-#.1....,,,,FGF....##
+,,,,,,,,..."......##
+#.1....,,,,FGF..p.##
 #t..~~~~~~~~:~~~~..#
 #..~~~w~~~~~:~~~w~.#
 ~~~~~~~~~~~.h.~~~~~#

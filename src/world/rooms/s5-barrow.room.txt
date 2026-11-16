@@ -1,24 +1,35 @@
-// The way down, and the heart of the blight. The gate (G) in the ring of boulders opens when both sides are quiet:
-// two blighted wolves (v) and a blight bloom (p) in Jawia, a wraith (z) in Nawia.
-// Thorns (J) and remembered trees (N, stumps in Jawia) make the clearing a different shape on each side.
+// The way down, and the heart of the blight: the test of everything the surface taught. An arena:
+// once he is in, palisade gates drop across the road behind him, and the gate (G) in the ring of boulders
+// opens only when both sides are quiet.
+// Wave 1, the pack: two blighted wolves (v) from two sides in Jawia, a wraith (z) in Nawia.
+// Wave 2, a new pressure from two sides: a boar out of the north-west, a blight bloom on the mound in
+// the north-east whose thorns cross the clearing, and a second wraith rising out of the black water.
+// The four standing stones (R) round the path are what he needs: a boar run into one stands there dazed,
+// and behind one the bloom's thorns cannot reach him.
+// Thorns (J) and remembered trees (N, stumps in Jawia) make the clearing a different shape on each side:
+// the thicket in the west is a wall for the living (and the boar runs into it), open ground for the dead.
+// The pot (o) by the thicket holds a heart.
 room: barrow
 biome: forest
 blight: 3
 at: 0,-1
 name: Kurhan | The Barrow
+lock: yes
 
 map:
 ###########.########
 ####t....t.,.t..####
 ##....N....,..v.."##
-#..J......,,...N...#
-#..J..z.R.,,.R..p..#
-#........,,,,....v.#
-#..N...1R.,,.R...~~#
-#....,,,,,,.....~~~#
+#..JJ.....,,...N...#
+#o.J....R.,,.R.....#
+#.....v..,,,,...z..#
+#..N....R.,,.R...~~#
+#...1,,,,,,.....~~~#
 #RRRRGRRRRRRt...~~##
 ###RR^RR############
 ####R^R#############
+
+wave 2: d 5,2; p 16,3; z 17,7
 
 sign 1:
   jawia: Kurhan. Wejście otworzy się, gdy po obu stronach zapadnie cisza. | The barrow. The way in opens when both sides fall silent.

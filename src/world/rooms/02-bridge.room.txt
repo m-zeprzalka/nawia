@@ -1,5 +1,10 @@
 // The old bridge (:) stands only in Nawia, the planks (=) only in Jawia.
 // The stone piers (,) exist on both sides: they are the only safe places to turn the stone.
+// The way: old bridge to the first pier, planks to the second, old bridge to the east bank.
+// Each crossing has its guard, in its own world. A drowned one (u) sits on the second pier, in Jawia, and comes
+// down the planks at him: on a plank there is nowhere to step aside and no turning the stone, so it is
+// the shield, then the blade. A wraith (z) waits on the east bank in Nawia and flies out over the water
+// at whoever is on the last stretch of the old bridge. The pot on the second pier holds a heart.
 room: bridge
 at: 1,0
 name: Zerwany most | The Broken Bridge
@@ -12,7 +17,7 @@ map:
 #...~~~~,1~~~~~~.o.#
 ....::::,,~~~~::....
 #...~~~~=~~~~,,~...#
-#...~~~~=====,,~...#
+#...~~~~=====,u~...#
 #.T.~~~~~~~~~To~.T.#
 #...~~~~~~~~~~~~...#
 ####################

@@ -1,4 +1,6 @@
 // The first room of the stronghold, right under the barrow (the steps in the north wall lead back up to the forest).
+// A breath after the barrow: no monsters, and the pot in the south-west corner holds a heart (every time
+// he comes in, like all pots), so this is where he rests.
 // Repeats the lesson of the surface in stone: the shift in both directions, and what happens if you turn the stone in a bad place.
 // The ornamental path (,) runs straight under the rubble: the way goes on, just not in this world.
 room: threshold
@@ -12,7 +14,7 @@ map:
 ##.......###....####
 ##.1.I...###.2..s###
 ##...,,,,JJJ,,,,.NN.
-##..,,...###....o###
+##..,,...###...o.###
 ##T.,...T###....####
 ###o.....###########
 ####################
@@ -23,5 +25,5 @@ sign 1:
   nawia: ...żywa tędy szła, z otwartymi oczami, a nic nie widziała. Dawno nikt żywy tu nie chodził... | ...a living girl walked here, eyes open, seeing nothing. No one living has come this way in a long time...
 
 sign 2:
-  jawia: Nie obracaj kamienia tam, gdzie po drugiej stronie coś stoi. Granica odrzuca i bierze krew. | Do not turn the stone where something stands on the other side. The border throws you back, and takes blood.
-  nawia: ...zapamiętaj, gdzie stoją nasze mury. My ich nie zapomnieliśmy... | ...remember where our walls stand. We have not forgotten them...
+  jawia: Zwonigród. Kto wchodzi tu żywy, niech pamięta: mury umarłych stoją dalej, choć oczy żywych ich nie widzą. | Zwonigród. Let whoever comes in alive remember: the walls of the dead still stand, though living eyes cannot see them.
+  nawia: ...nie stawaj w naszych murach, kiedy wracasz na swoją stronę. Granica wyrzuca i bierze krew... | ...do not stand inside our walls when you go back to your side. The border throws you out, and takes blood...
