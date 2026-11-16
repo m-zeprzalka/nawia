@@ -17,6 +17,19 @@ import { hash2, mulberry32 } from '../core/rng.ts';
 
 const ramp = (...hex: number[]): Color[] => hex.map((h) => rgb(h));
 
+/**
+ * How the blight is painted. 'stains': shaped stains with a dark rim, a tide line and a deep core, dead grass around
+ * them, tendrils creeping out, a few spores; its thorns are hedges of thick canes. 'speckle': the first look
+ * (patches with ring veins and sparks, thorns drawn as foliage), kept for comparison.
+ */
+export const BLIGHT_STYLE: 'stains' | 'speckle' = 'stains';
+
+/**
+ * Nawia's ground kept quiet: few and dim blades, dim pebbles on the paths, so that whatever glows on it (the dead,
+ * the wisps, the edges of things) stands out. False gives the first look back.
+ */
+export const NAWIA_CALM = true;
+
 export interface SurfacePalette {
   /** meadow: dark, mid and light patches */
   grass: Color[];
@@ -63,6 +76,8 @@ export interface SurfacePalette {
   blightVein: Color;
   blightSpark: Color;
   blightWood: Color[];
+  /** Grass the blight has touched but not yet taken: dark, mid, light. */
+  deadGrass: Color[];
 }
 
 export const SURF: Record<World, SurfacePalette> = {
@@ -98,6 +113,7 @@ export const SURF: Record<World, SurfacePalette> = {
     blightVein: rgb(0x9a4fc8),
     blightSpark: rgb(0xff7ad8),
     blightWood: ramp(0x1c1026, 0x2e1c40, 0x4b2a66, 0x703c94, 0xb46edc),
+    deadGrass: ramp(0x5a5636, 0x77703f, 0x938a4f),
   },
   nawia: {
     grass: ramp(0x0b1030, 0x0f1640, 0x141d50),
@@ -131,6 +147,7 @@ export const SURF: Record<World, SurfacePalette> = {
     blightVein: rgb(0xe08ae8),
     blightSpark: rgb(0xffd8ff),
     blightWood: ramp(0x12082a, 0x2a1650, 0x5a2a96, 0xa84fc8, 0xffa8f4),
+    deadGrass: ramp(0x0d0c2a, 0x121232, 0x17173c),
   },
 };
 
@@ -264,6 +281,43 @@ export function noiseField(w: number, h: number, ox: number, oy: number, sx: num
       out[py * w + px] = top + (bot - top) * wy;
     }
   }
+  return out;
+}
+
+/**
+ * Approximate euclidean distance (px) from every pixel to the nearest source pixel (two-pass 5-7 chamfer).
+ * `src` covers the picture plus `pad` px on every side; the result covers the picture only.
+ */
+export function chamfer(src: Uint8Array, fw: number, fh: number, pad: number, w: number, h: number): Float32Array {
+  const d = new Int32Array(fw * fh);
+  const BIG = 1 << 20;
+  for (let i = 0; i < d.length; i++) d[i] = src[i] ? 0 : BIG;
+  for (let y = 0; y < fh; y++)
+    for (let x = 0, i = y * fw; x < fw; x++, i++) {
+      let v = d[i];
+      if (v === 0) continue;
+      if (x > 0 && d[i - 1] + 5 < v) v = d[i - 1] + 5;
+      if (y > 0) {
+        if (d[i - fw] + 5 < v) v = d[i - fw] + 5;
+        if (x > 0 && d[i - fw - 1] + 7 < v) v = d[i - fw - 1] + 7;
+        if (x < fw - 1 && d[i - fw + 1] + 7 < v) v = d[i - fw + 1] + 7;
+      }
+      d[i] = v;
+    }
+  for (let y = fh - 1; y >= 0; y--)
+    for (let x = fw - 1, i = y * fw + fw - 1; x >= 0; x--, i--) {
+      let v = d[i];
+      if (v === 0) continue;
+      if (x < fw - 1 && d[i + 1] + 5 < v) v = d[i + 1] + 5;
+      if (y < fh - 1) {
+        if (d[i + fw] + 5 < v) v = d[i + fw] + 5;
+        if (x < fw - 1 && d[i + fw + 1] + 7 < v) v = d[i + fw + 1] + 7;
+        if (x > 0 && d[i + fw - 1] + 7 < v) v = d[i + fw - 1] + 7;
+      }
+      d[i] = v;
+    }
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out[y * w + x] = d[(y + pad) * fw + x + pad] / 5;
   return out;
 }
 
@@ -534,6 +588,82 @@ export function thicket(p: SurfacePalette, seed: number, colors: readonly Color[
   return s;
 }
 
+/**
+ * A hedge of the blight's thorns: thick dark canes arching out of a tangle at the foot, crossing each other,
+ * set with thorns. Where a cane catches the light it shows violet; a thorn or two glints. About 30 px wide,
+ * so neighbouring hedges knit together into one wall with a ragged top.
+ */
+export function thornHedge(p: SurfacePalette, seed: number): Stamp {
+  const c = p.blightWood;
+  const rng = mulberry32(seed);
+  const W = 32;
+  const H = 26;
+  const ax = 16;
+  const ay = 23;
+  const buf = new PixelBuffer(W, H);
+  const lit = p.glow ? c[3] : c[3];
+  const body = c[1];
+  const shade = c[0];
+  // canes, drawn back to front, each with its own outline, so where two cross you can see which is in front
+  const canes = 4 + Math.floor(rng() * 2);
+  for (let k = 0; k < canes; k++) {
+    const mask = new Uint8Array(W * H); // 1 cane, 2 thorn, 3 a thorn tip that glints
+    const mark = (x: number, y: number, v: number): void => {
+      const X = Math.round(x);
+      const Y = Math.round(y);
+      if (X < 1 || Y < 1 || X >= W - 1 || Y >= H - 1) return;
+      if (v === 1 || mask[Y * W + X] === 0) mask[Y * W + X] = v;
+    };
+    // canes rise from the middle and arch out over either side; the odd one crosses back over the others
+    const x0 = ax + (k / (canes - 1) - 0.5) * 12 + (rng() - 0.5) * 4;
+    const y0 = ay - rng() * 1.5;
+    const lean = (k % 2 === 0 ? -1 : 1) * (0.7 + rng() * 0.5) * (rng() < 0.25 ? -1 : 1);
+    const hgt = 8 + rng() * 9;
+    const x1 = x0 + lean * 5;
+    const y1 = y0 - hgt * 1.35;
+    const x2 = x0 + lean * (10 + rng() * 6);
+    const y2 = y0 - hgt * (0.3 + rng() * 0.35);
+    let thornAt = 0.18 + rng() * 0.1;
+    for (let t = 0; t <= 1; t += 1 / 56) {
+      const u = 1 - t;
+      const x = u * u * x0 + 2 * u * t * x1 + t * t * x2;
+      const y = u * u * y0 + 2 * u * t * y1 + t * t * y2;
+      const r = 1.5 - t * 1.05;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (dx * dx + dy * dy <= r * r + 0.2) mark(x + dx, y + dy, 1);
+      if (t >= thornAt && t < 0.9) {
+        thornAt += 0.12 + rng() * 0.08;
+        // a thorn standing off the cane, raked towards its tip
+        const tx = 2 * u * (x1 - x0) + 2 * t * (x2 - x1);
+        const ty = 2 * u * (y1 - y0) + 2 * t * (y2 - y1);
+        const len = Math.hypot(tx, ty) || 1;
+        const side = rng() < 0.5 ? 1 : -1;
+        const nx = (-ty / len) * side;
+        const ny = (tx / len) * side;
+        mark(x + nx * 1.7 + (tx / len) * 0.6, y + ny * 1.7 + (ty / len) * 0.6, 2);
+        mark(x + nx * 2.7 + (tx / len) * 1.3, y + ny * 2.7 + (ty / len) * 1.3, rng() < 0.08 ? 3 : 2);
+      }
+    }
+    const at = (x: number, y: number): number => (x < 0 || y < 0 || x >= W || y >= H ? 0 : mask[y * W + x]);
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const v = at(x, y);
+        if (v === 0) {
+          if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) buf.set(x, y, p.outline);
+          continue;
+        }
+        if (v === 3) buf.set(x, y, p.blightSpark);
+        else if (v === 2) buf.set(x, y, at(x, y - 1) === 0 && at(x - 1, y) === 0 ? lit : c[2]);
+        else buf.set(x, y, at(x - 1, y) === 0 || at(x, y - 1) === 0 ? lit : at(x + 1, y) === 0 || at(x, y + 1) === 0 ? shade : body);
+      }
+  }
+  // the dark where they come out of the ground
+  for (let x = 4; x < W - 4; x++) {
+    const hgt = 1 + (hash2(x, seed, 7) % 3);
+    for (let y = ay - hgt; y <= ay; y++) if (buf.get(x, y) >>> 24) buf.set(x, y, y === ay ? p.outline : shade);
+  }
+  return { buf, ax, ay };
+}
+
 /** A tree the blight has killed: bare, crooked, with the other side glowing in its knots. */
 export function deadTree(p: SurfacePalette, seed: number): Stamp {
   const c = p.blightWood;
@@ -565,12 +695,18 @@ export function deadTree(p: SurfacePalette, seed: number): Stamp {
       if (k < 3) dot(x, y + 1, c[0]);
       if (k === Math.floor(len / 2)) for (let j = 1; j <= 3; j++) dot(x + side * j * 0.5, y - j, c[2]);
     }
-    for (const [dx, dy] of [[0, 0], [1, 0], [0, -1], [-1, 0], [0, 1], [side, -1]]) dot(x + dx, y + dy - 1, dx === 0 && dy === 0 ? p.blightSpark : c[3]);
+    if (BLIGHT_STYLE === 'speckle') {
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, -1], [-1, 0], [0, 1], [side, -1]]) dot(x + dx, y + dy - 1, dx === 0 && dy === 0 ? p.blightSpark : c[3]);
+    } else {
+      // a small knot of sick leaves; only the odd one shows the other side through it
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, -1], [side, -1]]) dot(x + dx, y + dy - 1, c[2]);
+      if (i === 2 && seed % 2 === 0) dot(x, y - 1, p.blightSpark);
+    }
   }
   dot(ax + Math.sin(2.4 + seed) * 1.6, top - 1, c[3]);
-  rim(buf, p.glow ? c[4] : null, c[0]);
+  rim(buf, p.glow ? (BLIGHT_STYLE === 'speckle' ? c[4] : c[2]) : null, c[0]);
   // knots where the other side shows through
-  buf.set(ax, ay - 7, p.blightSpark);
+  if (BLIGHT_STYLE === 'speckle') buf.set(ax, ay - 7, p.blightSpark);
   buf.set(ax - 1, ay - 14, p.blightVein);
   return { buf, ax, ay };
 }
@@ -1008,7 +1144,9 @@ export function grove(p: SurfacePalette, key: string): Grove {
     giant: oak(p, 911, 16),
     bushes: [0, 1, 2].map((i) => bush(p, 40 + i * 7)),
     thickets: [0, 1, 2, 3].map((i) => thicket(p, 60 + i * 9)),
-    thorns: [0, 1, 2, 3].map((i) => thicket(p, 160 + i * 9, p.blightWood, p.blightSpark)),
+    thorns: (BLIGHT_STYLE === 'stains' ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3]).map((i) =>
+      BLIGHT_STYLE === 'stains' ? thornHedge(p, 160 + i * 9) : thicket(p, 160 + i * 9, p.blightWood, p.blightSpark),
+    ),
     dead: [0, 1, 2].map((i) => deadTree(p, 21 + i * 7)),
     haystack: haystack(p),
     beehive: beehive(p),
