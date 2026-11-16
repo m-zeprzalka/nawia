@@ -41,8 +41,41 @@ Podgląd wszystkiego naraz: `npm run art:preview`.
 
 ## Dwie techniki
 
-**Gród (`biome: crypt`)** jest składany z zestawu kafli 16×16 (`src/art/tiles.ts`). Ściany, fugi i brzegi to nakładki
-z przezroczystością kładzione na kafel bazowy, dzięki czemu zestaw jest mały. Oba światy mają identyczny układ kafli.
+**Gród (`biome: crypt`)** jest malowany piksel po pikselu (`CryptPainter` w `src/world/roomPainter.ts`), tak jak powierzchnia.
+Zwonigród ma wyglądać na zbudowany, zużyty i zatopiony, a nie na siatkę jednakowych płyt:
+
+- **posadzka**: rzędy płyt o różnej wysokości (9–15 px), fugi w nierównych odstępach (płyty od 7 do 37 px), liczone we
+  współrzędnych całego świata, więc nic nie powtarza się co kafel; co któraś pęknięta płyta połatana dwoma mniejszymi
+  kamieniami. Każda płyta jest jaśniejsza na górnej i lewej krawędzi, ciemniejsza na dolnej i prawej, z utartymi rogami;
+- **cień**: światło pada z lewej góry, więc mur na północy rzuca długi cień w dół (8 px), mur na zachodzie w prawo (6 px),
+  pozostałe tylko krótki cień przy samej stopie; kąty są ciemniejsze. Cień jest w kilku pasmach, a jego krawędź lekko faluje
+  wzdłuż muru. Kolumny, urny, kosze, bożki, dzwony i kopce gruzu mają własny cień u stopy (`PROP_SHADOW`);
+- **gdzie gromadzi się brud**: środek komnaty zostaje spokojny (to rama dla walki). Brud, wilgoć, mech w fugach, odpryski
+  i kamyki, pęknięcia, kałuże i pajęczyny pojawiają się tam, gdzie by się pojawiły: u stopy murów, w kątach i przy wodzie.
+  Wilgoć to pole liczone z odległości od wody i od muru (`damp`), w plamach, więc jedne ściany są mokre, inne suche;
+- **mur**: każda krawędź wierzchu muru ma płytę nakrywającą (5 px, jaśniejsza od strony światła, ze spoinami w poprzek),
+  lico to dwa rzędy ciosów różnej szerokości nad cokołem, ciemniejsze ku dołowi, z mchem zwisającym kępami tam,
+  gdzie jest mokro, zaciekami, rzadką niszą z czaszką albo wyrwą. Za murami jest ubita ziemia (Jawia) albo gwiazdy (Nawia);
+  mur stojący osobno (np. blok 2×2 w krypcie) ma wierzch z kamienia, nie dziurę;
+- **gruz** (`J` w Jawi) to kopiec: ciemne szpary, na nich kamienie i ciosy, największe na dole, z cieniem w prawo;
+- **woda** ma krawężnik (jasna krawędź, ciemny bok), cień pod północnym i zachodnim brzegiem, duże spokojne plamy i
+  błyski, które się poruszają; mostki, rzęsa, pajęczyny i nisze są nadal brane z zestawu kafli.
+
+**Pęknięcia między światami.** Tam, gdzie kafel w drugim świecie jest murem albo gruzem, a tu da się stać, kamień jest
+spękany wzdłuż fug i przez te włoskowate (1 px) pęknięcia sączy się światło drugiej strony: cyjan w Jawi, bursztyn w Nawi.
+Najjaśniej w środku takiego kafla, gasnąco ku jego brzegom, z dwiema rozgałęzionymi rysami w poprzek płyt. Mur `N` zostawia
+w Jawi swój fundament: kamienie zrównane z posadzką, poszarpane tam, gdzie mur się kończył, z pęknięciami w spoinach.
+Tam, gdzie tu jest przeszkoda, a po drugiej stronie przejście, światło widać skromniej: rysa na licu muru, iskra między
+kamieniami kopca. Woda i kładki nie dostają podpowiedzi (na tym stoi pokój `crossings`).
+
+**Nawia w grodzie** to ten sam gród, jaki pamiętają umarli: cały i czysty. Posadzka ma kilka dużych, miękkich plam tonu,
+fugi ledwie widać, nie ma kamyków ani pyłków. Świecą krawędzie: płyty nakrywające murów, brzeg otchłani, zaprawa lica
+(przygaszona), runy i okna na murach (rzadko). Gwiazdy są tylko poza światem: za murami i w otchłani.
+
+Pierwsza technika (każda komórka stemplowana z zestawu kafli 16×16 i nakładek, `RoomPainter`) jest zachowana:
+`CRYPT_TECHNIQUE = 'tiles'` w `src/world/painter.ts` ją przywraca, razem z możliwością podmiany `tiles_*.png`.
+Malowany gród liczy się raz przy wejściu do pokoju (ok. 15–40 ms, jak powierzchnia); pierwsze malowanie dowolnego pokoju
+rozgrzewa też malarza grodu (za czarnym ekranem na starcie), żeby wejście do pierwszej komnaty nie szarpnęło.
 
 **Powierzchnia (`biome: village`, `forest`)** jest malowana (`src/art/surface.ts`, `src/world/surfacePainter.ts`):
 
@@ -57,8 +90,27 @@ z przezroczystością kładzione na kafel bazowy, dzięki czemu zestaw jest mał
 Co na powierzchni jest sprite'em, a nie farbą: drogowskaz, ognisko, garnek, bożek, brama, mieszkańcy, kury, dusze, serca
 (arkusze `surface`, `folk`, `mobs`). Reszta jest częścią obrazu pokoju.
 
-**Skaza** jest częścią malarza powierzchni: fioletowe plamy o ostrych krawędziach z żyłkami układającymi się w słoje,
-martwe drzewa z iskrami w sękach, ciernie rysowane rampą skazy (`blight`, `blightWood` w `SURF`).
+**Skaza** jest częścią malarza powierzchni (`paintStains` w `surfacePainter.ts`). To plamy, które mają kształt:
+
+- pole skazy to jeden szeroki szum z odrobiną drobniejszego, więc plamy są duże i miękkie, bez wysepek i dziur;
+- plama jest jaśniejsza tam, gdzie się jeszcze rozlewa, i ciemnieje ku sercu (głębokość liczona w pikselach od łąki);
+  ścieżka, woda i las nie są jej brzegiem;
+- wokół niej trawa usycha (`deadGrass` w `SURF`): pierścień raz szeroki, raz prawie żaden, z uschniętymi źdźbłami;
+- z brzegu wypełzają w trawę żyłki, w stronę, w którą plama rośnie, czasem rozwidlone; w środku kilka ciemniejszych żył,
+  kilka świecących zarodników i zakrzywione pędy cierni;
+- wszystkiego jest tym więcej, im silniejsza skaza: od pojedynczych plam przy `blight: 1` po serce skazy w kurhanie.
+
+**Ciernie** (`J` w lesie) to żywopłot (`thornHedge` w `surface.ts`): grube, ciemne pędy wyrastające z ziemi i przewieszone
+na boki, każdy z własnym konturem, więc widać, który leży na którym, z kolcami i fioletowym połyskiem tam, gdzie łapią światło,
+i rzadką iskrą na końcu kolca. Martwe drzewa mają w sękach mniej iskier, a w Nawi nie świecą już różem.
+
+Pierwszy wygląd skazy (plamy z żyłkami w słoje, ciernie jak krzak) wraca po `BLIGHT_STYLE = 'speckle'` w `surface.ts`.
+
+**Nawia na powierzchni** jest spokojniejsza (`NAWIA_CALM` w `surface.ts`): mało źdźbeł i tylko przygaszone, kwiaty rzadko,
+kamyki na ścieżkach ciemne, żeby to, co świeci (umarli, ogniki, krawędzie rzeczy), było widać. Gwiazdy tylko w otchłani.
+
+**Światło** w grze (`src/fx/Lighting.ts`) ma 12 pasm zamiast 7, a dithering wygładza tylko brzeg pasma (`DITHER = 0.4`),
+zamiast kłaść szachownicę na całej posadzce. `BANDS = 7`, `DITHER = 1` to dawny wygląd.
 
 **Wnętrza chat (`biome: house`)** maluje `src/world/interiorPainter.ts`: deski, ściany z bali, okna rzucające światło na podłogę,
 półki ze słojami, suszone zioła, kilim, łóżko pod pasiakiem, stół, stołek, skrzynia, beczka. Piec jest sprite'em (arkusz `surface`).
@@ -76,8 +128,9 @@ Każdy arkusz sprite'ów to zwykła, stała siatka. Podmiana nie wymaga zmian w 
 3. Zapisz go pod **tą samą nazwą** w katalogu `assets/`.
 4. Przy starcie gra bierze PNG z `assets/` zamiast wersji generowanej. Można podmieniać po jednym pliku.
 
-Gruntu powierzchni nie da się w ten sposób podmienić (nie jest arkuszem). Żeby zmienić jego wygląd, zmień kolory w `SURF`
-albo funkcje w `surface.ts`.
+Gruntu powierzchni i malowanego grodu nie da się w ten sposób podmienić (nie są arkuszem). Żeby zmienić ich wygląd, zmień
+kolory w `SURF` i `PAL` albo funkcje w `surface.ts` i `roomPainter.ts`. Z arkusza `tiles_*.png` gród bierze dziś tylko
+mostki, rzęsę, pajęczyny, nisze, okna i powidok; całość z kafli wraca po `CRYPT_TECHNIQUE = 'tiles'`.
 
 | Plik | Komórka | Układ |
 |---|---|---|

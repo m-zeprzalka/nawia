@@ -205,7 +205,8 @@ function rimTile(p: WorldPalette, kind: RimKind): PixelBuffer {
 
 // ---------------------------------------------------------------- wall faces
 
-const RUNES: string[][] = [
+/** Glyphs a Nawia wall still remembers (3 x 5, '#' = lit). */
+export const RUNES: string[][] = [
   ['#.#', '#.#', '.#.', '.#.', '#.#'],
   ['.#.', '###', '.#.', '.#.', '.#.'],
   ['#..', '##.', '#.#', '##.', '#..'],
@@ -446,7 +447,7 @@ function deckTile(p: WorldPalette, world: World, horizontal: boolean, rng: Rng):
   const b = tile();
   const jawia = world === 'jawia';
   for (let k = 0; k < 4; k++) {
-    const idx = jawia ? pick(rng, [2, 3, 3, 4]) : pick(rng, [2, 3, 3]);
+    const idx = jawia ? pick(rng, [2, 3, 3, 4]) : pick(rng, [1, 2, 2]);
     const short = jawia && rng() < 0.3 ? 1 + Math.floor(rng() * 2) : 0; // rotten planks end early
     for (let a = 0; a < 4; a++)
       for (let l = 0; l < S; l++) {
@@ -457,7 +458,7 @@ function deckTile(p: WorldPalette, world: World, horizontal: boolean, rng: Rng):
         else c = p.wood[idx];
         if (jawia && a === 1 && (l === 2 || l === 13)) c = p.wood[1]; // nails
         if (jawia && a < 3 && (l < short || l > 15 - short)) c = p.wood[0];
-        if (!jawia && (l === 0 || l === 15)) c = p.wood[4];
+        if (!jawia && (l === 0 || l === 15)) c = p.wood[3];
         if (horizontal) b.set(across, l, c);
         else b.set(l, across, c);
       }
@@ -490,7 +491,8 @@ function railTile(p: WorldPalette, world: World, kind: 'n' | 's' | 'w' | 'e'): P
 
 // ---------------------------------------------------------------- rocks
 
-function rock(b: PixelBuffer, p: WorldPalette, cx: number, cy: number, rx: number, ry: number): void {
+/** A squarish broken stone, lit from the upper left, outlined in the darkest rock tone. */
+export function rock(b: PixelBuffer, p: WorldPalette, cx: number, cy: number, rx: number, ry: number): void {
   const t = new PixelBuffer(b.w, b.h);
   for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++)
     for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {

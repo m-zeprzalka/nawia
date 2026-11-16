@@ -1,7 +1,9 @@
 // Darkness and light, 16-bit style.
 //
 // A full-screen light map is computed on the CPU every frame and multiplied over the scene.
-// Light falls off in dithered bands instead of a smooth gradient, so it reads as pixel art.
+// Light falls off in bands instead of a smooth gradient, so it reads as pixel art. Between two bands an
+// ordered dither spreads the step over a few pixels; it used to cover the whole band (7 bands, DITHER 1),
+// which laid a checkerboard over every floor. Now the bands are finer and the dither only softens their edge.
 
 import Phaser from 'phaser';
 import { DEPTH, GAME_H, GAME_W } from '../config.ts';
@@ -20,7 +22,12 @@ export interface LightSource {
   phase?: number;
 }
 
-const BANDS = 7;
+/** Steps of light from none to full. The first look had 7. */
+const BANDS = 12;
+/** How much of a step the ordered dither spreads over: 0 gives hard rings, 1 the old full checkerboard. */
+const DITHER = 0.4;
+/** The same for the darkening at the corners of the screen (it had 10 steps and a full dither). */
+const VIGNETTE_STEPS = 16;
 const N = GAME_W * GAME_H;
 
 export class Lighting {
@@ -53,8 +60,8 @@ export class Lighting {
         const ny = (y + 0.5) / GAME_H - 0.5;
         const d = Math.sqrt(nx * nx * 1.1 + ny * ny * 1.6) / 0.75;
         const v = 1 - Math.max(0, d - 0.45) * 0.75;
-        this.vignette[y * GAME_W + x] = Math.max(0.55, Math.min(1, Math.floor(v * 10 + bayer(x, y)) / 10));
-        this.dither[y * GAME_W + x] = bayer(x, y);
+        this.vignette[y * GAME_W + x] = Math.max(0.55, Math.min(1, Math.floor(v * VIGNETTE_STEPS + (1 - DITHER) / 2 + bayer(x, y) * DITHER) / VIGNETTE_STEPS));
+        this.dither[y * GAME_W + x] = (1 - DITHER) / 2 + bayer(x, y) * DITHER;
       }
     this.image = scene.add
       .image(0, 0, key)

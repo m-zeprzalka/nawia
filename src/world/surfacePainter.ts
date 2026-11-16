@@ -12,7 +12,7 @@ import { SCREEN_COLS, SCREEN_ROWS, TILE, WORLDS, type World } from '../config.ts
 import { PixelBuffer, mix, type Color } from '../core/PixelBuffer.ts';
 import { hash2 } from '../core/rng.ts';
 import {
-  SURF, drawFlower, drawHouse, drawLily, drawPalisade, drawPlanks, drawReeds, drawSteps, drawWattle,
+  BLIGHT_STYLE, NAWIA_CALM, SURF, chamfer, drawFlower, drawHouse, drawLily, drawPalisade, drawPlanks, drawReeds, drawSteps, drawWattle,
   grove, noiseField, vnoise, type Stamp, type SurfacePalette,
 } from '../art/surface.ts';
 import type { Dungeon, RoomDef } from './roomFormat.ts';
@@ -92,8 +92,9 @@ function pathColor(p: SurfacePalette, X: number, Y: number, d: number): Color {
     const ax = gi * 10 + 1 + ((hs >>> 4) % 7);
     const ay = gj * 8 + 1 + ((hs >>> 8) % 5);
     if (X === ax || X === ax + 1) {
-      if (Y === ay) c = p.pebble[1];
-      else if (Y === ay + 1) c = p.pebble[0];
+      // in Nawia a pebble is a dim one: a bright one would read as a star, or as something alive
+      if (Y === ay) c = p.glow && NAWIA_CALM ? p.dirt[3] : p.pebble[1];
+      else if (Y === ay + 1) c = p.glow && NAWIA_CALM ? p.dirt[1] : p.pebble[0];
     }
   }
   return c;
@@ -152,9 +153,15 @@ export class SurfacePainter implements RoomPicture {
         return (t < 0.5 ? above + (room.blight - above) * t * 2 : room.blight + (below - room.blight) * (t - 0.5) * 2) / 3;
       });
     if (look.blight || above > 0 || below > 0 || room.blight > 0) {
-      const [b1, b2] = [n(0.06, 0.07, 71), n(0.21, 0.21, 72)];
       this.blightN = new Float32Array(this.w * this.h);
-      for (let i = 0; i < this.blightN.length; i++) this.blightN[i] = b1[i] * 0.62 + b2[i] * 0.38;
+      if (BLIGHT_STYLE === 'stains') {
+        // stains with a shape: one broad noise, only a little of a finer one to keep their edges from being round
+        const [b1, b2] = [n(0.05, 0.058, 71), n(0.13, 0.13, 72)];
+        for (let i = 0; i < this.blightN.length; i++) this.blightN[i] = b1[i] * 0.8 + b2[i] * 0.2;
+      } else {
+        const [b1, b2] = [n(0.06, 0.07, 71), n(0.21, 0.21, 72)];
+        for (let i = 0; i < this.blightN.length; i++) this.blightN[i] = b1[i] * 0.62 + b2[i] * 0.38;
+      }
     }
     for (const world of WORLDS) this.paint(world);
   }
@@ -164,6 +171,150 @@ export class SurfacePainter implements RoomPicture {
       const f = this.frames[world];
       if (f) this.buffers[world].u32.set(f[frame & 3].u32);
     }
+  }
+
+  /**
+   * The blight's stains (BLIGHT_STYLE 'stains'). `cls` marks the pixels it has taken; this colours them by how far in
+   * they are, withers the grass round them (marked in `dead`) and sends tendrils out into the meadow.
+   * How much of all that there is follows the strength of the blight. Returns the depth (px) of every pixel in a stain.
+   */
+  private paintStains(world: World, ground: PixelBuffer, cls: Uint8Array, dead: Uint8Array): Float32Array {
+    const { w, h } = this;
+    const p = this.look.palettes[world];
+    const g = ground.u32;
+    const N = w * h;
+    const bn = this.blightN!;
+    const B = p.blight;
+    const meadow = new Uint8Array(N);
+    const taken = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      meadow[i] = cls[i] === C.GRASS ? 1 : 0;
+      taken[i] = cls[i] === C.BLIGHT ? 1 : 0;
+    }
+    // how far into a stain (measured from the meadow: a path or the forest is not its edge), and how far out of it
+    const dIn = chamfer(meadow, w, h, 0, w, h);
+    const dOut = chamfer(taken, w, h, 0, w, h);
+    const core = mix(B[0], p.outline, 0.4);
+    const tide = mix(B[1], B[2], 0.55);
+    const heart = [mix(B[1], core, 0.42), mix(B[1], core, 0.8)];
+    for (let i = 0; i < N; i++) {
+      if (taken[i]) {
+        const d = dIn[i] + this.wobble[i] * 0.2;
+        const x = i % w;
+        const strength = this.blightAt(x, (i - x) / w);
+        // lighter where it is still spreading, darker towards its heart: a stain, not a hole
+        let c = d < 1.2 ? B[2] : d < 3 ? tide : B[1];
+        const deep = strength * 0.56 - bn[i];
+        if (d > 5) c = deep > 0.17 ? heart[1] : deep > 0.1 ? heart[0] : c;
+        g[i] = c;
+      } else if (meadow[i] && dOut[i] < 1.5 + this.patch[i] * 6 + this.wobble[i] * 0.35) {
+        // the grass it has touched and not yet taken: a ring that is wide in places and nearly gone in others
+        dead[i] = 1;
+        g[i] = p.deadGrass[dOut[i] < 1.6 ? 0 : dOut[i] < 3.5 ? 1 : 2];
+      }
+    }
+    // tendrils: from the rim, out along the way the stain is spreading, wandering, now and then forking
+    const vein = p.glow ? B[2] : B[0];
+    const walk = (x0: number, y0: number, a0: number, len: number, seed: number, fork: boolean): void => {
+      let a = a0;
+      let fx = x0 + 0.5;
+      let fy = y0 + 0.5;
+      for (let k = 0; k < len; k++) {
+        a += ((hash2(k, seed, 152) % 100) / 100 - 0.5) * 0.9;
+        fx += Math.cos(a);
+        fy += Math.sin(a);
+        const X = Math.floor(fx);
+        const Y = Math.floor(fy);
+        if (X < 0 || Y < 0 || X >= w || Y >= h) return;
+        const j = Y * w + X;
+        if (cls[j] === C.BLIGHT) continue;
+        if (cls[j] !== C.GRASS) return;
+        g[j] = k < len * 0.7 ? vein : p.deadGrass[0];
+        dead[j] = 1;
+        // thick at the root
+        if (k < 3 && fork) {
+          const side = Y * w + Math.floor(fx + Math.sin(a) * 0.9);
+          if (cls[side] === C.GRASS) { g[side] = vein; dead[side] = 1; }
+        }
+        if (fork && k === Math.floor(len * 0.4) && seed % 3 === 0) walk(X, Y, a + (seed & 4 ? 0.8 : -0.8), len * 0.5, seed >>> 3, false);
+      }
+    };
+    const ox = this.room.gx * SCREEN_COLS * TILE;
+    const oy = this.room.gy * SCREEN_ROWS * TILE;
+    for (let gj = Math.floor(oy / 7); gj * 7 < oy + h; gj++)
+      for (let gi = Math.floor(ox / 7); gi * 7 < ox + w; gi++) {
+        const hs = hash2(gi, gj, 151);
+        const x = gi * 7 + (hs % 7) - ox;
+        const y = gj * 7 + ((hs >>> 3) % 7) - oy;
+        if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) continue;
+        const i = y * w + x;
+        if (!taken[i] || dIn[i] > 1.5) continue;
+        const strength = this.blightAt(x, y);
+        if ((hs >>> 8) % 100 >= 16 + strength * 40) continue;
+        const a = Math.atan2(bn[i + w] - bn[i - w], bn[i + 1] - bn[i - 1]);
+        walk(x, y, a, 7 + ((hs >>> 16) % 9) + strength * 9, hs, true);
+      }
+    // a few veins inside, along the lie of the stain, and a few spores that glow with the other side
+    const darkVein = mix(B[1], B[0], 0.65);
+    for (let gj = Math.floor(oy / 13); gj * 13 < oy + h; gj++)
+      for (let gi = Math.floor(ox / 13); gi * 13 < ox + w; gi++) {
+        const hs = hash2(gi, gj, 155);
+        let fx = gi * 13 + (hs % 13) - ox + 0.5;
+        let fy = gj * 13 + ((hs >>> 4) % 13) - oy + 0.5;
+        const i0 = Math.floor(fy) * w + Math.floor(fx);
+        if (fx < 1 || fy < 1 || fx >= w - 1 || fy >= h - 1 || !taken[i0] || dIn[i0] < 4 || (hs >>> 8) % 3 !== 0) continue;
+        let a = Math.atan2(bn[i0 + w] - bn[i0 - w], bn[i0 + 1] - bn[i0 - 1]) + Math.PI / 2;
+        for (let k = 0; k < 6 + ((hs >>> 12) % 7); k++) {
+          a += ((hash2(k, hs, 156) % 100) / 100 - 0.5) * 0.7;
+          fx += Math.cos(a);
+          fy += Math.sin(a);
+          if (fx < 0 || fy < 0 || fx >= w || fy >= h) break;
+          const j = Math.floor(fy) * w + Math.floor(fx);
+          if (!taken[j] || dIn[j] < 2.5) break;
+          if (g[j] === B[1]) g[j] = darkVein;
+        }
+      }
+    const halo = mix(B[2], p.blightVein, 0.45);
+    for (let gj = Math.floor(oy / 10); gj * 10 < oy + h; gj++)
+      for (let gi = Math.floor(ox / 10); gi * 10 < ox + w; gi++) {
+        const hs = hash2(gi, gj, 161);
+        const x = gi * 10 + (hs % 10) - ox;
+        const y = gj * 10 + ((hs >>> 4) % 10) - oy;
+        if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) continue;
+        const i = y * w + x;
+        if (!taken[i] || dIn[i] < 4 || (hs >>> 8) % 1000 >= this.blightAt(x, y) * 70) continue;
+        g[i] = p.blightSpark;
+        if (taken[i + 1]) g[i + 1] = halo;
+        if (taken[i - w]) g[i - w] = halo;
+      }
+    return dIn;
+  }
+
+  /** Thorns pushing up through the deep of the stains: a few curved shoots, more where the blight is stronger. */
+  private paintShoots(world: World, ground: PixelBuffer, cls: Uint8Array, dIn: Float32Array): void {
+    const { w, h } = this;
+    const p = this.look.palettes[world];
+    const c = p.blightWood;
+    const ox = this.room.gx * SCREEN_COLS * TILE;
+    const oy = this.room.gy * SCREEN_ROWS * TILE;
+    const g = ground.u32;
+    for (let gj = Math.floor(oy / 12); gj * 12 < oy + h; gj++)
+      for (let gi = Math.floor(ox / 12); gi * 12 < ox + w; gi++) {
+        const hs = hash2(gi, gj, 75);
+        const x = gi * 12 + (hs % 12) - ox;
+        const y = gj * 12 + ((hs >>> 4) % 12) - oy;
+        if (x < 2 || y < 5 || x >= w - 2 || y >= h - 1) continue;
+        const i = y * w + x;
+        if (cls[i] !== C.BLIGHT || dIn[i] < 3.5 || (hs >>> 8) % 100 >= this.blightAt(x, y) * 24) continue;
+        const side = (hs >>> 14) & 1 ? 1 : -1;
+        g[i + 1 + w] = mix(g[i + 1 + w], p.outline, 0.35);
+        ground.set(x, y, c[1]);
+        ground.set(x, y - 1, c[1]);
+        ground.set(x, y - 2, c[2]);
+        ground.set(x - side, y - 2, c[2]);
+        ground.set(x + side, y - 3, c[2]);
+        ground.set(x + side, y - 4, c[3]);
+      }
   }
 
   private kindAt(world: World, x: number, y: number): number {
@@ -325,7 +476,9 @@ export class SurfacePainter implements RoomPicture {
             // the forest's own shade, and the lip of grass along a path
             if (fs < 5.5 || ps < 1) c = p.grass[0];
             // where the blight has taken the ground
-            if (this.blightN) {
+            if (this.blightN && BLIGHT_STYLE === 'stains') {
+              if (this.blightAt(px, py) * 0.56 - this.blightN[i] > 0) cls[i] = C.BLIGHT;
+            } else if (this.blightN) {
               const edge = this.blightAt(px, py) * 0.56 - this.blightN[i];
               if (edge > 0) {
                 cls[i] = C.BLIGHT;
@@ -341,6 +494,11 @@ export class SurfacePainter implements RoomPicture {
         ground.u32[i] = c;
       }
 
+    // ---- 2b. the blight's stains: a dark rim, a tide line, a deep core; dead grass round them, tendrils creeping out
+    const dead = new Uint8Array(w * h);
+    let dIn: Float32Array | null = null;
+    if (this.blightN && BLIGHT_STYLE === 'stains') dIn = this.paintStains(world, ground, cls, dead);
+
     // ---- 3. blades and flowers
     const grassAt = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < w && y < h && cls[y * w + x] === C.GRASS;
     for (let gj = Math.floor(oy / 6); gj * 6 < oy + h; gj++)
@@ -352,14 +510,25 @@ export class SurfacePainter implements RoomPicture {
         const meadow = kind(Math.floor(x / TILE), Math.floor(y / TILE)) === K.FLOWERS;
         const r = (hs >>> 8) % 100;
         const sort = hash2(Math.floor((ox + x) / 44), Math.floor((oy + y) / 34), 43);
-        if (meadow ? r < 50 : r < 3) {
+        const withered = dead[y * w + x] === 1;
+        // Nawia keeps its meadow quiet: few blades, dim ones, so whatever glows on it can be seen
+        const calm = p.glow && NAWIA_CALM;
+        if (!withered && (meadow ? r < 50 : r < (calm ? 1 : 3))) {
           drawFlower(ground, p, x, y, sort, meadow && r < 22);
           continue;
         }
-        if (r > (meadow ? 88 : 44)) continue;
+        if (r > (meadow ? (calm ? 70 : 88) : calm ? 12 : 44)) continue;
         const here = ground.get(x, y);
-        const col = here === p.grass[2] ? p.tuft[0] : here === p.grass[0] ? p.tuft[p.glow ? 0 : 1] : p.tuft[(hs >>> 16) & 1];
-        const tip = p.glow && (hs >>> 20) % 5 === 0 ? p.tuft[1] : col;
+        let col = here === p.grass[2] ? p.tuft[0] : here === p.grass[0] ? p.tuft[p.glow ? 0 : 1] : p.tuft[(hs >>> 16) & 1];
+        let tip = p.glow && (hs >>> 20) % 5 === 0 ? p.tuft[1] : col;
+        if (calm) {
+          col = p.tuft[0];
+          tip = meadow && (hs >>> 20) % 4 === 0 ? p.tuft[1] : col;
+        }
+        if (withered) {
+          col = p.deadGrass[(hs >>> 16) & 1 ? 2 : 1];
+          tip = p.deadGrass[0];
+        }
         switch ((hs >>> 12) % 3) {
           case 0:
             ground.set(x - 1, y - 1, tip); ground.set(x + 1, y - 1, tip); ground.set(x, y, col);
@@ -373,7 +542,8 @@ export class SurfacePainter implements RoomPicture {
       }
 
     // thorns pushing up through blighted ground
-    if (this.blightN)
+    if (dIn) this.paintShoots(world, ground, cls, dIn);
+    else if (this.blightN)
       for (let gj = Math.floor(oy / 9); gj * 9 < oy + h; gj++)
         for (let gi = Math.floor(ox / 9); gi * 9 < ox + w; gi++) {
           const hs = hash2(gi, gj, 75);
@@ -455,10 +625,12 @@ export class SurfacePainter implements RoomPicture {
           case K.THICKET: {
             const tangle = this.blightN ? g.thorns : g.thickets;
             const s = pick(tangle);
-            shadeEllipse(x0 + 10, y0 + 15, 9, 3);
-            jobs.push({ by: y0 + 15, draw: () => place(s, x0 + 8, y0 + 15, true) });
-            // fill the seams between neighbouring brambles
-            if (kind(x + 1, y) === K.THICKET) jobs.push({ by: y0 + 14, draw: () => place(tangle[(hs >>> 3) % 4], x0 + 16, y0 + 14, true) });
+            const hedge = this.blightN !== null && BLIGHT_STYLE === 'stains';
+            const by = y0 + 15 - (hedge ? (hs >>> 6) % 3 : 0);
+            shadeEllipse(x0 + 10, y0 + 15, hedge ? 11 : 9, 3);
+            jobs.push({ by, draw: () => place(s, x0 + 8, by, true) });
+            // fill the seams between neighbouring brambles (a hedge of thorns is wide enough to knit by itself)
+            if (!hedge && kind(x + 1, y) === K.THICKET) jobs.push({ by: y0 + 14, draw: () => place(tangle[(hs >>> 3) % 4], x0 + 16, y0 + 14, true) });
             if (kind(x, y + 1) === K.THICKET) jobs.push({ by: y0 + 22, draw: () => place(tangle[(hs >>> 5) % 4], x0 + 8, y0 + 22, true) });
             break;
           }

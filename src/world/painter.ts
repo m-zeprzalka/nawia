@@ -1,10 +1,11 @@
 // One interface for "a room as pictures", and the choice of who paints it:
-// the stronghold is stamped from a tileset (RoomPainter), the surface is painted (SurfacePainter).
+// the stronghold is painted per pixel (CryptPainter; the first technique, stamping it from the tileset,
+// is RoomPainter and stays reachable through CRYPT_TECHNIQUE), the surface is painted (SurfacePainter).
 
 import { TILE, WORLDS, otherWorld, type World } from '../config.ts';
 import { PixelBuffer } from '../core/PixelBuffer.ts';
 import { TILESET_COLS, TILE_INDEX, type TileName } from '../art/tiles.ts';
-import { RoomPainter } from './roomPainter.ts';
+import { CryptPainter, RoomPainter } from './roomPainter.ts';
 import { TERRAIN, isSurface, isWalkable, type Dungeon, type RoomDef } from './roomFormat.ts';
 import { InteriorPainter } from './interiorPainter.ts';
 import { SurfacePainter } from './surfacePainter.ts';
@@ -42,8 +43,29 @@ export function paintEcho(room: RoomDef, tilesets: Record<World, PixelBuffer>): 
   return echo;
 }
 
+/**
+ * How the stronghold is painted. 'painted': per pixel, slabs of unequal size, shadows, damp and cracks
+ * placed where they belong (CryptPainter). 'tiles': the first technique, every cell stamped from the
+ * 16x16 tileset (RoomPainter); kept so the two can be compared, and for tiles drawn by hand as PNG.
+ */
+export const CRYPT_TECHNIQUE: 'painted' | 'tiles' = 'painted';
+
+/**
+ * The first paints of the stronghold are slow until the browser has optimised the painter (50-130 ms each for the
+ * first few rooms, 20-40 ms after). So the first time any room is painted (in the game: behind the black screen it
+ * opens with), a few stronghold rooms are painted as well and thrown away, and walking into the first one does not hitch.
+ */
+let strongholdWarm = false;
+function warmStronghold(dungeon: Dungeon, tilesets: Record<World, PixelBuffer>): void {
+  strongholdWarm = true;
+  const crypts = dungeon.rooms.filter((r) => r.biome === 'crypt').slice(0, 3);
+  for (const r of crypts) new CryptPainter(r, dungeon, tilesets, paintEcho(r, tilesets));
+}
+
 export function paintRoom(room: RoomDef, dungeon: Dungeon, tilesets: Record<World, PixelBuffer>): RoomPicture {
+  if (!strongholdWarm && CRYPT_TECHNIQUE === 'painted') warmStronghold(dungeon, tilesets);
   if (isSurface(room.biome)) return new SurfacePainter(room, dungeon, paintEcho(room, tilesets));
   if (room.biome === 'house') return new InteriorPainter(room, paintEcho(room, tilesets));
-  return new RoomPainter(room, dungeon, tilesets);
+  if (CRYPT_TECHNIQUE === 'tiles') return new RoomPainter(room, dungeon, tilesets);
+  return new CryptPainter(room, dungeon, tilesets, paintEcho(room, tilesets));
 }
