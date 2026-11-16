@@ -247,6 +247,11 @@ export class Enemy {
     return Enemy.newLooks ? GAME_BEASTS[this.kind] : null;
   }
 
+  /** The form it is drawn in: the world the hero is in, except a strzyga's second soul, which is only ever a soul. */
+  private get look(): World {
+    return this.frameBase === MOB.STRZYGA_N ? 'nawia' : this.visible;
+  }
+
   /** Its feet: what walls stop. */
   get box(): Box {
     return { x: this.x, y: this.y, hw: this.spec.hw, hh: this.spec.hh };
@@ -257,7 +262,7 @@ export class Enemy {
     const b = this.beast;
     const top = this.y + this.spec.hh + 2 - this.hover;
     if (!b) return { x: this.x, y: top - 7, hw: this.spec.hw + 1, hh: this.spec.hh + 3 };
-    const body = bodyOf(b, this.visible);
+    const body = bodyOf(b, this.look);
     return { x: this.x + (this.faceLeft ? -body.dx : body.dx), y: top + body.dy, hw: body.hw, hh: body.hh };
   }
 
@@ -563,9 +568,9 @@ export class Enemy {
 
     const beast = this.beast;
     if (beast) {
-      const key = beastKey(beast, this.visible);
+      const key = beastKey(beast, this.look);
       if (this.sprite.texture.key !== key) this.sprite.setTexture(key).setOrigin(0.5, (beast.h - 1) / beast.h);
-      this.sprite.setFrame(beastFrameOf(beast, this.visible, this.phase()));
+      this.sprite.setFrame(beastFrameOf(beast, this.look, this.phase()));
     } else {
       let frame: number;
       if (this.kind === 'ognik') frame = Math.floor(this.t * (warning ? s.fps * 2 : s.fps)) % 4;
