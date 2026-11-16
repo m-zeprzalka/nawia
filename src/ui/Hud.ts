@@ -80,6 +80,10 @@ export class Hud {
   private bannerT = 0;
   private stoneKick = 0;
   private stoneShake = 0;
+  private heartShake = 0;
+  private hp: number = TUNE.player.maxHp;
+  private readonly hintBand: Phaser.GameObjects.Image;
+  private readonly lowHp: Phaser.GameObjects.Image;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -118,8 +122,32 @@ export class Hud {
     this.pick = fix(scene.add.image(GAME_W - 8 - 170, 0, 'px', PX.DIAMOND), Z + 2).setVisible(false);
     this.more = fix(scene.add.image(GAME_W - 18, GAME_H - 13, 'px', PX.DIAMOND), Z + 2).setVisible(false);
 
-    this.hint = new PixelText(scene, 0, GAME_H - 17, { width: GAME_W, height: 13, align: 'center', color: 0xd8d2c8 });
+    // a soft dark band under a hint, so it reads over anything without a box round it
+    const band = new PixelBuffer(GAME_W, 24);
+    for (let y = 0; y < 24; y++) {
+      const a = Math.round(170 * Math.min(1, y / 10));
+      for (let x = 0; x < GAME_W; x++) {
+        const edge = Math.min(1, Math.min(x, GAME_W - 1 - x) / 70);
+        band.set(x, y, rgb(0x0c0a12, Math.round(a * edge)));
+      }
+    }
+    addBufferTexture(scene, 'hintband', band);
+    this.hintBand = fix(scene.add.image(0, GAME_H - 24, 'hintband').setOrigin(0, 0), Z - 1).setAlpha(0);
+    this.hint = new PixelText(scene, 0, GAME_H - 17, { width: GAME_W, height: 13, align: 'center', color: 0xe4ded2 });
     fix(this.hint.image).setAlpha(0);
+
+    // near death: the edges of the screen beat red
+    const edge = new PixelBuffer(GAME_W, GAME_H);
+    for (let y = 0; y < GAME_H; y++)
+      for (let x = 0; x < GAME_W; x++) {
+        const nx = (x + 0.5) / GAME_W - 0.5;
+        const ny = (y + 0.5) / GAME_H - 0.5;
+        const d = Math.hypot(nx * 1.15, ny * 1.6);
+        const k = Math.max(0, Math.min(1, (d - 0.42) / 0.4));
+        if (k > 0) edge.set(x, y, rgb(0x9a0c1c, Math.round(255 * k * k)));
+      }
+    addBufferTexture(scene, 'lowhp', edge);
+    this.lowHp = fix(scene.add.image(0, 0, 'lowhp').setOrigin(0, 0), Z - 11).setAlpha(0);
 
     this.center = new PixelText(scene, 0, 78, { width: GAME_W, height: 26, align: 'center' });
     fix(this.center.image, Z + 5).setVisible(false);
@@ -129,6 +157,7 @@ export class Hud {
 
   /** @param hp health in half hearts */
   setHearts(hp: number): void {
+    this.hp = hp;
     this.hearts.forEach((h, i) => h.setFrame(hp >= i * 2 + 2 ? UI.HEART : hp === i * 2 + 1 ? UI.HEART_HALF : UI.HEART_EMPTY));
   }
 
@@ -152,6 +181,11 @@ export class Hud {
       this.labelT = 1.7;
       this.stoneKick = 0.18;
     }
+  }
+
+  /** He was hit: the hearts shake. */
+  hurt(): void {
+    this.heartShake = 0.32;
   }
 
   /** The shift was refused: the stone rattles in its setting. */
@@ -277,6 +311,20 @@ export class Hud {
     const wantHint = this.hintText !== null && this.dialogText === null ? 1 : 0;
     const a = this.hint.image.alpha;
     this.hint.image.setAlpha(a + Math.sign(wantHint - a) * Math.min(Math.abs(wantHint - a), dt * 5));
+    this.hintBand.setAlpha(this.hint.image.alpha);
+
+    // the hearts: a shake when he is hit; the last one beats when it is all he has left
+    this.heartShake = Math.max(0, this.heartShake - dt);
+    const hx = this.heartShake > 0 ? (Math.floor(this.heartShake * 45) % 2 ? 1 : -1) : 0;
+    const low = this.hp > 0 && this.hp <= 2;
+    // a heartbeat: two quick beats, then a rest
+    const beat = (this.clock * 1.15) % 1;
+    const pulse = beat < 0.12 ? 1 : beat < 0.22 ? 0.35 : beat < 0.34 ? 0.8 : 0;
+    this.hearts.forEach((h, i) => {
+      h.setX(6 + i * 10 + hx);
+      h.setY(6 + (low && i === Math.ceil(this.hp / 2) - 1 && pulse > 0.7 ? -1 : 0));
+    });
+    this.lowHp.setAlpha(low ? 0.12 + pulse * 0.2 : Math.max(0, this.lowHp.alpha - dt * 2));
 
     // the stone: a little hop when it turns, a rattle when it cannot
     this.stoneKick = Math.max(0, this.stoneKick - dt);

@@ -165,6 +165,8 @@ export class GameScene extends Phaser.Scene {
   private punchX = 0;
   private punchY = 0;
   private hitstop = 0;
+  /** Seconds of slow motion left: the last blow of a fight, his fall. */
+  private slowmo = 0;
   private shiftCd = 0;
   private animT = 0;
   private animFrame = 0;
@@ -183,6 +185,7 @@ export class GameScene extends Phaser.Scene {
   private hasAttacked = false;
   private hasGuarded = false;
   private hasDodged = false;
+  private hasComboed = false;
   /** Seconds left of the reminder that he has no stone to turn yet. */
   private noStoneHintT = 0;
   private rejectHintT = 0;
@@ -232,6 +235,7 @@ export class GameScene extends Phaser.Scene {
     this.hasAttacked = false;
     this.hasGuarded = false;
     this.hasDodged = false;
+    this.hasComboed = false;
     this.noStoneHintT = 0;
     this.rejectHintT = 0;
     this.bellSwing = -1;
@@ -571,6 +575,9 @@ export class GameScene extends Phaser.Scene {
     if (this.hitstop > 0) {
       this.hitstop -= rawDt;
       dt = 0;
+    } else if (this.slowmo > 0) {
+      this.slowmo -= rawDt;
+      dt *= 0.3;
     }
     this.clock += dt;
     this.stateT += dt;
@@ -649,6 +656,7 @@ export class GameScene extends Phaser.Scene {
     if (input.moveX !== 0 || input.moveY !== 0) this.hasMoved = true;
     if (player.guarding) this.hasGuarded = true;
     if (player.rolling) this.hasDodged = true;
+    if (player.comboIndex === 2) this.hasComboed = true;
     if (player.attackActive) this.resolveAttack();
     if (room.lockPending) this.tryLock();
     if (!this.cleared.has(room.def.id) && room.enemies.length === 0 && room.wave <= room.def.waves.length) {
@@ -749,6 +757,7 @@ export class GameScene extends Phaser.Scene {
     else if (gear.stone && !this.hasShifted && this.timeInRoom > 1.5 && this.room.place !== 'house') hint = t(pad ? STR.hintShiftPad : STR.hintShift);
     else if (gear.sword && !this.hasAttacked && threat) hint = t(pad ? STR.hintAttackPad : STR.hintAttack);
     else if (gear.shield && !this.hasGuarded && threat) hint = t(pad ? STR.hintShieldPad : STR.hintShield);
+    else if (gear.sword && this.hasAttacked && !this.hasComboed && threat) hint = t(pad ? STR.hintComboPad : STR.hintCombo);
     else if (gear.sword && this.hasAttacked && this.hasGuarded && !this.hasDodged && threat) hint = t(pad ? STR.hintDodgePad : STR.hintDodge);
     else if (this.heartHintT > 0 && this.world === 'jawia' && this.room.boss?.heartBare) hint = t(STR.hintHeart);
     else if (this.stoneHintT > 0 && this.room.boss) hint = t(STR.hintStone);
@@ -883,7 +892,7 @@ export class GameScene extends Phaser.Scene {
     if (!player.hurt(fromX, fromY, amount)) return false;
     audio.sfx('hurt');
     this.hud.setHearts(player.hp);
-    this.hud.rattle();
+    this.hud.hurt();
     this.hud.flash(0xc9323e, 0.34, 260);
     this.trauma = Math.max(this.trauma, 0.7);
     this.hitstop = Math.max(this.hitstop, 0.12);
@@ -1000,7 +1009,10 @@ export class GameScene extends Phaser.Scene {
       if (player.hp < TUNE.player.maxHp && Math.random() < HEART_DROP) this.dropHeart(room, e.x, e.y);
       e.destroy();
       room.enemies.splice(room.enemies.indexOf(e), 1);
+      const settled = this.cleared.has(room.def.id);
       this.checkCleared();
+      // the last blow of a fight: the world holds still a moment longer
+      if (!settled && this.cleared.has(room.def.id)) this.slowmo = 0.55;
     }
     return true;
   }
@@ -1495,6 +1507,8 @@ export class GameScene extends Phaser.Scene {
   private startDying(): void {
     this.state = 'dying';
     this.stateT = 0;
+    this.slowmo = 0.7;
+    this.hitstop = Math.max(this.hitstop, 0.2);
     audio.sfx('die');
     this.hud.setDialog(null);
     this.hud.setHint(null);
